@@ -1,0 +1,163 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar for dark mode */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0F1117;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2D3748;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3B82F6;
+}
+
+/* Selection */
+::selection {
+  background: rgba(59, 130, 246, 0.3);
+  color: #E6E8EB;
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid #3B82F6;
+  outline-offset: 2px;
+}
+
+/* Base styles */
+body {
+  @apply bg-background text-text-primary font-sans antialiased;
+  min-height: 100vh;
+}
+
+/* Card component */
+@layer components {
+  .card {
+    @apply bg-background-card rounded-lg shadow-card transition-all duration-200;
+  }
+  
+  .card-hover {
+    @apply hover:shadow-card-hover hover:bg-background-hover;
+  }
+  
+  .card-elevated {
+    @apply bg-background-elevated shadow-elevated;
+  }
+
+  /* Button styles */
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 inline-flex items-center justify-center gap-2;
+  }
+  
+  .btn-primary {
+    @apply bg-accent-blue text-white hover:bg-accent-blue-hover active:scale-[0.98];
+  }
+  
+  .btn-secondary {
+    @apply bg-background-hover text-text-primary hover:bg-background-elevated border border-border;
+  }
+  
+  .btn-ghost {
+    @apply bg-transparent text-text-secondary hover:bg-background-hover hover:text-text-primary;
+  }
+
+  .btn-icon {
+    @apply p-2 rounded-lg transition-colors duration-150;
+  }
+
+  /* Input styles */
+  .input {
+    @apply w-full px-4 py-3 bg-background border border-border rounded-lg text-text-primary placeholder-text-muted focus:border-accent-blue focus:ring-1 focus:ring-accent-blue transition-all duration-200;
+  }
+
+  .input-ghost {
+    @apply w-full bg-transparent border-none text-text-primary placeholder-text-muted focus:outline-none focus:ring-0;
+  }
+
+  /* Badge styles */
+  .badge {
+    @apply px-2 py-0.5 text-xs font-medium rounded-full;
+  }
+  
+  .badge-amber {
+    @apply bg-accent-amber/20 text-accent-amber;
+  }
+  
+  .badge-green {
+    @apply bg-accent-green/20 text-accent-green;
+  }
+  
+  .badge-gray {
+    @apply bg-background-hover text-text-secondary;
+  }
+  
+  .badge-blue {
+    @apply bg-accent-blue/20 text-accent-blue;
+  }
+
+  /* Sidebar styles */
+  .sidebar-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-text-secondary transition-all duration-150 cursor-pointer;
+  }
+  
+  .sidebar-item:hover {
+    @apply bg-background-hover text-text-primary;
+  }
+  
+  .sidebar-item.active {
+    @apply bg-accent-blue text-white;
+  }
+
+  /* Editor styles */
+  .editor {
+    @apply w-full min-h-[400px] bg-transparent text-text-primary font-sans text-base leading-relaxed resize-none focus:outline-none;
+  }
+
+  /* Code block */
+  .code-block {
+    @apply bg-background rounded-lg p-4 font-mono text-sm overflow-x-auto border border-border-subtle;
+  }
+
+  /* Dropdown menu */
+  .dropdown {
+    @apply absolute z-50 mt-2 bg-background-card rounded-lg shadow-elevated border border-border overflow-hidden animate-fade-in;
+  }
+
+  .dropdown-item {
+    @apply px-4 py-2 text-text-secondary hover:bg-background-hover hover:text-text-primary cursor-pointer transition-colors duration-150;
+  }
+
+  /* Tooltip */
+  .tooltip {
+    @apply absolute z-50 px-2 py-1 text-xs bg-background-elevated text-text-primary rounded shadow-card;
+  }
+}
+
+/* Keyboard shortcut hints */
+.kbd {
+  @apply inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono bg-background-hover border border-border rounded text-text-muted;
+}
+
+/* Transition utilities */
+.transition-smooth {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Loading states */
+.skeleton {
+  @apply animate-pulse bg-background-hover rounded;
+}
+
+/* Link in editor */
+.inline-link {
+  @apply text-accent-blue hover:underline cursor-pointer;
+}
