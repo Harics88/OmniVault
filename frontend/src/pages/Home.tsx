@@ -8,7 +8,6 @@ import {
     Code,
     Bookmark,
     ArrowRight,
-    Clock,
     Sparkles,
 } from 'lucide-react';
 import { dailyLogsApi, tasksApi, notesApi, snippetsApi, bookmarksApi, systemApi } from '../lib/api';
