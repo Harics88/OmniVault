@@ -3,23 +3,49 @@ MyTasker - FastAPI Backend
 A local-first productivity app for data engineers
 """
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
+import logging
+import time
+from datetime import datetime
+from typing import Callable
 
-from app.database import engine, Base
+from fastapi import FastAPI, Request, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from contextlib import asynccontextmanager
+from sqlalchemy import text
+
+from app.database import engine, Base, get_db
 from app.routers import daily_logs, tasks, notes, snippets, bookmarks, search, sections, system
+
+# Configure structured logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup: Create database tables
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    logger.info("Starting MyTasker application...")
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables created successfully")
+    except Exception as e:
+        logger.error(f"Failed to create database tables: {e}")
+        raise
+    
     yield
+    
     # Shutdown: Clean up resources
+    logger.info("Shutting down MyTasker application...")
     await engine.dispose()
+    logger.info("Application shutdown complete")
 
 
 app = FastAPI(
@@ -38,6 +64,83 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next: Callable):
+    """Log all requests and responses"""
+    start_time = time.time()
+    
+    # Log request
+    logger.info(f"Request: {request.method} {request.url.path}")
+    
+    try:
+        response = await call_next(request)
+        
+        # Log response
+        process_time = time.time() - start_time
+        logger.info(
+            f"Response: {request.method} {request.url.path} "
+            f"Status: {response.status_code} "
+            f"Duration: {process_time:.3f}s"
+        )
+        
+        # Add custom headers
+        response.headers["X-Process-Time"] = str(process_time)
+        return response
+        
+    except Exception as e:
+        process_time = time.time() - start_time
+        logger.error(
+            f"Request failed: {request.method} {request.url.path} "
+            f"Error: {str(e)} "
+            f"Duration: {process_time:.3f}s"
+        )
+        raise
+
+
+# Global exception handler for unhandled errors
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Handle all unhandled exceptions"""
+    logger.error(
+        f"Unhandled exception: {type(exc).__name__}: {str(exc)} "
+        f"Path: {request.url.path}",
+        exc_info=True
+    )
+    
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "error": "Internal Server Error",
+            "message": "An unexpected error occurred. Please try again later.",
+            "type": type(exc).__name__,
+            "path": request.url.path,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    )
+
+
+# Validation error handler
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle request validation errors"""
+    logger.warning(
+        f"Validation error: {request.url.path} "
+        f"Errors: {exc.errors()}"
+    )
+    
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "error": "Validation Error",
+            "message": "Invalid request data",
+            "details": exc.errors(),
+            "path": request.url.path,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    )
+
+
 # Include routers
 app.include_router(daily_logs.router, prefix="/api/daily-logs", tags=["Daily Logs"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["Tasks"])
@@ -51,15 +154,64 @@ app.include_router(system.router, prefix="/api/system", tags=["System"])
 
 @app.get("/")
 async def root():
-    """Health check endpoint"""
-    return {"status": "healthy", "app": "MyTasker", "version": "1.0.0"}
+    """Root endpoint"""
+    return {
+        "app": "MyTasker",
+        "version": "1.0.0",
+        "status": "running",
+        "docs": "/docs"
+    }
 
 
 @app.get("/api/health")
 async def health_check():
-    """Detailed health check"""
-    return {
+    """Comprehensive health check endpoint"""
+    health_status = {
         "status": "healthy",
-        "database": "connected",
-        "version": "1.0.0"
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "1.0.0",
+        "checks": {}
     }
+    
+    # Check database connectivity
+    try:
+        async for db in get_db():
+            result = await db.execute(text("SELECT 1"))
+            result.scalar()
+            health_status["checks"]["database"] = {
+                "status": "healthy",
+                "message": "Database connection successful"
+            }
+            break
+    except Exception as e:
+        logger.error(f"Database health check failed: {e}")
+        health_status["status"] = "unhealthy"
+        health_status["checks"]["database"] = {
+            "status": "unhealthy",
+            "message": f"Database connection failed: {str(e)}"
+        }
+    
+    # Determine overall status
+    if health_status["status"] == "unhealthy":
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content=health_status
+        )
+    
+    return health_status
+
+
+@app.get("/api/ready")
+async def readiness_check():
+    """Readiness check for container orchestration"""
+    try:
+        # Quick database check
+        async for db in get_db():
+            await db.execute(text("SELECT 1"))
+            return {"status": "ready"}
+    except Exception as e:
+        logger.error(f"Readiness check failed: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"status": "not ready", "error": str(e)}
+        )
