@@ -12,6 +12,20 @@ import webbrowser
 import subprocess
 import threading
 from pathlib import Path
+import uvicorn
+import asyncio
+import encodings
+import email
+import json
+import logging
+import multiprocessing
+import signal
+import typing
+# Force uvicorn submodules
+from uvicorn.logging import DefaultFormatter
+from uvicorn.loops import auto as loop_auto
+from uvicorn.protocols import http
+from uvicorn.lifespan import on as lifespan_on
 
 # Determine if running as compiled executable or script
 if getattr(sys, 'frozen', False):
@@ -76,14 +90,40 @@ def run_server(port):
     
     # Import and run the FastAPI app
     try:
-        import uvicorn
         from app.main import app
+        from fastapi.staticfiles import StaticFiles
+        from fastapi.responses import FileResponse
         
         print(f"🚀 Starting MyTasker backend on http://{HOST}:{port}")
         print(f"📁 Database: {DATABASE_PATH}")
         print(f"📂 Frontend: {FRONTEND_PATH}")
         print()
         
+        # Verify frontend path exists
+        if not FRONTEND_PATH.exists():
+            print(f"⚠️ Warning: Frontend files not found at {FRONTEND_PATH}")
+        else:
+            # Mount assets
+            assets_path = FRONTEND_PATH / "assets"
+            if assets_path.exists():
+                app.mount("/assets", StaticFiles(directory=str(assets_path)), name="assets")
+            
+            # FORCE REMOVE existing root route (nested in app.router.routes)
+            # This deletes the JSON API welcome message route
+            app.router.routes = [r for r in app.router.routes if getattr(r, "path", "") != "/"]
+
+            # Serve index.html for root (now this will be the only listener for /)
+            @app.get("/")
+            async def serve_spa_root():
+                return FileResponse(str(FRONTEND_PATH / "index.html"))
+            
+            # Serve index.html for unknown paths (SPA routing) - excluding API
+            @app.exception_handler(404)
+            async def custom_404_handler(request, exc):
+                if request.url.path.startswith("/api"):
+                    return {"error": "Not Found"}
+                return FileResponse(str(FRONTEND_PATH / "index.html"))
+
         # Configure uvicorn
         config = uvicorn.Config(
             app,

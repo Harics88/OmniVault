@@ -11,8 +11,8 @@
 
 ```
 MyTasker-Standalone/
-├── MyTasker.exe          (7.88 MB) ← Double-click to run!
-├── data/                 ← Your database folder
+├── MyTasker.exe          (56 MB) ← Double-click to run!
+├── data/                 ← Your database folder (created automatically)
 └── README.txt           ← User instructions
 ```
 
@@ -21,7 +21,7 @@ MyTasker-Standalone/
 - **No Docker required** - Runs standalone
 - **No Python required** - Everything bundled
 - **No Node.js required** - Frontend included
-- **Only 7.88 MB** - Incredibly small!
+- **Only ~56 MB** - Compact and portable!
 - **Fully portable** - Copy to any Windows PC
 - **Auto-opens browser** - Just double-click
 - **Enterprise-ready** - Perfect for corporate laptops
@@ -33,14 +33,15 @@ MyTasker-Standalone/
 ### Step 1: Copy to Enterprise Laptop
 
 **Option A: USB Drive**
-1. Copy entire `MyTasker-Standalone` folder to USB drive
-2. Plug USB into enterprise laptop
-3. Copy folder to laptop (e.g., `C:\MyTasker`)
+1. Download `standalone/dist/MyTasker.exe` from GitHub.
+2. Create a folder (e.g. `MyTasker`) on your USB drive.
+3. Copy `MyTasker.exe` to that folder.
+4. Plug USB into enterprise laptop.
 
 **Option B: Network Share**
-1. Copy `MyTasker-Standalone` to network drive
-2. Access from enterprise laptop
-3. Copy to local drive
+1. Copy `MyTasker.exe` to a folder on the network drive.
+2. Access from enterprise laptop.
+3. Copy to local drive is recommended for performance.
 
 **Option C: Email/Cloud**
 1. Zip the `MyTasker-Standalone` folder
@@ -50,8 +51,9 @@ MyTasker-Standalone/
 
 ### Step 2: Run MyTasker
 
-1. Go to `MyTasker-Standalone` folder
-2. **Double-click `MyTasker.exe`**
+1. Create a folder (e.g., `C:\MyTasker`).
+2. Place `MyTasker.exe` inside.
+3. **Double-click `MyTasker.exe`**
 3. Wait 5-10 seconds
 4. Browser opens automatically!
 5. Start using MyTasker!
@@ -208,7 +210,7 @@ MyTasker-Standalone/
 ### Resource Usage:
 - **RAM**: ~100-150 MB
 - **CPU**: Minimal (< 1%)
-- **Disk**: 7.88 MB exe + your data
+- **Disk**: 56 MB exe + your data
 
 ### Response Time:
 - **API**: < 100ms
@@ -294,7 +296,7 @@ Copy entire 'MyTasker-Standalone' folder
 
 ### Build Results:
 
-- ✅ Executable size: **7.88 MB** (smaller than expected!)
+- ✅ Executable size: **~56 MB**
 - ✅ Build time: **~5 minutes**
 - ✅ All dependencies: **Included**
 - ✅ Frontend: **Bundled**
@@ -324,9 +326,9 @@ Copy entire 'MyTasker-Standalone' folder
 
 ### Next Steps:
 
-1. **Copy to enterprise laptop**
-   - Use USB drive or network share
-   - Copy `MyTasker-Standalone` folder
+2. **Transfer to enterprise laptop**
+   - Download `standalone/dist/MyTasker.exe` from GitHub
+   - Copy to a local folder
 
 2. **Run MyTasker.exe**
    - Double-click
@@ -380,7 +382,7 @@ You now have a **fully portable, enterprise-ready** productivity app that:
 - ✅ Works **without Docker**
 - ✅ Runs **on any Windows 10/11 PC**
 - ✅ Keeps **all data local and private**
-- ✅ Is **only 7.88 MB**
+- ✅ Is **only ~56 MB**
 - ✅ **Just works!**
 
 **Perfect for your enterprise laptop!**

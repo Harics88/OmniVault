@@ -40,26 +40,30 @@ That's it! The script handles everything automatically.
 
 ## 🔧 Manual Build (Advanced)
 
-### Step 1: Install Dependencies
+### Step 1: Install Dependencies (On Host)
+
+**Important**: You must install backend dependencies on your computer (not just Docker), otherwise PyInstaller won't find them and the executable will fail.
 
 ```powershell
-# Install PyInstaller
+# 1. Install PyInstaller
 pip install pyinstaller
 
-# Install backend dependencies
-cd backend
-pip install -r requirements.txt
+# 2. Install Backend Dependencies
+# (Run this from project root)
+pip install fastapi==0.109.0 uvicorn==0.27.0 sqlalchemy==2.0.25 aiosqlite==0.19.0 pydantic==2.5.3 python-multipart==0.0.6 jinja2==3.1.3
 
-# Install frontend dependencies
-cd ../frontend
+# 3. Install Frontend Dependencies (if building frontend)
+cd frontend
 npm install
+cd ..
 ```
 
 ### Step 2: Run Build Script
 
 ```powershell
 # From project root
-python standalone/build_standalone.py
+# (Use the simplified script if frontend is already built in frontend/dist)
+python standalone/build_simple.py
 ```
 
 ### Step 3: Find Your Executable

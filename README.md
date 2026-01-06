@@ -93,11 +93,24 @@ A **dark-mode, local-first, single-user productivity app** for data engineers. B
 
 ## Getting Started
 
-### Prerequisites
+### 🚀 **Enterprise / Standalone Edition (No Installation)**
+**Perfect for corporate laptops, USB drives, or non-technical users.**
+
+1.  **[Download MyTasker.exe](standalone/dist/MyTasker.exe)** (~56 MB) from this repository.
+2.  **Double-click** to run.
+3.  That's it! 
+
+*   Runs instantly without Docker, Python, or Node.js.
+*   Creates a `data/` folder next to the executable for your database.
+*   Copy the executable to any Windows PC to run it.
+
+---
+
+### Prerequisites (For Developers)
 - Docker & Docker Compose (recommended)
 - OR Node.js 18+ and Python 3.11+ (for local development)
 
-### Quick Start with Docker
+### Quick Start with Docker (For Developers)
 
 ```bash
 # Clone the repository
