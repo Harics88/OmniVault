@@ -109,6 +109,23 @@ async def global_search(
             preview=bookmark.url,
             updated_at=bookmark.updated_at
         ))
+
+    # Search Daily Logs
+    log_result = await db.execute(
+        select(DailyLog)
+        .where(DailyLog.content.ilike(search_pattern))
+        .order_by(desc(DailyLog.date))
+        .limit(limit)
+    )
+    for log in log_result.scalars():
+        results.append(SearchResult(
+            type="daily_log",
+            id=log.id,
+            title=f"Log: {log.date.strftime('%Y-%m-%d')}",
+            preview=log.content[:100] if log.content else "",
+            updated_at=log.updated_at,
+            metadata={"date": log.date.strftime('%Y-%m-%d')}
+        ))
     
     # Sort by updated_at and limit
     results.sort(key=lambda x: x.updated_at, reverse=True)
@@ -127,7 +144,7 @@ async def get_linkable_items(
     db: AsyncSession = Depends(get_db)
 ):
     """Get all linkable items for @ autocomplete"""
-    items = {"tasks": [], "notes": [], "snippets": [], "bookmarks": []}
+    items = {"tasks": [], "notes": [], "snippets": [], "bookmarks": [], "daily_logs": []}
     
     search_pattern = f"%{q}%" if q else "%"
     
@@ -166,5 +183,14 @@ async def get_linkable_items(
         .limit(10)
     )
     items["bookmarks"] = [{"id": r[0], "title": r[1], "url": r[2]} for r in result.all()]
+
+    # Daily Logs
+    result = await db.execute(
+        select(DailyLog.id, DailyLog.date)
+        .where(DailyLog.content.ilike(search_pattern))
+        .order_by(desc(DailyLog.date))
+        .limit(10)
+    )
+    items["daily_logs"] = [{"id": r[0], "title": f"Log {r[1].strftime('%Y-%m-%d')}", "date": r[1].strftime('%Y-%m-%d')} for r in result.all()]
     
     return items

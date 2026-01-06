@@ -37,7 +37,7 @@ async def get_snippets(
     db: AsyncSession = Depends(get_db)
 ):
     """Get all snippets with optional filtering"""
-    query = select(Snippet).order_by(desc(Snippet.updated_at))
+    query = select(Snippet).order_by(desc(Snippet.is_pinned), desc(Snippet.updated_at))
     
     if language:
         query = query.where(Snippet.language == language.lower())

@@ -18,16 +18,32 @@ router = APIRouter()
 
 @router.get("/", response_model=List[DailyLogResponse])
 async def get_daily_logs(
+    search: Optional[str] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(30, ge=1, le=100),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get all daily logs, ordered by date descending"""
+    """Get all daily logs, ordered by date descending, optionally filtered by search query"""
+    query = select(DailyLog).order_by(desc(DailyLog.date))
+    
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.where(DailyLog.content.ilike(search_pattern))
+    
+    result = await db.execute(query.offset(skip).limit(limit))
+    return result.scalars().all()
+
+
+
+@router.get("/dates", response_model=List[date])
+async def get_log_dates(db: AsyncSession = Depends(get_db)):
+    """Get all dates that have daily logs with non-empty content"""
     result = await db.execute(
-        select(DailyLog)
+        select(DailyLog.date)
+        .where(DailyLog.content != "")
+        .where(DailyLog.content != "<p></p>")
+        .where(DailyLog.content.isnot(None))
         .order_by(desc(DailyLog.date))
-        .offset(skip)
-        .limit(limit)
     )
     return result.scalars().all()
 

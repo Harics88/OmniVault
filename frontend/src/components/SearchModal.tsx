@@ -25,6 +25,20 @@ const typeColors = {
     daily_log: 'text-text-secondary',
 };
 
+// Helper function to strip HTML tags from preview text
+function stripHtml(html: string): string {
+    if (!html) return '';
+    return html
+        .replace(/<[^>]*>/g, '') // Remove HTML tags
+        .replace(/&nbsp;/g, ' ') // Replace &nbsp; with space
+        .replace(/&amp;/g, '&')  // Replace &amp; with &
+        .replace(/&lt;/g, '<')   // Replace &lt; with <
+        .replace(/&gt;/g, '>')   // Replace &gt; with >
+        .replace(/&quot;/g, '"') // Replace &quot; with "
+        .replace(/\s+/g, ' ')    // Collapse multiple spaces
+        .trim();
+}
+
 export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<SearchResult[]>([]);
@@ -86,7 +100,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
             note: `/notes/${result.id}`,
             snippet: `/snippets/${result.id}`,
             bookmark: `/bookmarks`,
-            daily_log: `/daily-log`,
+            daily_log: result.metadata?.date ? `/daily-log/${result.metadata.date}` : `/daily-log`,
         };
         navigate(routes[result.type]);
         onClose();
@@ -161,14 +175,14 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                                 key={`${result.type}-${result.id}`}
                                 onClick={() => navigateToResult(result)}
                                 className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-colors ${index === selectedIndex
-                                        ? 'bg-accent-blue/10 border-l-2 border-accent-blue'
-                                        : 'hover:bg-background-hover border-l-2 border-transparent'
+                                    ? 'bg-accent-blue/10 border-l-2 border-accent-blue'
+                                    : 'hover:bg-background-hover border-l-2 border-transparent'
                                     }`}
                             >
                                 <Icon size={18} className={`mt-0.5 ${colorClass}`} />
                                 <div className="flex-1 min-w-0">
                                     <p className="font-medium text-text-primary truncate">{result.title}</p>
-                                    <p className="text-sm text-text-muted truncate">{result.preview}</p>
+                                    <p className="text-sm text-text-muted truncate">{stripHtml(result.preview)}</p>
                                 </div>
                                 <span className={`text-xs px-2 py-0.5 rounded ${colorClass} bg-background`}>
                                     {result.type.replace('_', ' ')}
@@ -192,6 +206,9 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                         </span>
                         <span className="flex items-center gap-1">
                             <Bookmark size={12} className="text-purple-400" /> Bookmarks
+                        </span>
+                        <span className="flex items-center gap-1">
+                            <Calendar size={12} className="text-text-secondary" /> Daily Logs
                         </span>
                     </div>
                     <span>

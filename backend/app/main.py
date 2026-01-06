@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.database import engine, Base
-from app.routers import daily_logs, tasks, notes, snippets, bookmarks, search
+from app.routers import daily_logs, tasks, notes, snippets, bookmarks, search, sections, system
 
 
 @asynccontextmanager
@@ -32,7 +32,7 @@ app = FastAPI(
 # CORS middleware for frontend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,9 +42,11 @@ app.add_middleware(
 app.include_router(daily_logs.router, prefix="/api/daily-logs", tags=["Daily Logs"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["Tasks"])
 app.include_router(notes.router, prefix="/api/notes", tags=["Notes"])
+app.include_router(sections.router, prefix="/api/sections", tags=["Note Sections"])
 app.include_router(snippets.router, prefix="/api/snippets", tags=["Snippets"])
 app.include_router(bookmarks.router, prefix="/api/bookmarks", tags=["Bookmarks"])
 app.include_router(search.router, prefix="/api/search", tags=["Search"])
+app.include_router(system.router, prefix="/api/system", tags=["System"])
 
 
 @app.get("/")

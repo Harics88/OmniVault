@@ -9,33 +9,58 @@ import {
     Search,
     Settings,
     Keyboard,
+    Layers,
+    Check,
+    Trash2,
+    HardDrive
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 
 interface SidebarProps {
     onSearchClick: () => void;
 }
 
 const navItems = [
-    { to: '/', icon: Home, label: 'Home', shortcut: '⌘⇧H' },
-    { to: '/daily-log', icon: Calendar, label: 'Daily Log', shortcut: '⌘D' },
-    { to: '/tasks', icon: CheckSquare, label: 'Tasks', shortcut: '⌘⇧T' },
-    { to: '/notes', icon: FileText, label: 'Notes', shortcut: '⌘⇧N' },
-    { to: '/snippets', icon: Code, label: 'Snippets', shortcut: '⌘⇧S' },
-    { to: '/bookmarks', icon: Bookmark, label: 'Bookmarks', shortcut: '⌘⇧B' },
+    { to: '/', icon: Home, label: 'Home', shortcut: '⌘⇧H', color: 'text-indigo-500' },
+    { to: '/tasks', icon: CheckSquare, label: 'Tasks', shortcut: '⌘⇧T', color: 'text-emerald-500' },
+    { to: '/daily-log', icon: Calendar, label: 'Daily Log', shortcut: '⌘D', color: 'text-amber-500' },
+    { to: '/notes', icon: FileText, label: 'Notes', shortcut: '⌘⇧N', color: 'text-purple-500' },
+    { to: '/snippets', icon: Code, label: 'Snippets', shortcut: '⌘⇧S', color: 'text-sky-500' },
+    { to: '/bookmarks', icon: Bookmark, label: 'Bookmarks', shortcut: '⌘⇧B', color: 'text-rose-500' },
 ];
 
 export default function Sidebar({ onSearchClick }: SidebarProps) {
     const location = useLocation();
+    const [dbSize, setDbSize] = useState<string>('Loading...');
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const response = await axios.get('http://localhost:8000/api/system/stats');
+                setDbSize(response.data.database_size_human);
+            } catch (error) {
+                console.error('Failed to fetch system stats:', error);
+                setDbSize('Unknown');
+            }
+        };
+        fetchStats();
+    }, []);
 
     return (
         <aside className="w-60 bg-background-card border-r border-border flex flex-col h-full">
             {/* Logo */}
             <div className="p-4 border-b border-border">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-accent-blue to-blue-600 rounded-lg flex items-center justify-center">
-                        <span className="text-white font-bold text-sm">M</span>
+                    <div className="relative w-8 h-8 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-gradient-to-br from-accent-blue to-cyan-500 rounded-lg transform rotate-3"></div>
+                        <div className="absolute inset-0 bg-background-card border border-accent-blue/30 rounded-lg flex items-center justify-center transform -rotate-2">
+                            <Check className="text-accent-blue" size={20} strokeWidth={3} />
+                        </div>
                     </div>
-                    <span className="font-semibold text-lg text-text-primary">MyTasker</span>
+                    <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary">
+                        MyTasker
+                    </span>
                 </div>
             </div>
 
@@ -64,7 +89,10 @@ export default function Sidebar({ onSearchClick }: SidebarProps) {
                             to={item.to}
                             className={`sidebar-item group ${isActive ? 'active' : ''}`}
                         >
-                            <Icon size={20} />
+                            <Icon
+                                size={20}
+                                className={`transition-colors ${isActive ? 'text-text-primary' : item.color} group-hover:text-text-primary`}
+                            />
                             <span className="flex-1">{item.label}</span>
                             <span className="text-xs text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
                                 {item.shortcut}
@@ -76,18 +104,42 @@ export default function Sidebar({ onSearchClick }: SidebarProps) {
 
             {/* Bottom Section */}
             <div className="p-3 border-t border-border space-y-1">
-                <button className="sidebar-item w-full group">
-                    <Keyboard size={20} />
+                <NavLink
+                    to="/recycle-bin"
+                    className={({ isActive }) => `sidebar-item w-full group ${isActive ? 'active' : ''}`}
+                >
+                    <Trash2 size={20} className="text-slate-400 group-hover:text-text-primary transition-colors" />
+                    <span className="flex-1 text-left">Recycle Bin</span>
+                </NavLink>
+                <NavLink
+                    to="/shortcuts"
+                    className={({ isActive }) => `sidebar-item w-full group ${isActive ? 'active' : ''}`}
+                >
+                    <Keyboard size={20} className="text-slate-400 group-hover:text-text-primary transition-colors" />
                     <span className="flex-1 text-left">Shortcuts</span>
-                </button>
-                <button className="sidebar-item w-full group">
-                    <Settings size={20} />
+                </NavLink>
+                <NavLink
+                    to="/settings"
+                    className={({ isActive }) => `sidebar-item w-full group ${isActive ? 'active' : ''}`}
+                >
+                    <Settings size={20} className="text-slate-400 group-hover:text-text-primary transition-colors" />
                     <span className="flex-1 text-left">Settings</span>
-                </button>
+                </NavLink>
+            </div>
+
+            {/* Data Storage Section */}
+            <div className="px-3 pb-1">
+                <div className="flex items-center gap-3 px-3 py-2 text-text-muted">
+                    <HardDrive size={20} className="text-slate-400" />
+                    <div className="flex flex-col">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">Storage</span>
+                        <span className="text-xs font-mono text-accent-green">{dbSize}</span>
+                    </div>
+                </div>
             </div>
 
             {/* Version */}
-            <div className="p-4 text-center">
+            <div className="p-4 pt-0 text-center">
                 <span className="text-xs text-text-muted">v1.0.0</span>
             </div>
         </aside>

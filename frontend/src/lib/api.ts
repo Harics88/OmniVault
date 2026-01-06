@@ -3,6 +3,9 @@ import type {
     DailyLog,
     Task,
     Note,
+    NoteSection,
+    NoteTreeItem,
+    NoteBreadcrumb,
     Snippet,
     Bookmark,
     SearchResult,
@@ -11,6 +14,8 @@ import type {
     UpdateTask,
     CreateNote,
     UpdateNote,
+    CreateNoteSection,
+    UpdateNoteSection,
     CreateSnippet,
     UpdateSnippet,
     CreateBookmark,
@@ -32,8 +37,18 @@ const api = axios.create({
 // ============ Daily Logs API ============
 
 export const dailyLogsApi = {
-    getAll: async (skip = 0, limit = 30): Promise<DailyLog[]> => {
-        const { data } = await api.get(`/daily-logs/?skip=${skip}&limit=${limit}`);
+    getAll: async (skip = 0, limit = 30, search?: string): Promise<DailyLog[]> => {
+        const params = new URLSearchParams({
+            skip: skip.toString(),
+            limit: limit.toString()
+        });
+        if (search) params.append('search', search);
+        const { data } = await api.get(`/daily-logs/?${params.toString()}`);
+        return data;
+    },
+
+    getDates: async (): Promise<string[]> => {
+        const { data } = await api.get('/daily-logs/dates');
         return data;
     },
 
@@ -70,9 +85,12 @@ export const dailyLogsApi = {
 // ============ Tasks API ============
 
 export const tasksApi = {
-    getAll: async (status?: string): Promise<Task[]> => {
-        const params = status ? `?status=${status}` : '';
-        const { data } = await api.get(`/tasks/${params}`);
+    getAll: async (status?: string, search?: string): Promise<Task[]> => {
+        const params = new URLSearchParams();
+        if (status) params.append('status', status);
+        if (search) params.append('search', search);
+        const queryString = params.toString();
+        const { data } = await api.get(`/tasks/${queryString ? `?${queryString}` : ''}`);
         return data;
     },
 
@@ -118,14 +136,34 @@ export const tasksApi = {
     deleteSubtask: async (taskId: number, subtaskId: number): Promise<void> => {
         await api.delete(`/tasks/${taskId}/subtasks/${subtaskId}`);
     },
+
+    reorderSubtasks: async (taskId: number, subtaskIds: number[]): Promise<void> => {
+        await api.post(`/tasks/${taskId}/subtasks/reorder`, { subtask_ids: subtaskIds });
+    },
 };
 
 // ============ Notes API ============
 
 export const notesApi = {
-    getAll: async (search?: string): Promise<Note[]> => {
-        const params = search ? `?search=${encodeURIComponent(search)}` : '';
-        const { data } = await api.get(`/notes/${params}`);
+    getAll: async (params: { search?: string; parent_id?: number | null; section_id?: number; is_pinned?: boolean } = {}): Promise<Note[]> => {
+        const queryParams = new URLSearchParams();
+        if (params.search) queryParams.append('search', params.search);
+        if (params.parent_id !== undefined) queryParams.append('parent_id', params.parent_id?.toString() ?? '-1');
+        if (params.section_id !== undefined) queryParams.append('section_id', params.section_id.toString());
+        if (params.is_pinned !== undefined) queryParams.append('is_pinned', params.is_pinned.toString());
+
+        const queryString = queryParams.toString();
+        const { data } = await api.get(`/notes/${queryString ? `?${queryString}` : ''}`);
+        return data;
+    },
+
+    getTree: async (): Promise<NoteTreeItem[]> => {
+        const { data } = await api.get('/notes/tree');
+        return data;
+    },
+
+    getBreadcrumb: async (id: number): Promise<NoteBreadcrumb[]> => {
+        const { data } = await api.get(`/notes/${id}/breadcrumb`);
         return data;
     },
 
@@ -152,7 +190,62 @@ export const notesApi = {
     delete: async (id: number): Promise<void> => {
         await api.delete(`/notes/${id}`);
     },
+
+    // Recycle Bin methods
+    getDeleted: async (): Promise<Note[]> => {
+        const { data } = await api.get('/notes/recycle-bin/list');
+        return data;
+    },
+
+    restore: async (id: number): Promise<void> => {
+        await api.post(`/notes/${id}/restore`);
+    },
+
+    permanentDelete: async (id: number): Promise<void> => {
+        await api.delete(`/notes/${id}/permanent`);
+    },
+
+    restoreBulk: async (ids: number[]): Promise<void> => {
+        await api.post('/notes/recycle-bin/restore-bulk', ids);
+    },
+
+    deleteBulk: async (ids: number[]): Promise<void> => {
+        await api.delete('/notes/recycle-bin/delete-bulk', { data: ids });
+    },
+
+    emptyRecycleBin: async (): Promise<void> => {
+        await api.delete('/notes/recycle-bin/empty');
+    },
 };
+
+// ============ Note Sections API ============
+
+export const sectionsApi = {
+    getAll: async (): Promise<NoteSection[]> => {
+        const { data } = await api.get('/sections/');
+        return data;
+    },
+
+    getById: async (id: number): Promise<NoteSection> => {
+        const { data } = await api.get(`/sections/${id}`);
+        return data;
+    },
+
+    create: async (section: CreateNoteSection): Promise<NoteSection> => {
+        const { data } = await api.post('/sections/', section);
+        return data;
+    },
+
+    update: async (id: number, section: UpdateNoteSection): Promise<NoteSection> => {
+        const { data } = await api.put(`/sections/${id}`, section);
+        return data;
+    },
+
+    delete: async (id: number): Promise<void> => {
+        await api.delete(`/sections/${id}`);
+    },
+};
+
 
 // ============ Snippets API ============
 
@@ -272,6 +365,23 @@ export const searchApi = {
     getLinkableItems: async (query = ''): Promise<LinkableItems> => {
         const params = query ? `?q=${encodeURIComponent(query)}` : '';
         const { data } = await api.get(`/search/linkable${params}`);
+        return data;
+    },
+};
+
+// ============ System API ============
+export const systemApi = {
+    getStats: async (): Promise<{
+        database_size_bytes: number;
+        database_size_human: string;
+        counts: {
+            tasks: number;
+            notes: number;
+            snippets: number;
+            bookmarks: number;
+        };
+    }> => {
+        const { data } = await api.get('/system/stats');
         return data;
     },
 };

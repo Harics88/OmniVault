@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
     Calendar,
@@ -11,13 +11,13 @@ import {
     Clock,
     Sparkles,
 } from 'lucide-react';
-import { dailyLogsApi, tasksApi, notesApi, snippetsApi, bookmarksApi } from '../lib/api';
+import { dailyLogsApi, tasksApi, notesApi, snippetsApi, bookmarksApi, systemApi } from '../lib/api';
 import TaskCard from '../components/TaskCard';
-import type { TaskStatus } from '../types';
 
 export default function Home() {
     const today = new Date();
     const greeting = getGreeting();
+    const navigate = useNavigate();
 
     // Fetch data
     const { data: todayLog } = useQuery({
@@ -30,9 +30,9 @@ export default function Home() {
         queryFn: () => tasksApi.getAll(),
     });
 
-    const { data: taskStats } = useQuery({
-        queryKey: ['tasks', 'stats'],
-        queryFn: tasksApi.getStats,
+    const { data: systemStats } = useQuery({
+        queryKey: ['system', 'stats'],
+        queryFn: systemApi.getStats,
     });
 
     const { data: recentNotes = [] } = useQuery({
@@ -52,6 +52,18 @@ export default function Home() {
 
     const activeTasks = tasks.filter((t) => t.status !== 'done').slice(0, 5);
 
+    const ensureAbsoluteUrl = (url: string) => {
+        if (!url) return '#';
+        if (url.startsWith('http://') || url.startsWith('https://')) return url;
+        return `https://${url}`;
+    };
+
+    const formatSafeDate = (dateStr: string) => {
+        if (!dateStr) return '--';
+        const date = new Date(dateStr.endsWith('Z') ? dateStr : dateStr + 'Z');
+        return format(date, 'MMM d, h:mm a');
+    };
+
     return (
         <div className="p-8 max-w-6xl mx-auto animate-fade-in">
             {/* Header */}
@@ -64,39 +76,37 @@ export default function Home() {
                     {greeting}, Welcome Back
                 </h1>
                 <p className="text-text-secondary">
-                    Here's what's happening with your tasks and projects today.
+                    Here's what's happening with your workspace today.
                 </p>
             </header>
 
             {/* Quick Stats */}
-            {taskStats && (
-                <div className="grid grid-cols-4 gap-4 mb-8">
-                    <StatCard
-                        icon={CheckSquare}
-                        label="Total Tasks"
-                        value={taskStats.total}
-                        color="text-text-primary"
-                    />
-                    <StatCard
-                        icon={Clock}
-                        label="In Progress"
-                        value={taskStats.by_status.in_progress || 0}
-                        color="text-accent-amber"
-                    />
-                    <StatCard
-                        icon={CheckSquare}
-                        label="Completed"
-                        value={taskStats.by_status.done || 0}
-                        color="text-accent-green"
-                    />
-                    <StatCard
-                        icon={FileText}
-                        label="Notes"
-                        value={recentNotes.length}
-                        color="text-accent-blue"
-                    />
-                </div>
-            )}
+            <div className="grid grid-cols-4 gap-4 mb-8">
+                <StatCard
+                    icon={CheckSquare}
+                    label="Active Tasks"
+                    value={activeTasks.length}
+                    color="text-emerald-500"
+                />
+                <StatCard
+                    icon={FileText}
+                    label="Notes"
+                    value={systemStats?.counts.notes || 0}
+                    color="text-purple-500"
+                />
+                <StatCard
+                    icon={Code}
+                    label="Snippets"
+                    value={systemStats?.counts.snippets || 0}
+                    color="text-sky-500"
+                />
+                <StatCard
+                    icon={Bookmark}
+                    label="Bookmarks"
+                    value={systemStats?.counts.bookmarks || 0}
+                    color="text-rose-500"
+                />
+            </div>
 
             <div className="grid grid-cols-3 gap-6">
                 {/* Today's Log */}
@@ -106,24 +116,27 @@ export default function Home() {
                         title="Today's Log"
                         linkTo="/daily-log"
                         linkLabel="Open Editor"
+                        iconColor="text-amber-500"
                     />
-                    <div className="card p-6 min-h-[200px]">
+                    <div className="card p-6 min-h-[200px] max-h-[300px] overflow-y-auto">
                         {todayLog?.content ? (
-                            <div className="prose prose-invert max-w-none">
-                                <pre className="whitespace-pre-wrap font-sans text-text-primary text-base leading-relaxed">
-                                    {todayLog.content.slice(0, 500)}
-                                    {todayLog.content.length > 500 && '...'}
-                                </pre>
-                            </div>
+                            <div
+                                className="prose prose-invert max-w-none text-text-primary"
+                                dangerouslySetInnerHTML={{
+                                    __html: todayLog.content.slice(0, 800) + (todayLog.content.length > 800 ? '...' : '')
+                                }}
+                            />
                         ) : (
                             <div className="flex flex-col items-center justify-center h-40 text-text-muted">
                                 <Calendar size={32} className="mb-3 opacity-50" />
-                                <p>No entries yet for today</p>
+                                <p className="mb-1">No entries yet for today</p>
+                                <p className="text-xs text-text-muted mb-3">Start documenting your day</p>
                                 <Link
                                     to="/daily-log"
-                                    className="mt-3 text-accent-blue hover:underline text-sm flex items-center gap-1"
+                                    className="px-4 py-2 bg-amber-500/10 text-amber-500 rounded-lg hover:bg-amber-500/20 transition-colors text-sm flex items-center gap-2"
                                 >
-                                    Start writing <ArrowRight size={14} />
+                                    <Calendar size={16} />
+                                    Start writing
                                 </Link>
                             </div>
                         )}
@@ -138,6 +151,7 @@ export default function Home() {
                         linkTo="/tasks"
                         linkLabel="View All"
                         count={activeTasks.length}
+                        iconColor="text-emerald-500"
                     />
                     <div className="space-y-3">
                         {activeTasks.length > 0 ? (
@@ -145,14 +159,23 @@ export default function Home() {
                                 <TaskCard
                                     key={task.id}
                                     task={task}
-                                    onClick={() => { }}
+                                    onClick={() => navigate(`/tasks/${task.id}`)}
                                     onStatusChange={() => { }}
+                                    isCompact={true}
                                 />
                             ))
                         ) : (
                             <div className="card p-6 text-center text-text-muted">
                                 <CheckSquare size={24} className="mx-auto mb-2 opacity-50" />
-                                <p>No active tasks</p>
+                                <p className="mb-1">No active tasks</p>
+                                <p className="text-xs text-text-muted mb-3">All caught up!</p>
+                                <Link
+                                    to="/tasks"
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500/20 transition-colors text-sm"
+                                >
+                                    <CheckSquare size={16} />
+                                    Create Task
+                                </Link>
                             </div>
                         )}
                     </div>
@@ -168,6 +191,7 @@ export default function Home() {
                         title="Recent Notes"
                         linkTo="/notes"
                         linkLabel="View All"
+                        iconColor="text-purple-500"
                     />
                     <div className="space-y-2">
                         {recentNotes.length > 0 ? (
@@ -181,12 +205,22 @@ export default function Home() {
                                         {note.title}
                                     </h4>
                                     <p className="text-xs text-text-muted mt-1">
-                                        {format(new Date(note.updated_at), 'MMM d, h:mm a')}
+                                        {formatSafeDate(note.updated_at)}
                                     </p>
                                 </Link>
                             ))
                         ) : (
-                            <EmptyState icon={FileText} message="No notes yet" />
+                            <div className="card p-6 text-center text-text-muted">
+                                <FileText size={24} className="mx-auto mb-2 opacity-50 text-purple-500" />
+                                <p className="text-sm mb-3">No notes yet</p>
+                                <Link
+                                    to="/notes"
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 text-purple-500 rounded-lg hover:bg-purple-500/20 transition-colors text-xs"
+                                >
+                                    <FileText size={14} />
+                                    Create Note
+                                </Link>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -198,6 +232,7 @@ export default function Home() {
                         title="Recent Snippets"
                         linkTo="/snippets"
                         linkLabel="View All"
+                        iconColor="text-sky-500"
                     />
                     <div className="space-y-2">
                         {recentSnippets.length > 0 ? (
@@ -214,12 +249,22 @@ export default function Home() {
                                         <span className="badge badge-blue">{snippet.language}</span>
                                     </div>
                                     <p className="text-xs text-text-muted mt-1">
-                                        {format(new Date(snippet.updated_at), 'MMM d, h:mm a')}
+                                        {formatSafeDate(snippet.updated_at)}
                                     </p>
                                 </Link>
                             ))
                         ) : (
-                            <EmptyState icon={Code} message="No snippets yet" />
+                            <div className="card p-6 text-center text-text-muted">
+                                <Code size={24} className="mx-auto mb-2 opacity-50 text-sky-500" />
+                                <p className="text-sm mb-3">No snippets yet</p>
+                                <Link
+                                    to="/snippets"
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-sky-500/10 text-sky-500 rounded-lg hover:bg-sky-500/20 transition-colors text-xs"
+                                >
+                                    <Code size={14} />
+                                    Create Snippet
+                                </Link>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -231,13 +276,14 @@ export default function Home() {
                         title="Recent Bookmarks"
                         linkTo="/bookmarks"
                         linkLabel="View All"
+                        iconColor="text-rose-500"
                     />
                     <div className="space-y-2">
                         {recentBookmarks.length > 0 ? (
                             recentBookmarks.slice(0, 4).map((bookmark) => (
                                 <a
                                     key={bookmark.id}
-                                    href={bookmark.url}
+                                    href={ensureAbsoluteUrl(bookmark.url)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="card card-hover p-3 block group"
@@ -251,7 +297,17 @@ export default function Home() {
                                 </a>
                             ))
                         ) : (
-                            <EmptyState icon={Bookmark} message="No bookmarks yet" />
+                            <div className="card p-6 text-center text-text-muted">
+                                <Bookmark size={24} className="mx-auto mb-2 opacity-50 text-rose-500" />
+                                <p className="text-sm mb-3">No bookmarks yet</p>
+                                <Link
+                                    to="/bookmarks"
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500/20 transition-colors text-xs"
+                                >
+                                    <Bookmark size={14} />
+                                    Add Bookmark
+                                </Link>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -292,17 +348,19 @@ function SectionHeader({
     linkTo,
     linkLabel,
     count,
+    iconColor = 'text-accent-blue',
 }: {
     icon: typeof Calendar;
     title: string;
     linkTo: string;
     linkLabel: string;
     count?: number;
+    iconColor?: string;
 }) {
     return (
         <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-                <Icon size={18} className="text-accent-blue" />
+                <Icon size={18} className={iconColor} />
                 <h2 className="font-semibold text-text-primary">{title}</h2>
                 {count !== undefined && (
                     <span className="text-xs text-text-muted">({count})</span>
@@ -340,15 +398,6 @@ function StatCard({
                     <p className="text-sm text-text-muted">{label}</p>
                 </div>
             </div>
-        </div>
-    );
-}
-
-function EmptyState({ icon: Icon, message }: { icon: typeof Calendar; message: string }) {
-    return (
-        <div className="card p-6 text-center text-text-muted">
-            <Icon size={24} className="mx-auto mb-2 opacity-50" />
-            <p className="text-sm">{message}</p>
         </div>
     );
 }

@@ -37,7 +37,7 @@ call npm install
 echo [3/3] Starting Services...
 echo.
 echo - Backend will run at http://localhost:8000
-echo - Frontend will run at http://localhost:3000
+echo - Frontend will run at http://localhost:3001
 echo.
 
 start "MyTasker Backend" cmd /k "cd ..\backend && venv\Scripts\activate && set DATABASE_URL=sqlite:///../data/mytasker.db && uvicorn app.main:app --host 0.0.0.0 --port 8000"

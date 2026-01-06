@@ -13,7 +13,7 @@ from app.database import get_db
 from app.models import Task, TaskStatus, Subtask
 from app.schemas import (
     TaskCreate, TaskUpdate, TaskResponse, TaskReorder,
-    SubtaskCreate, SubtaskUpdate, SubtaskResponse
+    SubtaskCreate, SubtaskUpdate, SubtaskResponse, SubtaskReorder
 )
 
 router = APIRouter()
@@ -22,15 +22,23 @@ router = APIRouter()
 @router.get("/", response_model=List[TaskResponse])
 async def get_tasks(
     status: Optional[TaskStatus] = None,
+    search: Optional[str] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get all tasks, optionally filtered by status"""
+    """Get all tasks, optionally filtered by status and search query"""
     query = select(Task).options(selectinload(Task.subtasks)).order_by(asc(Task.order), desc(Task.created_at))
     
     if status:
         query = query.where(Task.status == status)
+    
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.where(
+            (Task.title.ilike(search_pattern)) |
+            (Task.description.ilike(search_pattern))
+        )
     
     result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
@@ -265,3 +273,22 @@ async def delete_subtask(
     await db.delete(subtask)
     await db.commit()
     return {"message": "Subtask deleted successfully"}
+
+
+@router.post("/{task_id}/subtasks/reorder")
+async def reorder_subtasks(
+    task_id: int,
+    reorder_data: SubtaskReorder,
+    db: AsyncSession = Depends(get_db)
+):
+    """Reorder subtasks for a specific task"""
+    for index, subtask_id in enumerate(reorder_data.subtask_ids):
+        result = await db.execute(
+            select(Subtask).where(Subtask.id == subtask_id, Subtask.task_id == task_id)
+        )
+        subtask = result.scalar_one_or_none()
+        if subtask:
+            subtask.order = index
+    
+    await db.commit()
+    return {"message": "Subtasks reordered successfully"}

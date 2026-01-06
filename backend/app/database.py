@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import DeclarativeBase
 
 # Database URL - SQLite for local-first storage
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./data/mytasker.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///../data/mytasker.db")
 
 # Create async engine
 engine = create_async_engine(

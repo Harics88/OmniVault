@@ -5,7 +5,8 @@ Pydantic schemas for request/response validation
 from datetime import datetime, date
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict
-from app.models import TaskStatus
+from app.models import TaskStatus, TaskPriority
+import enum
 
 
 # ============ Daily Log Schemas ============
@@ -63,7 +64,8 @@ class TaskBase(BaseModel):
     title: str
     description: Optional[str] = ""
     status: TaskStatus = TaskStatus.NOT_STARTED
-    due_date: Optional[date] = None
+    priority: TaskPriority = TaskPriority.MEDIUM
+    due_date: Optional[datetime] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
@@ -76,7 +78,8 @@ class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     status: Optional[TaskStatus] = None
-    due_date: Optional[date] = None
+    priority: Optional[TaskPriority] = None
+    due_date: Optional[datetime] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     order: Optional[int] = None
@@ -84,6 +87,10 @@ class TaskUpdate(BaseModel):
 
 class TaskReorder(BaseModel):
     task_ids: List[int]
+
+
+class SubtaskReorder(BaseModel):
+    subtask_ids: List[int]
 
 
 class TaskResponse(TaskBase):
@@ -96,11 +103,44 @@ class TaskResponse(TaskBase):
     updated_at: datetime
 
 
+# ============ Note Section Schemas ============
+
+class NoteSectionBase(BaseModel):
+    name: str
+    color: str = "#3B82F6"
+    icon: Optional[str] = "📝"
+    position: int = 0
+
+
+class NoteSectionCreate(NoteSectionBase):
+    pass
+
+
+class NoteSectionUpdate(BaseModel):
+    name: Optional[str] = None
+    color: Optional[str] = None
+    icon: Optional[str] = None
+    position: Optional[int] = None
+
+
+class NoteSectionResponse(NoteSectionBase):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
+    created_at: datetime
+
+
 # ============ Note Schemas ============
 
 class NoteBase(BaseModel):
     title: str
     content: str = ""
+    icon: Optional[str] = "📄"
+    parent_id: Optional[int] = None
+    position: int = 0
+    section_id: Optional[int] = None
+    is_pinned: bool = False
+    tags: Optional[str] = ""
 
 
 class NoteCreate(NoteBase):
@@ -110,6 +150,12 @@ class NoteCreate(NoteBase):
 class NoteUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
+    icon: Optional[str] = None
+    parent_id: Optional[int] = None
+    position: Optional[int] = None
+    section_id: Optional[int] = None
+    is_pinned: Optional[bool] = None
+    tags: Optional[str] = None
 
 
 class NoteResponse(NoteBase):
@@ -118,14 +164,43 @@ class NoteResponse(NoteBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    section: Optional[NoteSectionResponse] = None
+
+
+# Forward reference for recursive children
+class NoteTreeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
+    title: str
+    icon: Optional[str] = "📄"
+    parent_id: Optional[int] = None
+    section_id: Optional[int] = None
+    position: int = 0
+    is_pinned: bool = False
+    children: List["NoteTreeResponse"] = []
+    created_at: datetime
+    updated_at: datetime
+
+
+# Resolve forward reference
+NoteTreeResponse.model_rebuild()
 
 
 # ============ Snippet Schemas ============
 
+class SnippetLanguage(str, enum.Enum):
+    PYTHON = "python"
+    SQL = "sql"
+    BASH = "bash"
+    SHELL = "shell"
+
+
 class SnippetBase(BaseModel):
     title: str
     code: str
-    language: str = "text"
+    language: SnippetLanguage = SnippetLanguage.PYTHON
+    is_pinned: bool = False
     description: Optional[str] = ""
 
 
@@ -136,7 +211,8 @@ class SnippetCreate(SnippetBase):
 class SnippetUpdate(BaseModel):
     title: Optional[str] = None
     code: Optional[str] = None
-    language: Optional[str] = None
+    language: Optional[SnippetLanguage] = None
+    is_pinned: Optional[bool] = None
     description: Optional[str] = None
 
 
@@ -216,6 +292,7 @@ class SearchResult(BaseModel):
     title: str
     preview: str
     updated_at: datetime
+    metadata: Optional[dict] = None
 
 
 class SearchResponse(BaseModel):

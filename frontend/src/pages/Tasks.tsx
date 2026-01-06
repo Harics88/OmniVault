@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Filter, CheckSquare, Loader2, ChevronDown, ChevronRight, Circle, Clock, Check } from 'lucide-react';
+import { Plus, CheckSquare, Loader2, Circle, Clock, Check, Search, LayoutGrid, List, Table2 } from 'lucide-react';
 import { tasksApi } from '../lib/api';
 import TaskCard from '../components/TaskCard';
 import TaskPanel from '../components/TaskPanel';
-import type { Task, TaskStatus, CreateTask, UpdateTask } from '../types';
+import TaskListView from '../components/TaskListView';
+import TaskTableView from '../components/TaskTableView';
+import type { Task, TaskStatus, CreateTask, UpdateTask, Subtask } from '../types';
+import { subDays } from 'date-fns';
 
 interface StatusGroup {
     status: TaskStatus;
@@ -42,51 +46,51 @@ const statusGroups: StatusGroup[] = [
     },
 ];
 
-interface CollapsedState {
-    not_started: boolean;
-    in_progress: boolean;
-    done: boolean;
-}
-
 export default function Tasks() {
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [newTaskTitle, setNewTaskTitle] = useState('');
-    const [collapsed, setCollapsed] = useState<CollapsedState>({
-        not_started: false,
-        in_progress: false,
-        done: true,  // Collapsed by default
-    });
+    const [searchInput, setSearchInput] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
     const [panelWidth, setPanelWidth] = useState(420);
+    const [viewMode, setViewMode] = useState<'list' | 'board' | 'table'>(() => {
+        return (localStorage.getItem('taskViewMode') as 'list' | 'board' | 'table') || 'list';
+    });
+    const [showArchived, setShowArchived] = useState(false);
+    const [openInEditMode, setOpenInEditMode] = useState(false);
 
-    // Fetch all tasks (no filter)
+    useEffect(() => {
+        localStorage.setItem('taskViewMode', viewMode);
+    }, [viewMode]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setSearchQuery(searchInput);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchInput]);
+
     const { data: tasks = [], isLoading } = useQuery({
-        queryKey: ['tasks'],
-        queryFn: () => tasksApi.getAll(),
+        queryKey: ['tasks', searchQuery],
+        queryFn: () => tasksApi.getAll(undefined, searchQuery || undefined),
     });
 
-    // Fetch stats
-    const { data: stats } = useQuery({
-        queryKey: ['tasks', 'stats'],
-        queryFn: tasksApi.getStats,
-    });
-
-    // Create mutation
     const createMutation = useMutation({
         mutationFn: (task: CreateTask) => tasksApi.create(task),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['system'] });
             setNewTaskTitle('');
             setIsCreating(false);
         },
     });
 
-    // Update mutation
     const updateMutation = useMutation({
         mutationFn: ({ id, updates }: { id: number; updates: UpdateTask }) =>
             tasksApi.update(id, updates),
-        onSuccess: (updatedTask) => {
+        onSuccess: (updatedTask: Task) => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
             if (selectedTask?.id === updatedTask.id) {
                 setSelectedTask(updatedTask);
@@ -94,47 +98,76 @@ export default function Tasks() {
         },
     });
 
-    // Delete mutation
     const deleteMutation = useMutation({
         mutationFn: (id: number) => tasksApi.delete(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['system'] });
             setSelectedTask(null);
         },
     });
 
-    // Subtask mutations
+    // Subtask Mutations
     const addSubtaskMutation = useMutation({
         mutationFn: ({ taskId, title }: { taskId: number; title: string }) =>
             tasksApi.createSubtask(taskId, { title }),
-        onSuccess: () => {
+        onSuccess: (data: Subtask, variables: { taskId: number }) => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
-            if (selectedTask) {
-                tasksApi.getById(selectedTask.id).then(setSelectedTask);
+            queryClient.invalidateQueries({ queryKey: ['task', variables.taskId] });
+            // Update selected task if it's the one being modified
+            if (selectedTask?.id === variables.taskId) {
+                setSelectedTask({
+                    ...selectedTask,
+                    subtasks: [...(selectedTask.subtasks || []), data]
+                });
             }
-        },
+        }
     });
 
     const updateSubtaskMutation = useMutation({
         mutationFn: ({ taskId, subtaskId, updates }: { taskId: number; subtaskId: number; updates: { completed?: boolean; title?: string } }) =>
             tasksApi.updateSubtask(taskId, subtaskId, updates),
-        onSuccess: () => {
+        onSuccess: (data: Subtask, variables: { taskId: number; subtaskId: number; updates: { completed?: boolean; title?: string } }) => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
-            if (selectedTask) {
-                tasksApi.getById(selectedTask.id).then(setSelectedTask);
+            queryClient.invalidateQueries({ queryKey: ['task', variables.taskId] });
+            // Update selected task if it's the one being modified to reflect changes immediately in panel
+            if (selectedTask?.id === variables.taskId) {
+                const updatedSubtasks = selectedTask.subtasks?.map((st: Subtask) =>
+                    st.id === variables.subtaskId ? { ...st, ...data } : st
+                );
+                setSelectedTask({ ...selectedTask, subtasks: updatedSubtasks });
             }
-        },
+        }
     });
 
     const deleteSubtaskMutation = useMutation({
         mutationFn: ({ taskId, subtaskId }: { taskId: number; subtaskId: number }) =>
             tasksApi.deleteSubtask(taskId, subtaskId),
-        onSuccess: () => {
+        onSuccess: (_data: any, variables: { taskId: number; subtaskId: number }) => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
-            if (selectedTask) {
-                tasksApi.getById(selectedTask.id).then(setSelectedTask);
+            queryClient.invalidateQueries({ queryKey: ['task', variables.taskId] });
+            // Update selected task if it's the one being modified
+            if (selectedTask?.id === variables.taskId) {
+                setSelectedTask({
+                    ...selectedTask,
+                    subtasks: selectedTask.subtasks?.filter(s => s.id !== variables.subtaskId) || []
+                });
             }
-        },
+        }
+    });
+
+    const reorderSubtasksMutation = useMutation({
+        mutationFn: ({ taskId, subtaskIds }: { taskId: number; subtaskIds: number[] }) =>
+            tasksApi.reorderSubtasks(taskId, subtaskIds),
+        onSuccess: (_data: any, variables: { taskId: number; subtaskIds: number[] }) => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['task', variables.taskId] }); // Added for sync with Full View
+            if (selectedTask?.id === variables.taskId) {
+                const subtasksMap = new Map((selectedTask.subtasks || []).map((s: Subtask) => [s.id, s]));
+                const newSubtasks = variables.subtaskIds.map((id: number) => subtasksMap.get(id)).filter(Boolean) as Subtask[];
+                setSelectedTask({ ...selectedTask, subtasks: newSubtasks });
+            }
+        }
     });
 
     const handleCreateTask = () => {
@@ -146,31 +179,51 @@ export default function Tasks() {
         updateMutation.mutate({ id: taskId, updates: { status } });
     };
 
-    const handleUpdateTask = (taskId: number, updates: Partial<Task>) => {
+    const onUpdateTask = (taskId: number, updates: Partial<Task>) => {
         updateMutation.mutate({ id: taskId, updates });
     };
-
-    const handleAddSubtask = (taskId: number, title: string) => {
-        addSubtaskMutation.mutate({ taskId, title });
+    const onDeleteTask = (task: Task) => {
+        deleteMutation.mutate(task.id);
     };
 
-    const handleUpdateSubtask = (taskId: number, subtaskId: number, updates: { completed?: boolean; title?: string }) => {
-        updateSubtaskMutation.mutate({ taskId, subtaskId, updates });
+    const handleTaskClick = (task: Task) => {
+        // Open in full screen (popout view)
+        navigate(`/tasks/${task.id}`);
     };
 
-    const handleDeleteSubtask = (taskId: number, subtaskId: number) => {
-        deleteSubtaskMutation.mutate({ taskId, subtaskId });
+    const handleEditClick = (task: Task) => {
+        // Open side panel in edit mode
+        setOpenInEditMode(true);
+        setSelectedTask(task);
     };
 
-    const toggleCollapse = (status: TaskStatus) => {
-        setCollapsed(prev => ({ ...prev, [status]: !prev[status] }));
-    };
+    // Partition Logic (Case Insensitive)
+    const partitions = useMemo(() => {
+        const threshold = subDays(new Date(), 14);
+        const overdueTasks = tasks.filter((t: Task) => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date());
+        const upcomingTasks = tasks.filter((t: Task) => t.status !== 'done' && t.due_date && new Date(t.due_date) >= new Date());
+        const active = tasks.filter((t: Task) => (t.status || '').toLowerCase() !== 'done');
+        const recentHistory = tasks.filter((t: Task) =>
+            (t.status || '').toLowerCase() === 'done' &&
+            t.completed_at &&
+            new Date(t.completed_at) >= threshold
+        );
+        return { active, recentHistory };
+    }, [tasks]);
 
-    // Group tasks by status
-    const groupedTasks = statusGroups.map(group => ({
-        ...group,
-        tasks: tasks.filter(task => task.status === group.status)
-    }));
+    // Grouping for Board View (Case Insensitive)
+    const boardGroups = useMemo(() => {
+        const threshold = subDays(new Date(), 14);
+        return statusGroups.map(group => {
+            let filtered = tasks.filter(task => (task.status || '').toLowerCase() === group.status.toLowerCase());
+            if (group.status.toLowerCase() === 'done') {
+                filtered = filtered.filter(task =>
+                    task.completed_at && new Date(task.completed_at) >= threshold
+                );
+            }
+            return { ...group, tasks: filtered };
+        });
+    }, [tasks]);
 
     if (isLoading) {
         return (
@@ -181,53 +234,60 @@ export default function Tasks() {
     }
 
     return (
-        <div className="h-full flex flex-col animate-fade-in">
+        <div className="h-full flex flex-col animate-fade-in bg-background overflow-hidden">
             {/* Header */}
-            <header className="sticky top-0 z-10 bg-background border-b border-border px-6 py-4">
-                <div className="flex items-center justify-between">
+            <header className="sticky top-0 z-20 bg-background border-b border-border px-6 py-4">
+                <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-4">
                         <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
                             <CheckSquare size={24} className="text-accent-blue" />
                             Tasks
+                            <span className="text-[10px] text-text-muted opacity-0" id="version-tag">v2-partitioned</span>
                         </h1>
 
-                        {stats && (
-                            <div className="flex items-center gap-2 ml-4">
-                                <div className="flex items-center gap-1.5 px-3 py-1 bg-background-card border border-border rounded-full shadow-sm" title="Not Started">
-                                    <Circle size={14} className="text-text-muted" />
-                                    <span className="text-sm font-medium">{stats.by_status.not_started || 0}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 px-3 py-1 bg-accent-amber/10 border border-accent-amber/20 rounded-full shadow-sm" title="In Progress">
-                                    <Clock size={14} className="text-accent-amber" />
-                                    <span className="text-sm font-medium text-accent-amber">{stats.by_status.in_progress || 0}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 px-3 py-1 bg-accent-green/10 border border-accent-green/20 rounded-full shadow-sm" title="Done">
-                                    <Check size={14} className="text-accent-green" />
-                                    <span className="text-sm font-medium text-accent-green">{stats.by_status.done || 0}</span>
-                                </div>
-                            </div>
-                        )}
+                        <div className="flex items-center gap-1 bg-background-card p-1 rounded-lg border border-border ml-6">
+                            <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-accent-blue text-white shadow-sm' : 'text-text-muted hover:text-text-primary hover:bg-background-hover'}`} title="List View"><List size={18} /></button>
+                            <button onClick={() => setViewMode('board')} className={`p-1.5 rounded-md transition-all ${viewMode === 'board' ? 'bg-accent-blue text-white shadow-sm' : 'text-text-muted hover:text-text-primary hover:bg-background-hover'}`} title="Board View"><LayoutGrid size={18} /></button>
+                            <button onClick={() => setViewMode('table')} className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-accent-blue text-white shadow-sm' : 'text-text-muted hover:text-text-primary hover:bg-background-hover'}`} title="All Tasks (Table View)"><Table2 size={18} /></button>
+                        </div>
                     </div>
 
-                    <button
-                        onClick={() => setIsCreating(true)}
-                        className="btn btn-primary"
-                    >
-                        <Plus size={18} />
-                        New Task
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <div className="relative w-64">
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                            <input
+                                type="text"
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
+                                placeholder="Search tasks..."
+                                className="input pl-9 h-9 text-sm w-full"
+                            />
+                        </div>
+                        {viewMode === 'table' && (
+                            <div className="flex items-center gap-2 px-3 py-1 bg-background-card border border-border rounded-lg text-xs font-medium text-text-muted">
+                                <span>Archived</span>
+                                <input
+                                    type="checkbox"
+                                    checked={showArchived}
+                                    onChange={(e) => setShowArchived(e.target.checked)}
+                                    className="w-4 h-4 rounded border-border text-accent-blue focus:ring-accent-blue cursor-pointer"
+                                />
+                            </div>
+                        )}
+                        <button onClick={() => setIsCreating(true)} className="btn btn-primary"><Plus size={18} />New Task</button>
+                    </div>
                 </div>
             </header>
 
-            {/* Content */}
-            <div className="flex-1 overflow-auto p-6">
+            {/* Content Area */}
+            <div className="flex-1 overflow-hidden relative">
                 <div
-                    className="max-w-4xl transition-all duration-300"
-                    style={{ marginRight: selectedTask ? `${panelWidth}px` : '0px' }}
+                    className="max-w-7xl h-full transition-all duration-300 mx-auto flex flex-col p-6"
+                    style={{ marginRight: selectedTask ? `${panelWidth}px` : 'auto' }}
                 >
                     {/* Quick Add */}
                     {isCreating && (
-                        <div className="card p-4 mb-6 animate-slide-up">
+                        <div className="card p-4 mb-6 animate-slide-up bg-background-card border border-border shrink-0">
                             <div className="flex items-center gap-3">
                                 <input
                                     type="text"
@@ -235,137 +295,113 @@ export default function Tasks() {
                                     onChange={(e) => setNewTaskTitle(e.target.value)}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') handleCreateTask();
-                                        if (e.key === 'Escape') {
-                                            setIsCreating(false);
-                                            setNewTaskTitle('');
-                                        }
+                                        if (e.key === 'Escape') { setIsCreating(false); setNewTaskTitle(''); }
                                     }}
                                     placeholder="What needs to be done?"
                                     className="input flex-1"
                                     autoFocus
                                 />
-                                <button
-                                    onClick={handleCreateTask}
-                                    disabled={!newTaskTitle.trim() || createMutation.isPending}
-                                    className="btn btn-primary"
-                                >
-                                    {createMutation.isPending ? (
-                                        <Loader2 size={18} className="animate-spin" />
-                                    ) : (
-                                        'Add'
-                                    )}
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setIsCreating(false);
-                                        setNewTaskTitle('');
-                                    }}
-                                    className="btn btn-ghost"
-                                >
-                                    Cancel
-                                </button>
+                                <button onClick={handleCreateTask} disabled={!newTaskTitle.trim() || createMutation.isPending} className="btn btn-primary">{createMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : 'Add'}</button>
+                                <button onClick={() => { setIsCreating(false); setNewTaskTitle(''); }} className="btn btn-ghost">Cancel</button>
                             </div>
                         </div>
                     )}
 
-                    {/* Grouped Task List */}
-                    {tasks.length > 0 ? (
-                        <div className="space-y-4">
-                            {groupedTasks.map((group) => {
-                                const Icon = group.icon;
-                                const isCollapsed = collapsed[group.status];
-                                const taskCount = group.tasks.length;
+                    {/* View Switcher Content */}
+                    <div className="flex-1 overflow-hidden min-h-0">
+                        {viewMode === 'list' && (
+                            <div className="h-full overflow-y-auto pr-2 custom-scrollbar">
+                                <TaskListView
+                                    tasks={[]}
+                                    activeTasks={partitions.active}
+                                    recentHistory={partitions.recentHistory}
+                                    onTaskClick={handleTaskClick}
+                                    onStatusChange={handleStatusChange}
+                                    onDelete={(id) => deleteMutation.mutate(id)}
+                                    onEditClick={handleEditClick}
+                                    onCreateTask={() => setIsCreating(true)}
+                                />
+                            </div>
+                        )}
 
-                                return (
-                                    <div key={group.status} className="rounded-xl overflow-hidden border border-border">
-                                        {/* Group Header */}
-                                        <button
-                                            onClick={() => toggleCollapse(group.status)}
-                                            className={`w-full flex items-center gap-3 px-4 py-3 ${group.bgColor} hover:opacity-90 transition-all`}
-                                        >
-                                            {/* Collapse Arrow */}
-                                            <div className="text-text-muted">
-                                                {isCollapsed ? (
-                                                    <ChevronRight size={18} />
-                                                ) : (
-                                                    <ChevronDown size={18} />
+                        {viewMode === 'board' && (
+                            <div className="flex gap-6 h-full min-h-0">
+                                {boardGroups.map((group) => {
+                                    const Icon = group.icon;
+                                    const isDone = group.status.toLowerCase() === 'done';
+
+                                    return (
+                                        <div key={group.status} className="flex-1 flex flex-col min-w-[320px] rounded-xl overflow-hidden border border-border bg-background-card/50">
+                                            {/* Column Header */}
+                                            <div className={`flex items-center gap-3 px-4 py-3 ${group.bgColor} border-b ${group.borderColor} shrink-0`}>
+                                                <div className={`w-8 h-8 rounded-lg ${group.bgColor} flex items-center justify-center border ${group.borderColor}`}>
+                                                    <Icon size={16} className={group.color} strokeWidth={isDone ? 3 : 2} />
+                                                </div>
+                                                <span className={`font-bold ${group.color} uppercase tracking-widest text-xs`}>{group.label}</span>
+                                                <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold ${group.bgColor} ${group.color} border ${group.borderColor}`}>
+                                                    {group.tasks.length}
+                                                </span>
+                                            </div>
+
+                                            {/* Task Scroll Area */}
+                                            <div className={`flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar ${isDone ? 'bg-background-elevated/10' : ''}`}>
+                                                {group.tasks.map((task) => (
+                                                    <TaskCard
+                                                        key={task.id}
+                                                        task={task}
+                                                        onClick={handleTaskClick}
+                                                        onStatusChange={handleStatusChange}
+                                                        isCompact={true}
+                                                        disableStatusClick={true}
+                                                    />
+                                                ))}
+                                                {group.tasks.length === 0 && (
+                                                    <div className="h-32 flex items-center justify-center text-text-muted text-xs italic border-2 border-dashed border-border/50 rounded-lg">
+                                                        Empty
+                                                    </div>
                                                 )}
                                             </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
 
-                                            {/* Status Icon */}
-                                            <div className={`w-6 h-6 rounded-lg ${group.bgColor} flex items-center justify-center`}>
-                                                <Icon size={14} className={group.color} strokeWidth={group.status === 'done' ? 3 : 2} />
-                                            </div>
-
-                                            {/* Label */}
-                                            <span className={`font-semibold ${group.color}`}>
-                                                {group.label}
-                                            </span>
-
-                                            {/* Count Badge */}
-                                            <span className={`ml-auto px-2.5 py-0.5 rounded-full text-xs font-medium ${group.bgColor} ${group.color}`}>
-                                                {taskCount} {taskCount === 1 ? 'task' : 'tasks'}
-                                            </span>
-                                        </button>
-
-                                        {/* Task List */}
-                                        {!isCollapsed && taskCount > 0 && (
-                                            <div className="bg-background-card divide-y divide-border">
-                                                {group.tasks.map((task) => (
-                                                    <div key={task.id} className="px-2 py-1">
-                                                        <TaskCard
-                                                            task={task}
-                                                            onClick={(t) => setSelectedTask(t)}
-                                                            onStatusChange={handleStatusChange}
-                                                        />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {/* Empty State */}
-                                        {!isCollapsed && taskCount === 0 && (
-                                            <div className="bg-background-card px-4 py-6 text-center text-text-muted text-sm">
-                                                No {group.label.toLowerCase()} tasks
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <div className="card p-12 text-center">
-                            <CheckSquare size={48} className="mx-auto mb-4 text-text-muted/30" />
-                            <h3 className="text-lg font-medium text-text-primary mb-2">No tasks yet</h3>
-                            <p className="text-text-muted mb-4">
-                                Create your first task to get started
-                            </p>
-                            <button
-                                onClick={() => setIsCreating(true)}
-                                className="btn btn-primary"
-                            >
-                                <Plus size={18} />
-                                Create Task
-                            </button>
-                        </div>
-                    )}
+                        {viewMode === 'table' && (
+                            <div className="h-full overflow-hidden">
+                                <TaskTableView
+                                    tasks={tasks}
+                                    searchQuery={searchQuery}
+                                    showArchived={showArchived}
+                                    onTaskClick={handleTaskClick}
+                                    onStatusChange={handleStatusChange}
+                                    onDelete={(id) => deleteMutation.mutate(id)}
+                                />
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
 
-            {/* Task Detail Panel */}
-            {selectedTask && (
-                <TaskPanel
-                    task={selectedTask}
-                    width={panelWidth}
-                    onWidthChange={setPanelWidth}
-                    onClose={() => setSelectedTask(null)}
-                    onUpdate={handleUpdateTask}
-                    onDelete={(id) => deleteMutation.mutate(id)}
-                    onAddSubtask={handleAddSubtask}
-                    onUpdateSubtask={handleUpdateSubtask}
-                    onDeleteSubtask={handleDeleteSubtask}
-                />
-            )}
+                {/* Task Detail Panel Overlay */}
+                {selectedTask && (
+                    <TaskPanel
+                        task={selectedTask}
+                        width={panelWidth}
+                        initialEditMode={openInEditMode}
+                        onWidthChange={setPanelWidth}
+                        onClose={() => {
+                            setSelectedTask(null);
+                            setOpenInEditMode(false);
+                        }}
+                        onUpdate={onUpdateTask}
+                        onDelete={(id) => deleteMutation.mutate(id)}
+                        onAddSubtask={(taskId, title) => addSubtaskMutation.mutate({ taskId, title })}
+                        onUpdateSubtask={(taskId, subtaskId, updates) => updateSubtaskMutation.mutate({ taskId, subtaskId, updates })}
+                        onDeleteSubtask={(taskId, subtaskId) => deleteSubtaskMutation.mutate({ taskId, subtaskId })}
+                        onReorderSubtasks={(taskId, subtaskIds) => reorderSubtasksMutation.mutate({ taskId, subtaskIds })}
+                    />
+                )}
+            </div>
         </div>
     );
 }

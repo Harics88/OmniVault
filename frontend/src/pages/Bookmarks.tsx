@@ -1,18 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Bookmark, Search, Loader2, X, FolderPlus, Globe, FileText, Palette, Check } from 'lucide-react';
 import { bookmarksApi } from '../lib/api';
 import type { Bookmark as BookmarkType, BookmarkCategory, CreateBookmark, UpdateBookmark, CreateBookmarkCategory, UpdateBookmarkCategory } from '../types';
 import BookmarkCategoryCard from '../components/BookmarkCategoryCard';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function Bookmarks() {
     const queryClient = useQueryClient();
+    const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [isCreatingBookmark, setIsCreatingBookmark] = useState(false);
     const [isCreatingCategory, setIsCreatingCategory] = useState(false);
     const [editingCategory, setEditingCategory] = useState<BookmarkCategory | null>(null);
     const [editingBookmark, setEditingBookmark] = useState<BookmarkType | null>(null);
     const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+    const [deleteBookmarkId, setDeleteBookmarkId] = useState<number | null>(null);
+    const [deleteCategoryId, setDeleteCategoryId] = useState<number | null>(null);
+
+    // Debounce search to prevent focus loss
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setSearchQuery(searchInput);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchInput]);
 
     // Queries
     const { data: categories = [], isLoading: categoriesLoading } = useQuery({
@@ -52,6 +64,7 @@ export default function Bookmarks() {
         mutationFn: (bookmark: CreateBookmark) => bookmarksApi.create(bookmark),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+            queryClient.invalidateQueries({ queryKey: ['system'] });
             setIsCreatingBookmark(false);
             setSelectedCategoryId(null);
         },
@@ -67,7 +80,10 @@ export default function Bookmarks() {
 
     const deleteBookmarkMutation = useMutation({
         mutationFn: (id: number) => bookmarksApi.delete(id),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookmarks'] }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+            queryClient.invalidateQueries({ queryKey: ['system'] });
+        },
     });
 
     const openBookmarkMutation = useMutation({
@@ -98,8 +114,8 @@ export default function Bookmarks() {
                             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                             <input
                                 type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
                                 placeholder="Search bookmarks..."
                                 className="input pl-9 h-9 text-sm"
                             />
@@ -130,9 +146,9 @@ export default function Bookmarks() {
                             category={cat}
                             bookmarks={bookmarksByCategory(cat.id)}
                             onAddBookmark={(catId: number) => { setSelectedCategoryId(catId); setIsCreatingBookmark(true); }}
-                            onDeleteCategory={(id: number) => deleteCategoryMutation.mutate(id)}
+                            onDeleteCategory={(id: number) => setDeleteCategoryId(id)}
                             onEditCategory={(c: BookmarkCategory) => setEditingCategory(c)}
-                            onDeleteBookmark={(id: number) => deleteBookmarkMutation.mutate(id)}
+                            onDeleteBookmark={(id: number) => setDeleteBookmarkId(id)}
                             onEditBookmark={(b: BookmarkType) => setEditingBookmark(b)}
                             onOpenBookmark={(b: BookmarkType) => {
                                 if (b.is_file) {
@@ -156,7 +172,7 @@ export default function Bookmarks() {
                             onAddBookmark={() => { setSelectedCategoryId(null); setIsCreatingBookmark(true); }}
                             onDeleteCategory={() => { }}
                             onEditCategory={() => { }}
-                            onDeleteBookmark={(id: number) => deleteBookmarkMutation.mutate(id)}
+                            onDeleteBookmark={(id: number) => setDeleteBookmarkId(id)}
                             onEditBookmark={(b: BookmarkType) => setEditingBookmark(b)}
                             onOpenBookmark={(b: BookmarkType) => {
                                 if (b.is_file) {
@@ -220,6 +236,32 @@ export default function Bookmarks() {
                     isLoading={createBookmarkMutation.isPending || updateBookmarkMutation.isPending}
                 />
             )}
+
+            {/* Delete Confirmation Modals */}
+            <ConfirmModal
+                isOpen={!!deleteBookmarkId}
+                onClose={() => setDeleteBookmarkId(null)}
+                onConfirm={() => {
+                    if (deleteBookmarkId !== null) {
+                        deleteBookmarkMutation.mutate(deleteBookmarkId);
+                        setDeleteBookmarkId(null);
+                    }
+                }}
+                title="Delete Bookmark"
+                message="Are you sure you want to delete this bookmark? This action cannot be undone."
+            />
+            <ConfirmModal
+                isOpen={!!deleteCategoryId}
+                onClose={() => setDeleteCategoryId(null)}
+                onConfirm={() => {
+                    if (deleteCategoryId !== null) {
+                        deleteCategoryMutation.mutate(deleteCategoryId);
+                        setDeleteCategoryId(null);
+                    }
+                }}
+                title="Delete Category"
+                message="Are you sure you want to delete this category? All bookmarks in this category will become uncategorized. This action cannot be undone."
+            />
         </div>
     );
 }

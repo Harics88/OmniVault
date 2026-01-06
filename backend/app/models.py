@@ -18,6 +18,13 @@ class TaskStatus(str, enum.Enum):
     DONE = "done"
 
 
+class TaskPriority(str, enum.Enum):
+    """Task priority enumeration"""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
 # Association tables for many-to-many relationships
 log_task_association = Table(
     'log_task_links',
@@ -95,9 +102,13 @@ class Task(Base):
         SQLEnum(TaskStatus),
         default=TaskStatus.NOT_STARTED
     )
-    due_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    due_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    priority: Mapped[TaskPriority] = mapped_column(
+        SQLEnum(TaskPriority),
+        default=TaskPriority.MEDIUM
+    )
     order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -133,6 +144,24 @@ class Subtask(Base):
     task: Mapped["Task"] = relationship(back_populates="subtasks")
 
 
+class NoteSection(Base):
+    """Sections/categories for organizing notes"""
+    __tablename__ = 'note_sections'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    color: Mapped[str] = mapped_column(String(20), default="#3B82F6")  # Hex color
+    icon: Mapped[Optional[str]] = mapped_column(String(20), default="📝")  # Emoji
+    position: Mapped[int] = mapped_column(Integer, default=0)  # Sort order
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationship
+    notes: Mapped[List["Note"]] = relationship(
+        back_populates="section",
+        order_by="Note.updated_at.desc()"
+    )
+
+
 class Note(Base):
     """Notes for longer-form content"""
     __tablename__ = 'notes'
@@ -140,10 +169,30 @@ class Note(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     content: Mapped[str] = mapped_column(Text, default="")
+    icon: Mapped[Optional[str]] = mapped_column(String(20), default="📄")  # Emoji icon
+    parent_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey('notes.id', ondelete='CASCADE'), nullable=True
+    )
+    position: Mapped[int] = mapped_column(Integer, default=0)  # Sort order within siblings
+    section_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey('note_sections.id', ondelete='SET NULL'), nullable=True
+    )
+    is_pinned: Mapped[bool] = mapped_column(Boolean, default=False)
+    tags: Mapped[Optional[str]] = mapped_column(String(500), default="")  # Comma-separated tags
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)  # Soft delete
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
+    section: Mapped[Optional["NoteSection"]] = relationship(back_populates="notes")
+    parent: Mapped[Optional["Note"]] = relationship(
+        back_populates="children",
+        remote_side=[id]
+    )
+    children: Mapped[List["Note"]] = relationship(
+        back_populates="parent",
+        order_by="Note.position, Note.title"
+    )
     daily_logs: Mapped[List["DailyLog"]] = relationship(
         secondary=log_note_association,
         back_populates="notes"
@@ -162,6 +211,7 @@ class Snippet(Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     code: Mapped[str] = mapped_column(Text, nullable=False)
     language: Mapped[str] = mapped_column(String(50), default="text")
+    is_pinned: Mapped[bool] = mapped_column(Boolean, default=False)
     description: Mapped[Optional[str]] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
