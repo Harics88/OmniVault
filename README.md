@@ -4,67 +4,107 @@ A **dark-mode, local-first, single-user productivity app** for data engineers. B
 
 ## Features
 
+### 🏠 Dashboard
+- Quick stats overview (Active Tasks, Notes, Snippets, Bookmarks)
+- Recent activity feed (tasks, notes, snippets, bookmarks)
+- Direct navigation to any entity
+- Real-time updates across all sections
+
 ### 📝 Daily Log
-- Free-text notebook-style editor
+- Free-text notebook-style editor with rich text support
 - Auto-save enabled
 - Inline linking via `@` symbol (tasks, notes, snippets, bookmarks)
-- Code snippet formatting with ```
+- Code snippet formatting with syntax highlighting
 - Date navigation (previous/next days)
+- TipTap editor with full formatting toolbar
 
 ### ✅ Tasks
-- Minimal task management
+- Multiple view modes: List, Board (Kanban), and Table
 - Status: Not Started / In Progress / Done
-- Drag-and-drop reordering
-- Side panel for task details
+- Priority levels: Low, Medium, High
+- Subtasks with drag-and-drop reordering
+- Full-screen task detail popout (`/tasks/:id`)
+- Date tracking: Due Date, Started At, Completed At
+- Side panel for quick task editing
+- Persistent view mode preference
 
 ### 📄 Notes
-- Full-text notes with search
+- Hierarchical folder structure with drag-and-drop
+- Rich text editor with full formatting support
+- Soft delete with Recycle Bin
+- Bulk operations (restore, delete, empty bin)
+- Full-text search
+- Breadcrumb navigation
 - Quick access from sidebar
-- Inline editing
+- Direct linking (`/notes/:id`)
 
 ### 💻 Code Snippets
 - Syntax highlighting for 20+ languages
-- One-click copy
+- One-click copy functionality
 - Language filtering
+- Direct linking (`/snippets/:id`)
+- Description and metadata support
+- Search across all snippets
 
 ### 🔖 Bookmarks
-- Save URLs with descriptions
-- Quick search
-- External link support
+- Categorized bookmark organization with custom colors
+- Support for both web URLs and local file paths
+- Quick search across all bookmarks
+- Category-based grouping
+- External link support with automatic URL validation
+- Local file opening via backend API
 
 ### 🔍 Global Search
-- Cmd/Ctrl+K to open
-- Search across all entities
+- `Cmd/Ctrl+K` to open
+- Search across all entities (tasks, notes, snippets, bookmarks, daily logs)
 - Keyboard navigation
+- Quick preview and navigation
+
+### 🗑️ Recycle Bin
+- Soft delete for notes
+- Bulk restore operations
+- Bulk permanent delete
+- Empty entire recycle bin
+- 30-day retention policy
 
 ## Tech Stack
 
 **Frontend:**
 - React 18 + TypeScript
-- Tailwind CSS
-- React Query (TanStack Query)
-- React Router
+- Vite (build tool)
+- Tailwind CSS (styling)
+- React Query / TanStack Query (data fetching & caching)
+- React Router v6 (routing)
+- TipTap (rich text editor)
 - Lucide Icons
 - Prism React Renderer (syntax highlighting)
+- date-fns (date utilities)
 
 **Backend:**
-- FastAPI
-- SQLAlchemy (async)
-- SQLite (local-first)
-- Pydantic
+- FastAPI (Python web framework)
+- SQLAlchemy 2.0 (async ORM)
+- SQLite (local-first database)
+- Pydantic v2 (data validation)
+- Uvicorn (ASGI server)
+
+**DevOps:**
+- Docker & Docker Compose
+- Multi-stage builds for optimization
 
 ## Getting Started
 
 ### Prerequisites
-- Docker & Docker Compose
+- Docker & Docker Compose (recommended)
+- OR Node.js 18+ and Python 3.11+ (for local development)
 
-### Quick Start
+### Quick Start with Docker
 
 ```bash
 # Clone the repository
+git clone https://github.com/Harics88/MyTasker.git
 cd MyTasker
 
-# Start with Docker
+# Start with Docker Compose
 docker-compose up --build
 
 # Access the app
@@ -72,20 +112,23 @@ docker-compose up --build
 # API Docs: http://localhost:8000/docs
 ```
 
-### Development
+### Local Development (Without Docker)
 
-**Frontend only:**
+**Backend:**
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+**Frontend:**
 ```bash
 cd frontend
 npm install
 npm run dev
-```
-
-**Backend only:**
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+# Access at http://localhost:5173
 ```
 
 ## Project Structure
@@ -93,6 +136,7 @@ uvicorn app.main:app --reload
 ```
 MyTasker/
 ├── docker-compose.yml
+├── start_mytasker.bat          # Windows startup script
 ├── frontend/
 │   ├── Dockerfile
 │   ├── package.json
@@ -105,35 +149,48 @@ MyTasker/
 │       │   ├── SearchModal.tsx
 │       │   ├── TaskCard.tsx
 │       │   ├── TaskPanel.tsx
-│       │   └── CodeBlock.tsx
+│       │   ├── TaskTableView.tsx
+│       │   ├── TaskListView.tsx
+│       │   ├── NoteTree.tsx
+│       │   ├── Breadcrumb.tsx
+│       │   ├── ConfirmModal.tsx
+│       │   ├── Calendar.tsx
+│       │   ├── Editor/          # TipTap rich text editor
+│       │   └── RichTextEditor.tsx
 │       ├── pages/
-│       │   ├── Home.tsx
+│       │   ├── Home.tsx         # Dashboard
 │       │   ├── DailyLog.tsx
 │       │   ├── Tasks.tsx
+│       │   ├── TaskPopout.tsx   # Full-screen task view
 │       │   ├── Notes.tsx
+│       │   ├── RecycleBin.tsx
 │       │   ├── Snippets.tsx
-│       │   └── Bookmarks.tsx
+│       │   ├── Bookmarks.tsx
+│       │   ├── Settings.tsx
+│       │   └── Shortcuts.tsx
 │       ├── hooks/
 │       │   └── useKeyboardShortcuts.ts
 │       ├── lib/
-│       │   └── api.ts
+│       │   └── api.ts           # API client
 │       └── types/
 │           └── index.ts
 └── backend/
     ├── Dockerfile
     ├── requirements.txt
     └── app/
-        ├── main.py
-        ├── database.py
-        ├── models.py
-        ├── schemas.py
+        ├── main.py              # FastAPI app
+        ├── database.py          # Database setup
+        ├── models.py            # SQLAlchemy models
+        ├── schemas.py           # Pydantic schemas
         └── routers/
             ├── daily_logs.py
             ├── tasks.py
             ├── notes.py
+            ├── sections.py      # Note folders
             ├── snippets.py
             ├── bookmarks.py
-            └── search.py
+            ├── search.py
+            └── system.py        # System stats
 ```
 
 ## Keyboard Shortcuts
@@ -152,6 +209,9 @@ MyTasker/
 
 ## API Endpoints
 
+### System
+- `GET /api/system/stats` - Get system statistics (counts for all entities)
+
 ### Daily Logs
 - `GET /api/daily-logs` - List all logs
 - `GET /api/daily-logs/today` - Get today's log
@@ -160,34 +220,62 @@ MyTasker/
 
 ### Tasks
 - `GET /api/tasks` - List tasks (optional status filter)
+- `GET /api/tasks/{id}` - Get single task
 - `GET /api/tasks/stats` - Get task statistics
 - `POST /api/tasks` - Create task
 - `PUT /api/tasks/{id}` - Update task
 - `POST /api/tasks/reorder` - Reorder tasks
 - `DELETE /api/tasks/{id}` - Delete task
+- **Subtasks:**
+  - `POST /api/tasks/{task_id}/subtasks` - Create subtask
+  - `PUT /api/tasks/{task_id}/subtasks/{subtask_id}` - Update subtask
+  - `DELETE /api/tasks/{task_id}/subtasks/{subtask_id}` - Delete subtask
+  - `POST /api/tasks/{task_id}/subtasks/reorder` - Reorder subtasks
 
 ### Notes
-- `GET /api/notes` - List notes
+- `GET /api/notes` - List notes (non-deleted)
 - `GET /api/notes/recent` - Get recent notes
+- `GET /api/notes/{id}` - Get single note
+- `GET /api/notes/{id}/breadcrumb` - Get note breadcrumb path
 - `POST /api/notes` - Create note
 - `PUT /api/notes/{id}` - Update note
-- `DELETE /api/notes/{id}` - Delete note
+- `DELETE /api/notes/{id}` - Soft delete note
+- **Recycle Bin:**
+  - `GET /api/notes/deleted` - List deleted notes
+  - `POST /api/notes/{id}/restore` - Restore deleted note
+  - `DELETE /api/notes/{id}/permanent` - Permanently delete note
+  - `POST /api/notes/restore-bulk` - Bulk restore notes
+  - `POST /api/notes/delete-bulk` - Bulk permanent delete
+  - `POST /api/notes/empty-recycle-bin` - Empty entire recycle bin
+
+### Sections (Note Folders)
+- `GET /api/sections/tree` - Get hierarchical folder tree
+- `POST /api/sections` - Create folder
+- `PUT /api/sections/{id}` - Update folder
+- `DELETE /api/sections/{id}` - Delete folder
 
 ### Snippets
-- `GET /api/snippets` - List snippets
+- `GET /api/snippets` - List snippets (with optional language/search filters)
+- `GET /api/snippets/{id}` - Get single snippet
 - `GET /api/snippets/languages` - Get supported languages
 - `POST /api/snippets` - Create snippet
 - `PUT /api/snippets/{id}` - Update snippet
 - `DELETE /api/snippets/{id}` - Delete snippet
 
 ### Bookmarks
-- `GET /api/bookmarks` - List bookmarks
+- `GET /api/bookmarks` - List bookmarks (with optional search)
+- `GET /api/bookmarks/categories` - List bookmark categories
 - `POST /api/bookmarks` - Create bookmark
 - `PUT /api/bookmarks/{id}` - Update bookmark
 - `DELETE /api/bookmarks/{id}` - Delete bookmark
+- `POST /api/bookmarks/{id}/open` - Open bookmark (for local files)
+- **Categories:**
+  - `POST /api/bookmarks/categories` - Create category
+  - `PUT /api/bookmarks/categories/{id}` - Update category
+  - `DELETE /api/bookmarks/categories/{id}` - Delete category
 
 ### Search
-- `GET /api/search?q={query}` - Global search
+- `GET /api/search?q={query}` - Global search across all entities
 - `GET /api/search/linkable` - Get linkable items for @ autocomplete
 
 ## Design System
@@ -196,7 +284,9 @@ MyTasker/
 ```css
 --background: #0F1117;       /* Main background */
 --background-card: #151922;  /* Card background */
+--background-elevated: #1A1F2E; /* Elevated surfaces */
 --background-hover: #1C2230; /* Hover state */
+--border: #252B3B;           /* Border color */
 --text-primary: #E6E8EB;     /* Primary text */
 --text-secondary: #9CA3AF;   /* Secondary text */
 --text-muted: #6B7280;       /* Muted text */
@@ -204,6 +294,7 @@ MyTasker/
 --accent-amber: #F59E0B;     /* In Progress status */
 --accent-green: #22C55E;     /* Done status */
 --accent-red: #EF4444;       /* Destructive */
+--accent-purple: #8B5CF6;    /* High priority */
 ```
 
 ### Typography
@@ -211,6 +302,7 @@ MyTasker/
 - Code: JetBrains Mono
 - Base size: 16px
 - Secondary: 14px
+- Small: 12px
 
 ### Spacing
 - Page padding: 32px (p-8)
@@ -218,6 +310,44 @@ MyTasker/
 - Section gap: 24px (gap-6)
 - Item gap: 12px (gap-3)
 
+### Animations
+- Fade in: `animate-fade-in`
+- Scale in: `animate-scale-in`
+- Slide in: `animate-slide-in`
+
+## Database Schema
+
+The app uses SQLite with the following main tables:
+- `daily_logs` - Daily journal entries
+- `tasks` - Task items with status and priority
+- `subtasks` - Nested subtasks under tasks
+- `notes` - Rich text notes with soft delete
+- `sections` - Hierarchical note folders
+- `snippets` - Code snippets with language metadata
+- `bookmarks` - Web and file bookmarks
+- `bookmark_categories` - Bookmark organization
+
+## Recent Updates
+
+### Latest Features (January 2026)
+- ✅ Dashboard with real-time stats and recent activity
+- ✅ Hierarchical note folders with drag-and-drop
+- ✅ Recycle Bin with bulk operations
+- ✅ Full-screen task popout view
+- ✅ Task table view with multiple display modes
+- ✅ System stats API for entity counts
+- ✅ Query invalidation for real-time UI updates
+- ✅ Bookmark categories with custom colors
+- ✅ Local file bookmark support
+
+## Contributing
+
+This is a personal productivity tool, but suggestions and bug reports are welcome via GitHub Issues.
+
 ## License
 
 MIT
+
+---
+
+**Built with ❤️ for data engineers who love local-first apps**

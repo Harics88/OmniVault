@@ -37,3 +37,22 @@ npm-debug.log*
 # Cache
 .cache/
 .pytest_cache/
+
+# Package lock files (optional - uncomment if you want to ignore)
+# package-lock.json
+
+# Temporary files
+temp_*.json
+*.tmp
+
+# Migration and debug scripts
+backend/migrate_*.py
+backend/debug_*.py
+backend/fix_*.py
+backend/check_*.py
+backend/quick_check.py
+backend/revert_*.py
+
+# Documentation drafts
+MIGRATION_REQUIRED.md
+TESTING_*.md
