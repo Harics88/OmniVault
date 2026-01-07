@@ -76,10 +76,29 @@ Added automatic icon generation to the GitHub Actions workflow:
   - `icons/icon.icns` (macOS)
   - `icons/icon.ico` (Windows)
 
+### Issue #4: Release Creation Permission Error
+**Error:**
+```
+⚠️ GitHub release failed with status: 403
+❌ Too many retries. Aborting...
+```
+
+**Root Cause:**
+The workflow didn't have the necessary permissions to create GitHub releases. The default `GITHUB_TOKEN` has read-only permissions.
+
+**Solution:**
+1. Added `permissions` block to the workflow:
+   ```yaml
+   permissions:
+     contents: write  # Required for creating releases
+   ```
+2. Updated the release step to only include Windows files (removed macOS/Linux patterns that don't exist since we're only building for Windows)
+3. Added condition to only run release step on Windows platform
+
 ## Changes Made
 
 ### Files Modified:
-1. `.github/workflows/tauri-build.yml` - Fixed npm dependencies issue + added icon generation
+1. `.github/workflows/tauri-build.yml` - Fixed npm dependencies, icon generation, and release permissions
 2. `frontend/src-tauri/Cargo.toml` - Upgraded to Tauri v2
 3. `frontend/src-tauri/src/main.rs` - Added v2 plugins
 4. `frontend/src-tauri/tauri.conf.json` - Converted to v2 format
@@ -89,6 +108,7 @@ Added automatic icon generation to the GitHub Actions workflow:
 1. `450804a` - Fix GitHub Actions: Properly clean node_modules and install rollup platform package
 2. `0ce7b32` - Upgrade to Tauri v2 and fix configuration format
 3. `2596d01` - Add automatic icon generation step to GitHub Actions workflow
+4. `8b4850c` - Fix GitHub Actions: Add release permissions and remove non-Windows file patterns
 
 ### Tag:
 - Updated `v1.0.0` tag to point to latest commit
