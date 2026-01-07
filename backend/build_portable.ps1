@@ -13,12 +13,36 @@ Set-Location ../frontend
 # Check if node_modules exists
 if (-not (Test-Path "node_modules")) {
     Write-Host "Installing frontend dependencies..." -ForegroundColor Yellow
-    npm install
+    
+    if (Get-Command npm -ErrorAction SilentlyContinue) {
+        npm install
+    }
+    elseif (Get-Command docker -ErrorAction SilentlyContinue) {
+        Write-Host "npm not found. Using Docker to install dependencies..." -ForegroundColor Cyan
+        docker run --rm -v "$(Get-Location):/app" -w /app node:20-alpine npm install
+    }
+    else {
+        Write-Host "Neither npm nor Docker found! Please install npm or Docker." -ForegroundColor Red
+        Set-Location ../backend
+        exit 1
+    }
 }
 
 # Build frontend
-Write-Host "Building frontend (this may take a minute)..." -ForegroundColor Yellow
-npm run build:nocheck
+Write-Host "Building frontend..." -ForegroundColor Yellow
+
+if (Get-Command npm -ErrorAction SilentlyContinue) {
+    npm run build:nocheck
+}
+elseif (Get-Command docker -ErrorAction SilentlyContinue) {
+    Write-Host "npm not found. Using Docker to build frontend..." -ForegroundColor Cyan
+    docker run --rm -v "$(Get-Location):/app" -w /app node:20-alpine npm run build:nocheck
+}
+else {
+    Write-Host "Neither npm nor Docker found!" -ForegroundColor Red
+    Set-Location ../backend
+    exit 1
+}
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Frontend build failed!" -ForegroundColor Red

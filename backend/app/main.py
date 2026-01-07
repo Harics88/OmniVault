@@ -25,11 +25,16 @@ from app.routers import daily_logs, tasks, notes, snippets, bookmarks, search, s
 # Determine frontend static files location
 if getattr(sys, 'frozen', False):
     # Running as PyInstaller bundle
+    # sys._MEIPASS is where PyInstaller extracts data files
     FRONTEND_DIR = Path(sys._MEIPASS) / 'frontend_dist'
 else:
     # Running as script (development)
-    FRONTEND_DIR = Path(__file__).parent.parent / 'frontend' / 'dist'
+    # The frontend/dist is usually two levels up from backend/app/main.py
+    current_file = Path(__file__).resolve()
+    FRONTEND_DIR = current_file.parent.parent.parent / 'frontend' / 'dist'
 
+# Ensure path is absolute and log it
+FRONTEND_DIR = FRONTEND_DIR.resolve()
 # Configure structured logging
 logging.basicConfig(
     level=logging.INFO,
@@ -37,6 +42,8 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
+
+logger.info(f"Initialized FRONTEND_DIR: {FRONTEND_DIR}")
 
 
 @asynccontextmanager
@@ -164,17 +171,6 @@ app.include_router(search.router, prefix="/api/search", tags=["Search"])
 app.include_router(system.router, prefix="/api/system", tags=["System"])
 
 
-@app.get("/")
-async def root():
-    """Root endpoint"""
-    return {
-        "app": "MyTasker",
-        "version": "1.0.0",
-        "status": "running",
-        "docs": "/docs"
-    }
-
-
 @app.get("/api/health")
 async def health_check():
     """Comprehensive health check endpoint"""
@@ -239,7 +235,7 @@ else:
 
 # Serve frontend for all non-API routes (SPA fallback)
 @app.get("/{full_path:path}")
-async def serve_frontend(full_path: str):
+async def serve_frontend(full_path: str = ""):
     """
     Serve the React frontend for all non-API routes.
     This enables client-side routing in the SPA.
@@ -251,12 +247,18 @@ async def serve_frontend(full_path: str):
             content={"error": "Not Found", "path": f"/{full_path}"}
         )
     
+    # Handle root path or empty path - serve index.html
+    if not full_path or full_path == "/":
+        index_file = FRONTEND_DIR / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
+    
     # Check if it's a request for a specific file
     requested_file = FRONTEND_DIR / full_path
     if requested_file.is_file():
         return FileResponse(requested_file)
     
-    # Default to index.html for client-side routing
+    # Default to index.html for client-side routing (SPA fallback)
     index_file = FRONTEND_DIR / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
@@ -266,6 +268,6 @@ async def serve_frontend(full_path: str):
         status_code=status.HTTP_404_NOT_FOUND,
         content={
             "error": "Frontend not found",
-            "message": "Please build the frontend first: cd frontend && npm run build"
+            "message": f"Please build the frontend first. Looking in: {FRONTEND_DIR}"
         }
     )
