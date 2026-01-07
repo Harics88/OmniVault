@@ -21,29 +21,8 @@
         "windows": {
             "certificateThumbprint": null,
             "digestAlgorithm": "sha256",
-            "timestampUrl": "",
-            "nsis": {
-                "installerIcon": "icons/icon.ico",
-                "headerImage": null,
-                "sidebarImage": null,
-                "installMode": "perUser",
-                "languages": [
-                    "English"
-                ],
-                "displayLanguageSelector": false,
-                "compression": "lzma",
-                "oneClick": false,
-                "perMachine": false,
-                "allowDowngrades": true,
-                "allowToChangeInstallationDirectory": true,
-                "createDesktopIcon": true,
-                "createStartMenuShortcut": true,
-                "publisher": "Omni Vault",
-                "runAfterFinish": true,
-                "startMenuFolder": "Omni Vault"
-            }
-        },
-        "createUpdaterArtifacts": false
+            "timestampUrl": ""
+        }
     },
     "productName": "Omni Vault",
     "version": "1.0.0",
