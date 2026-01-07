@@ -18,20 +18,29 @@
 
 ## 📦 Download
 
-### **🖥️ Desktop Application (Recommended)**
+### **🖥️ Desktop Application**
 
-Get the standalone desktop app - no Docker or Python required!
+Choose your preferred installation method:
 
 **📥 [Download Latest Release (v1.0.0)](https://github.com/Harics88/MyTasker/releases/latest)**
 
-- **Windows:** `Omni-Vault_1.0.0_x64_en-US.msi` or `Omni-Vault_1.0.0_x64-setup.exe`
+#### **Option 1: Portable (No Installation Required)** ⭐ *Recommended for USB/Enterprise*
+- **Windows Portable:** `Omni-Vault-Portable-v1.0.0.zip`
+  1. Download and extract the ZIP file
+  2. Double-click `omni-vault.exe` to run
+  3. No installation needed - run from anywhere!
+  4. Perfect for USB drives or restricted environments
+
+#### **Option 2: Installer (Traditional Installation)**
+- **Windows MSI:** `Omni-Vault_1.0.0_x64_en-US.msi` - Professional installer
+- **Windows NSIS:** `Omni-Vault_1.0.0_x64-setup.exe` - Lightweight installer
 - **macOS:** Coming soon
 - **Linux:** Coming soon
 
 **Installation:**
 1. Download the installer for your platform
 2. Run the installer and follow the wizard
-3. Launch "Omni Vault" from your applications
+3. Launch "Omni Vault" from your Start Menu
 4. Your data is stored locally - 100% private!
 
 ---
