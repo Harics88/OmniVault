@@ -15,16 +15,31 @@
 ---
 
 ## 📦 Portable Build
-Omni Vault is now distributed as a fully portable application. No installation is required, and all your data stays in the same folder as the application.
 
-### **Desktop Application**
+Omni Vault is now available in **two flavors** - choose the one that fits your workflow!
 
-**📥 [Download Latest Portable Release](https://github.com/Harics88/MyTasker/releases/latest)**
+### 💻 **Desktop App** (Recommended)
+**Best for**: Single-user desktop use, instant startup
 
-1. Download the `OmniVault.zip` file.
-2. Extract the folder anywhere (Desktop, USB Drive, etc.).
-3. Double-click `OmniVault.exe` to launch.
-4. All your data is stored in the `data/` folder within the same directory.
+**📥 [Download Latest Desktop Release](https://github.com/Harics88/MyTasker/releases/latest)**
+
+1. Download `OmniVault_Desktop_vX.X.X_Portable.zip`
+2. Extract anywhere (Desktop, USB Drive, etc.)
+3. Double-click `OmniVault.exe` → Opens in native window
+4. Data stored in `data/` folder
+
+### 🌐 **Server App**
+**Best for**: Browser access, remote/multi-device use
+
+**📥 [Download Latest Server Release](https://github.com/Harics88/MyTasker/releases/latest)**
+
+1. Download `OmniVault_Server_vX.X.X_Portable.zip`
+2. Extract anywhere
+3. Double-click `OmniVault-Server.exe` → Starts web server
+4. Open browser to `http://localhost:8000`
+5. Data stored in `data/` folder
+
+**📖 [Full Deployment Guide](DEPLOYMENT.md)** - Detailed comparison and troubleshooting
 
 ---
 
