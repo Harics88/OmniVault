@@ -10,19 +10,14 @@ env/
 dist/
 build/
 *.egg-info/
-standalone/build/
-standalone/dist/
-!standalone/dist/MyTasker.exe
-MyTasker-Standalone/
-
-# Tauri
-frontend/src-tauri/target/
-frontend/src-tauri/Cargo.lock
-frontend/src-tauri/WixTools
+backend/build/
+backend/dist/
+*.spec
 
 # Database
 *.db
 data/*.db
+data/
 
 # IDE
 .idea/
@@ -47,9 +42,6 @@ npm-debug.log*
 .cache/
 .pytest_cache/
 
-# Package lock files (optional - uncomment if you want to ignore)
-# package-lock.json
-
 # Temporary files
 temp_*.json
 *.tmp
@@ -61,7 +53,3 @@ backend/fix_*.py
 backend/check_*.py
 backend/quick_check.py
 backend/revert_*.py
-
-# Documentation drafts
-MIGRATION_REQUIRED.md
-TESTING_*.md
