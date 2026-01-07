@@ -10,22 +10,13 @@ backend_dir = Path(SPECPATH)
 project_root = backend_dir.parent
 frontend_dist = project_root / 'frontend' / 'dist'
 
-# Collect all frontend build files
-frontend_datas = []
-if frontend_dist.exists():
-    for file in frontend_dist.rglob('*'):
-        if file.is_file():
-            relative_path = file.relative_to(frontend_dist)
-            frontend_datas.append((str(file), str(Path('frontend_dist') / relative_path.parent)))
-
 # Data files to include
 datas = [
-    # Frontend build
-    *frontend_datas,
-    # Add any other data files here
+    # Frontend build - bundle the entire directory at once
+    (str(frontend_dist), 'frontend_dist'),
 ]
 
-# Hidden imports (modules not automatically detected)
+# Hidden imports for FastAPI and its dependencies
 hiddenimports = [
     'uvicorn.logging',
     'uvicorn.loops',
@@ -40,14 +31,30 @@ hiddenimports = [
     'sqlalchemy.ext.baked',
     'aiosqlite',
     'webview',
+    'jinja2',
+    'python-multipart',
+    'jaraco.text',
+    'jaraco.functools',
+    'jaraco.context',
+    'more_itertools',
+    'autocommand',
 ]
+
+from PyInstaller.utils.hooks import collect_all
+
+# Collect all jaraco submodules and data
+jaraco_datas, jaraco_binaries, jaraco_hiddenimports = collect_all('jaraco')
+
+# Collect pythonnet and clr_loader (required for PyWebView on Windows)
+pythonnet_datas, pythonnet_binaries, pythonnet_hiddenimports = collect_all('pythonnet')
+clr_datas, clr_binaries, clr_hiddenimports = collect_all('clr_loader')
 
 a = Analysis(
     ['app_webview.py'],
     pathex=[str(backend_dir)],
-    binaries=[],
-    datas=datas,
-    hiddenimports=hiddenimports,
+    binaries=jaraco_binaries + pythonnet_binaries + clr_binaries,
+    datas=datas + jaraco_datas + pythonnet_datas + clr_datas,
+    hiddenimports=hiddenimports + jaraco_hiddenimports + pythonnet_hiddenimports + clr_hiddenimports + ['pkg_resources', 'clr', 'System', 'System.Windows.Forms'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -69,14 +76,14 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
-    console=False,  # Set to False to hide console window
+    upx=False,
+    console=False, # Final production build - console disabled
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,  # Add icon path here if you have one: 'path/to/icon.ico'
+    icon=None,
 )
 
 coll = COLLECT(
@@ -85,7 +92,7 @@ coll = COLLECT(
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     name='OmniVault',
 )
