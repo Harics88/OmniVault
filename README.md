@@ -1,116 +1,167 @@
-# MyTasker
+<div align="center">
 
-A **dark-mode, local-first, single-user productivity app** for data engineers. Built with React, TypeScript, FastAPI, and SQLite.
+# 🎯 MyTasker (Omni Vault)
 
-## Features
+### A dark-mode, local-first productivity app for data engineers
 
-### 🏠 Dashboard
+**Built with React, TypeScript, FastAPI, and SQLite**
+
+[![Build Status](https://img.shields.io/github/actions/workflow/status/Harics88/MyTasker/.github/workflows/tauri-build.yml?branch=main)](https://github.com/Harics88/MyTasker/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/Harics88/MyTasker/releases)
+
+[Download](#-download) • [Features](#-features) • [Screenshots](#-screenshots) • [Tech Stack](#-tech-stack) • [Getting Started](#-getting-started)
+
+</div>
+
+---
+
+## 📦 Download
+
+### **🖥️ Desktop Application (Recommended)**
+
+Get the standalone desktop app - no Docker or Python required!
+
+**📥 [Download Latest Release (v1.0.0)](https://github.com/Harics88/MyTasker/releases/latest)**
+
+- **Windows:** `Omni-Vault_1.0.0_x64_en-US.msi` or `Omni-Vault_1.0.0_x64-setup.exe`
+- **macOS:** Coming soon
+- **Linux:** Coming soon
+
+**Installation:**
+1. Download the installer for your platform
+2. Run the installer and follow the wizard
+3. Launch "Omni Vault" from your applications
+4. Your data is stored locally - 100% private!
+
+---
+
+## ✨ Features
+
+### 🏠 **Dashboard**
 - Quick stats overview (Active Tasks, Notes, Snippets, Bookmarks)
-- Recent activity feed (tasks, notes, snippets, bookmarks)
+- Recent activity feed across all sections
 - Direct navigation to any entity
-- Real-time updates across all sections
+- Real-time updates
 
-### 📝 Daily Log
-- Free-text notebook-style editor with rich text support
+### 📝 **Daily Log**
+- Notebook-style editor with rich text support
 - Auto-save enabled
-- Inline linking via `@` symbol (tasks, notes, snippets, bookmarks)
+- Inline linking via `@` mention (tasks, notes, snippets, bookmarks)
 - Code snippet formatting with syntax highlighting
 - Date navigation (previous/next days)
-- TipTap editor with full formatting toolbar
 
-### ✅ Tasks
-- Multiple view modes: List, Board (Kanban), and Table
-- Status: Not Started / In Progress / Done
-- Priority levels: Low, Medium, High
-- Subtasks with drag-and-drop reordering
-- Full-screen task detail popout (`/tasks/:id`)
+### ✅ **Tasks**
+- **Multiple view modes:** List, Board (Kanban), and Table
+- **Status tracking:** Not Started / In Progress / Done
+- **Priority levels:** Low, Medium, High
+- **Subtasks** with drag-and-drop reordering
+- Full-screen task detail popout
 - Date tracking: Due Date, Started At, Completed At
-- Side panel for quick task editing
-- Persistent view mode preference
 
-### 📄 Notes
+### 📄 **Notes**
 - Hierarchical folder structure with drag-and-drop
 - Rich text editor with full formatting support
-- Soft delete with Recycle Bin
+- **Soft delete** with Recycle Bin
 - Bulk operations (restore, delete, empty bin)
 - Full-text search
 - Breadcrumb navigation
-- Quick access from sidebar
-- Direct linking (`/notes/:id`)
 
-### 💻 Code Snippets
+### 💻 **Code Snippets**
 - Syntax highlighting for 20+ languages
 - One-click copy functionality
 - Language filtering
-- Direct linking (`/snippets/:id`)
 - Description and metadata support
 - Search across all snippets
 
-### 🔖 Bookmarks
-- Categorized bookmark organization with custom colors
+### 🔖 **Bookmarks**
+- Categorized organization with custom colors
 - Support for both web URLs and local file paths
 - Quick search across all bookmarks
 - Category-based grouping
 - External link support with automatic URL validation
-- Local file opening via backend API
 
-### 🔍 Global Search
+### 🔍 **Global Search**
 - `Cmd/Ctrl+K` to open
 - Search across all entities (tasks, notes, snippets, bookmarks, daily logs)
 - Keyboard navigation
 - Quick preview and navigation
 
-### 🗑️ Recycle Bin
-- Soft delete for notes
-- Bulk restore operations
-- Bulk permanent delete
-- Empty entire recycle bin
-- 30-day retention policy
+---
 
-## Tech Stack
+## 📸 Screenshots
 
-**Frontend:**
-- React 18 + TypeScript
-- Vite (build tool)
-- Tailwind CSS (styling)
-- React Query / TanStack Query (data fetching & caching)
-- React Router v6 (routing)
-- TipTap (rich text editor)
-- Lucide Icons
-- Prism React Renderer (syntax highlighting)
-- date-fns (date utilities)
+### Dashboard - Your Command Center
+![Dashboard](screenshots/dashboard.png)
+*Quick overview of all your productivity metrics and recent activity*
 
-**Backend:**
-- FastAPI (Python web framework)
-- SQLAlchemy 2.0 (async ORM)
-- SQLite (local-first database)
-- Pydantic v2 (data validation)
-- Uvicorn (ASGI server)
+### Tasks - Organized and Prioritized
+![Tasks](screenshots/tasks.png)
+*Powerful task management with multiple views, priorities, and status tracking*
 
-**DevOps:**
-- Docker & Docker Compose
-- Multi-stage builds for optimization
+### Notes - Hierarchical Knowledge Base
+![Notes](screenshots/notes.png)
+*Organized note-taking with folders, rich text editing, and search*
 
-## Getting Started
+### Daily Log - Your Personal Journal
+![Daily Log](screenshots/daily-log.png)
+*Free-form daily logging with rich text and inline linking*
 
-### 🚀 **Enterprise / Standalone Edition (No Installation)**
-**Perfect for corporate laptops, USB drives, or non-technical users.**
+### Code Snippets - Your Code Library
+![Snippets](screenshots/snippets.png)
+*Syntax-highlighted code snippets with easy copy and organization*
 
-1.  **[Download MyTasker.exe](standalone/dist/MyTasker.exe)** (~56 MB) from this repository.
-2.  **Double-click** to run.
-3.  That's it! 
-
-*   Runs instantly without Docker, Python, or Node.js.
-*   Creates a `data/` folder next to the executable for your database.
-*   Copy the executable to any Windows PC to run it.
+### Bookmarks - Quick Access to Everything
+![Bookmarks](screenshots/bookmarks.png)
+*Categorized bookmarks for web links and local files*
 
 ---
 
-### Prerequisites (For Developers)
-- Docker & Docker Compose (recommended)
-- OR Node.js 18+ and Python 3.11+ (for local development)
+## 🛠️ Tech Stack
 
-### Quick Start with Docker (For Developers)
+### **Frontend**
+- **React 18** + **TypeScript** - Modern UI framework
+- **Vite** - Lightning-fast build tool
+- **Tailwind CSS** - Utility-first styling
+- **React Query (TanStack Query)** - Data fetching & caching
+- **React Router v6** - Client-side routing
+- **TipTap** - Rich text editor
+- **Lucide Icons** - Beautiful icon set
+- **Prism** - Syntax highlighting
+- **date-fns** - Date utilities
+
+### **Backend**
+- **FastAPI** - Modern Python web framework
+- **SQLAlchemy 2.0** - Async ORM
+- **SQLite** - Local-first database
+- **Pydantic v2** - Data validation
+- **Uvicorn** - ASGI server
+
+### **Desktop**
+- **Tauri v2** - Lightweight desktop framework
+- **Rust** - Native performance
+
+### **DevOps**
+- **Docker & Docker Compose** - Containerization
+- **GitHub Actions** - CI/CD automation
+
+---
+
+## 🚀 Getting Started
+
+### **Option 1: Desktop App (Easiest)**
+
+Perfect for end-users who just want to use the app:
+
+1. **[Download the installer](https://github.com/Harics88/MyTasker/releases/latest)**
+2. **Install and run** - that's it! ✨
+3. Your data is stored locally in your user directory
+
+---
+
+### **Option 2: Docker (For Developers)**
+
+Quick start with Docker Compose:
 
 ```bash
 # Clone the repository
@@ -121,11 +172,15 @@ cd MyTasker
 docker-compose up --build
 
 # Access the app
-# Frontend: http://localhost:3000
+# Frontend: http://localhost:3001
 # API Docs: http://localhost:8000/docs
 ```
 
-### Local Development (Without Docker)
+---
+
+### **Option 3: Local Development (Advanced)**
+
+For developers who want to modify the code:
 
 **Backend:**
 ```bash
@@ -144,69 +199,9 @@ npm run dev
 # Access at http://localhost:5173
 ```
 
-## Project Structure
+---
 
-```
-MyTasker/
-├── docker-compose.yml
-├── start_mytasker.bat          # Windows startup script
-├── frontend/
-│   ├── Dockerfile
-│   ├── package.json
-│   ├── tailwind.config.js
-│   ├── vite.config.ts
-│   └── src/
-│       ├── components/
-│       │   ├── Layout.tsx
-│       │   ├── Sidebar.tsx
-│       │   ├── SearchModal.tsx
-│       │   ├── TaskCard.tsx
-│       │   ├── TaskPanel.tsx
-│       │   ├── TaskTableView.tsx
-│       │   ├── TaskListView.tsx
-│       │   ├── NoteTree.tsx
-│       │   ├── Breadcrumb.tsx
-│       │   ├── ConfirmModal.tsx
-│       │   ├── Calendar.tsx
-│       │   ├── Editor/          # TipTap rich text editor
-│       │   └── RichTextEditor.tsx
-│       ├── pages/
-│       │   ├── Home.tsx         # Dashboard
-│       │   ├── DailyLog.tsx
-│       │   ├── Tasks.tsx
-│       │   ├── TaskPopout.tsx   # Full-screen task view
-│       │   ├── Notes.tsx
-│       │   ├── RecycleBin.tsx
-│       │   ├── Snippets.tsx
-│       │   ├── Bookmarks.tsx
-│       │   ├── Settings.tsx
-│       │   └── Shortcuts.tsx
-│       ├── hooks/
-│       │   └── useKeyboardShortcuts.ts
-│       ├── lib/
-│       │   └── api.ts           # API client
-│       └── types/
-│           └── index.ts
-└── backend/
-    ├── Dockerfile
-    ├── requirements.txt
-    └── app/
-        ├── main.py              # FastAPI app
-        ├── database.py          # Database setup
-        ├── models.py            # SQLAlchemy models
-        ├── schemas.py           # Pydantic schemas
-        └── routers/
-            ├── daily_logs.py
-            ├── tasks.py
-            ├── notes.py
-            ├── sections.py      # Note folders
-            ├── snippets.py
-            ├── bookmarks.py
-            ├── search.py
-            └── system.py        # System stats
-```
-
-## Keyboard Shortcuts
+## ⌨️ Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
@@ -220,147 +215,135 @@ MyTasker/
 | `Cmd/Ctrl + Shift + B` | Go to Bookmarks |
 | `Escape` | Close modals/panels |
 
-## API Endpoints
+---
 
-### System
-- `GET /api/system/stats` - Get system statistics (counts for all entities)
+## 📁 Project Structure
 
-### Daily Logs
-- `GET /api/daily-logs` - List all logs
-- `GET /api/daily-logs/today` - Get today's log
-- `GET /api/daily-logs/date/{date}` - Get log by date
-- `PUT /api/daily-logs/date/{date}` - Update log by date
-
-### Tasks
-- `GET /api/tasks` - List tasks (optional status filter)
-- `GET /api/tasks/{id}` - Get single task
-- `GET /api/tasks/stats` - Get task statistics
-- `POST /api/tasks` - Create task
-- `PUT /api/tasks/{id}` - Update task
-- `POST /api/tasks/reorder` - Reorder tasks
-- `DELETE /api/tasks/{id}` - Delete task
-- **Subtasks:**
-  - `POST /api/tasks/{task_id}/subtasks` - Create subtask
-  - `PUT /api/tasks/{task_id}/subtasks/{subtask_id}` - Update subtask
-  - `DELETE /api/tasks/{task_id}/subtasks/{subtask_id}` - Delete subtask
-  - `POST /api/tasks/{task_id}/subtasks/reorder` - Reorder subtasks
-
-### Notes
-- `GET /api/notes` - List notes (non-deleted)
-- `GET /api/notes/recent` - Get recent notes
-- `GET /api/notes/{id}` - Get single note
-- `GET /api/notes/{id}/breadcrumb` - Get note breadcrumb path
-- `POST /api/notes` - Create note
-- `PUT /api/notes/{id}` - Update note
-- `DELETE /api/notes/{id}` - Soft delete note
-- **Recycle Bin:**
-  - `GET /api/notes/deleted` - List deleted notes
-  - `POST /api/notes/{id}/restore` - Restore deleted note
-  - `DELETE /api/notes/{id}/permanent` - Permanently delete note
-  - `POST /api/notes/restore-bulk` - Bulk restore notes
-  - `POST /api/notes/delete-bulk` - Bulk permanent delete
-  - `POST /api/notes/empty-recycle-bin` - Empty entire recycle bin
-
-### Sections (Note Folders)
-- `GET /api/sections/tree` - Get hierarchical folder tree
-- `POST /api/sections` - Create folder
-- `PUT /api/sections/{id}` - Update folder
-- `DELETE /api/sections/{id}` - Delete folder
-
-### Snippets
-- `GET /api/snippets` - List snippets (with optional language/search filters)
-- `GET /api/snippets/{id}` - Get single snippet
-- `GET /api/snippets/languages` - Get supported languages
-- `POST /api/snippets` - Create snippet
-- `PUT /api/snippets/{id}` - Update snippet
-- `DELETE /api/snippets/{id}` - Delete snippet
-
-### Bookmarks
-- `GET /api/bookmarks` - List bookmarks (with optional search)
-- `GET /api/bookmarks/categories` - List bookmark categories
-- `POST /api/bookmarks` - Create bookmark
-- `PUT /api/bookmarks/{id}` - Update bookmark
-- `DELETE /api/bookmarks/{id}` - Delete bookmark
-- `POST /api/bookmarks/{id}/open` - Open bookmark (for local files)
-- **Categories:**
-  - `POST /api/bookmarks/categories` - Create category
-  - `PUT /api/bookmarks/categories/{id}` - Update category
-  - `DELETE /api/bookmarks/categories/{id}` - Delete category
-
-### Search
-- `GET /api/search?q={query}` - Global search across all entities
-- `GET /api/search/linkable` - Get linkable items for @ autocomplete
-
-## Design System
-
-### Colors
-```css
---background: #0F1117;       /* Main background */
---background-card: #151922;  /* Card background */
---background-elevated: #1A1F2E; /* Elevated surfaces */
---background-hover: #1C2230; /* Hover state */
---border: #252B3B;           /* Border color */
---text-primary: #E6E8EB;     /* Primary text */
---text-secondary: #9CA3AF;   /* Secondary text */
---text-muted: #6B7280;       /* Muted text */
---accent-blue: #3B82F6;      /* Primary accent */
---accent-amber: #F59E0B;     /* In Progress status */
---accent-green: #22C55E;     /* Done status */
---accent-red: #EF4444;       /* Destructive */
---accent-purple: #8B5CF6;    /* High priority */
+```
+MyTasker/
+├── frontend/                 # React + TypeScript frontend
+│   ├── src/
+│   │   ├── components/      # Reusable UI components
+│   │   ├── pages/           # Page components
+│   │   ├── hooks/           # Custom React hooks
+│   │   └── lib/             # API client & utilities
+│   └── src-tauri/           # Tauri desktop app
+│       ├── src/             # Rust code
+│       └── icons/           # App icons
+│
+├── backend/                  # FastAPI + SQLAlchemy backend
+│   └── app/
+│       ├── routers/         # API endpoints
+│       ├── models.py        # Database models
+│       └── schemas.py       # Pydantic schemas
+│
+├── screenshots/             # App screenshots
+├── docker-compose.yml       # Docker setup
+└── .github/workflows/       # CI/CD pipelines
 ```
 
-### Typography
-- Font: Inter (400, 500, 600, 700)
-- Code: JetBrains Mono
-- Base size: 16px
-- Secondary: 14px
-- Small: 12px
+---
 
-### Spacing
-- Page padding: 32px (p-8)
-- Card padding: 24px (p-6)
-- Section gap: 24px (gap-6)
-- Item gap: 12px (gap-3)
+## 🎨 Design System
 
-### Animations
-- Fade in: `animate-fade-in`
-- Scale in: `animate-scale-in`
-- Slide in: `animate-slide-in`
+### **Color Palette**
+```css
+--background: #0F1117;         /* Main background */
+--background-card: #151922;    /* Card background */
+--accent-blue: #3B82F6;        /* Primary accent */
+--accent-amber: #F59E0B;       /* In Progress */
+--accent-green: #22C55E;       /* Completed */
+--accent-red: #EF4444;         /* High priority */
+--accent-purple: #8B5CF6;      /* Notes/folders */
+```
 
-## Database Schema
+### **Typography**
+- **Font Family:** Inter (400, 500, 600, 700)
+- **Code Font:** JetBrains Mono
+- **Base Size:** 16px
 
-The app uses SQLite with the following main tables:
+---
+
+## 🗄️ Database Schema
+
+Built on SQLite with the following tables:
 - `daily_logs` - Daily journal entries
-- `tasks` - Task items with status and priority
-- `subtasks` - Nested subtasks under tasks
+- `tasks` - Task items with status & priority
+- `subtasks` - Nested subtasks
 - `notes` - Rich text notes with soft delete
 - `sections` - Hierarchical note folders
 - `snippets` - Code snippets with language metadata
 - `bookmarks` - Web and file bookmarks
 - `bookmark_categories` - Bookmark organization
 
-## Recent Updates
+---
 
-### Latest Features (January 2026)
-- ✅ Dashboard with real-time stats and recent activity
+## 🆕 Recent Updates
+
+### **v1.0.0 (January 2026)**
+- ✅ Desktop application with Tauri v2
+- ✅ Automated builds with GitHub Actions
+- ✅ Dashboard with real-time stats
 - ✅ Hierarchical note folders with drag-and-drop
 - ✅ Recycle Bin with bulk operations
 - ✅ Full-screen task popout view
 - ✅ Task table view with multiple display modes
-- ✅ System stats API for entity counts
-- ✅ Query invalidation for real-time UI updates
 - ✅ Bookmark categories with custom colors
 - ✅ Local file bookmark support
 
-## Contributing
+---
 
-This is a personal productivity tool, but suggestions and bug reports are welcome via GitHub Issues.
+## 📄 API Documentation
 
-## License
+Interactive API docs available at:
+- **Swagger UI:** `http://localhost:8000/docs`
+- **ReDoc:** `http://localhost:8000/redoc`
 
-MIT
+### **Key Endpoints**
+- `GET /api/system/stats` - System statistics
+- `GET /api/daily-logs/today` - Today's log
+- `GET /api/tasks` - List tasks
+- `GET /api/notes` - List notes
+- `GET /api/snippets` - List snippets
+- `GET /api/bookmarks` - List bookmarks
+- `GET /api/search?q={query}` - Global search
+
+See [API Documentation](docs/API.md) for complete endpoint reference.
 
 ---
 
-**Built with ❤️ for data engineers who love local-first apps**
+## 🤝 Contributing
+
+This is a personal productivity tool, but suggestions and bug reports are welcome!
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## 📜 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- Built with ❤️ for data engineers who love local-first apps
+- Inspired by modern productivity tools like Notion and Obsidian
+- Special thanks to the open-source community
+
+---
+
+<div align="center">
+
+**Star ⭐ this repo if you find it useful!**
+
+[Report Bug](https://github.com/Harics88/MyTasker/issues) • [Request Feature](https://github.com/Harics88/MyTasker/issues)
+
+Made with ❤️ by [Harics88](https://github.com/Harics88)
+
+</div>
