@@ -47,6 +47,11 @@ jobs:
           npm install
           npm install --save-optional @rollup/rollup-win32-x64-msvc
 
+      - name: Generate Tauri icons
+        working-directory: frontend
+        run: |
+          npx @tauri-apps/cli icon public/omnivault-logo.png
+          
       - name: Build frontend
         working-directory: frontend
         run: npm run build:nocheck
