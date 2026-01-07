@@ -1,4 +1,4 @@
-name: Build Portable Desktop App
+name: Build Portable Apps
 
 on:
   push:
@@ -12,6 +12,20 @@ permissions:
 jobs:
   build-windows-portable:
     runs-on: windows-latest
+    
+    strategy:
+      matrix:
+        variant:
+          - name: 'Desktop'
+            spec: 'omni_vault.spec'
+            folder: 'OmniVault'
+            output_name: 'OmniVault_Desktop'
+            description: 'Desktop app with GUI window (PyWebView)'
+          - name: 'Server'
+            spec: 'omni_vault_server.spec'
+            folder: 'OmniVault-Server'
+            output_name: 'OmniVault_Server'
+            description: 'Web server - access via browser at localhost:8000'
     
     steps:
       - name: Checkout repository
@@ -45,10 +59,10 @@ jobs:
         working-directory: frontend
         run: npm run build:nocheck
 
-      - name: Build PyInstaller executable
+      - name: Build ${{ matrix.variant.name }} executable
         working-directory: backend
         run: |
-          pyinstaller omni_vault.spec --clean --noconfirm
+          pyinstaller ${{ matrix.variant.spec }} --clean --noconfirm
 
       - name: Create portable package
         shell: powershell
@@ -57,19 +71,19 @@ jobs:
           if ($version -eq "") { $version = "dev" }
           
           # Create archive
-          Compress-Archive -Path backend/dist/OmniVault -DestinationPath "OmniVault_${version}_Portable.zip"
+          Compress-Archive -Path backend/dist/${{ matrix.variant.folder }} -DestinationPath "${{ matrix.variant.output_name }}_${version}_Portable.zip"
 
-      - name: Upload Windows Portable App
+      - name: Upload ${{ matrix.variant.name }} Portable App
         uses: actions/upload-artifact@v4
         with:
-          name: omni-vault-windows-portable
-          path: OmniVault_*_Portable.zip
+          name: ${{ matrix.variant.output_name }}-portable
+          path: ${{ matrix.variant.output_name }}_*_Portable.zip
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
         continue-on-error: true
         uses: softprops/action-gh-release@v1
         with:
-          files: OmniVault_*_Portable.zip
+          files: ${{ matrix.variant.output_name }}_*_Portable.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
