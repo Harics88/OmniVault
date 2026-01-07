@@ -33,9 +33,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
 
+      - name: Clean npm cache (fix rollup optional deps bug)
+        working-directory: frontend
+        shell: pwsh
+        run: |
+          if (Test-Path "package-lock.json") { Remove-Item "package-lock.json" -Force }
+          if (Test-Path "node_modules") { Remove-Item "node_modules" -Recurse -Force }
+          npm cache clean --force
+
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm install
+        run: |
+          npm install
+          npm install --save-optional @rollup/rollup-win32-x64-msvc
 
       - name: Build frontend
         working-directory: frontend
