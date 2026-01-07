@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { MoreVertical, Plus, Trash2, Edit2, FileText, Globe } from 'lucide-react';
+import { MoreVertical, Plus, Trash2, Edit2, Globe } from 'lucide-react';
 import type { Bookmark, BookmarkCategory } from '../types';
+import { getFileIcon } from '../utils/fileIcons';
 
 interface BookmarkCategoryCardProps {
     category: BookmarkCategory;
@@ -72,9 +73,10 @@ export default function BookmarkCategoryCard({
                     {bookmarks.map((bookmark) => (
                         <div key={bookmark.id} className="group relative flex items-center gap-2 px-2 py-1.5 hover:bg-background-hover rounded-md transition-colors cursor-pointer" onClick={() => onOpenBookmark(bookmark)}>
                             <div className="flex-shrink-0">
-                                {bookmark.is_file ? (
-                                    <FileText size={14} className="text-accent-amber" />
-                                ) : (
+                                {bookmark.is_file ? (() => {
+                                    const { icon: Icon, color } = getFileIcon(bookmark.url);
+                                    return <Icon size={14} className={color} />;
+                                })() : (
                                     <Globe size={14} className="text-accent-blue" />
                                 )}
                             </div>

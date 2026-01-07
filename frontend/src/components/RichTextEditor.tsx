@@ -25,13 +25,15 @@ import {
     Columns, Rows, Trash2, Highlighter, AlignLeft, AlignCenter, AlignRight,
     Minus, Search as SearchIcon, Palette, X, Replace, ChevronDown, Indent, Outdent
 } from 'lucide-react';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import LinkModal from './LinkModal';
 
 // Custom Extensions
 import SlashCommands from './Editor/SlashCommands/Commands';
 import suggestion from './Editor/SlashCommands/suggestion';
 import Mentions from './Editor/Mentions/Mentions';
 import mentionSuggestion from './Editor/Mentions/suggestion';
+import { Indent as IndentExtension } from './Editor/Extensions/Indent';
 
 // Create lowlight instance with common languages
 const lowlight = createLowlight(common);
@@ -100,7 +102,8 @@ const compressImage = (file: File): Promise<string> => {
 };
 
 export default function RichTextEditor({ content, onChange, placeholder = 'Add a description...', isEditable = true }: RichTextEditorProps) {
-    const [isEditingLink, setIsEditingLink] = useState(false);
+    const [showLinkModal, setShowLinkModal] = useState(false);
+    const [linkText, setLinkText] = useState('');
     const [linkUrl, setLinkUrl] = useState('');
     const [showSearch, setShowSearch] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -111,6 +114,7 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
         extensions: [
             StarterKit.configure({ heading: { levels: [1, 2, 3] }, codeBlock: false }),
             Underline,
+            IndentExtension,
             TaskList,
             TaskItem.configure({ nested: true }),
             CodeBlockLowlight.configure({ lowlight, defaultLanguage: 'plaintext' }),
@@ -142,50 +146,163 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
             },
             handlePaste: (view, event) => {
                 const html = event.clipboardData?.getData('text/html');
-                if (html) return false;
+                const text = event.clipboardData?.getData('text/plain');
+
+                // If it's an image, handle it
                 const items = Array.from(event.clipboardData?.items || []);
-                const imageItem = items.find(item => item.type.startsWith('image/'));
-                if (imageItem) {
-                    const file = imageItem.getAsFile();
-                    if (file) {
+                for (const item of items) {
+                    if (item.type.indexOf('image') === 0) {
                         event.preventDefault();
-                        compressImage(file).then(base64 => { if (base64 && editor) editor.chain().focus().setImage({ src: base64 }).run(); });
+                        const file = item.getAsFile();
+                        if (file) {
+                            compressImage(file).then(compressed => {
+                                const reader = new FileReader();
+                                reader.onload = (e) => {
+                                    const result = e.target?.result as string;
+                                    view.dispatch(view.state.tr.replaceSelectionWith(
+                                        view.state.schema.nodes.image.create({ src: result })
+                                    ));
+                                };
+                                reader.readAsDataURL(compressed);
+                            });
+                        }
                         return true;
                     }
                 }
-                const text = event.clipboardData?.getData('text/plain');
-                if (text && /^https?:\/\//.test(normalizeUrl(text)) && !view.state.selection.empty) {
-                    editor?.chain().focus().extendMarkRange('link').setLink({ href: normalizeUrl(text) }).run();
+
+                // If we have HTML, let Tiptap handle it (it might contain a link with a title)
+                if (html) return false;
+
+                // Handle plain text URLs
+                if (text && /^https?:\/\//.test(normalizeUrl(text))) {
+                    const normalized = normalizeUrl(text);
+                    if (view.state.selection.empty) {
+                        // Extract a "title" from the URL if possible (domain name)
+                        let title = text;
+                        try {
+                            const urlObj = new URL(normalized);
+                            title = urlObj.hostname.replace('www.', '');
+                        } catch (e) {
+                            title = text;
+                        }
+
+                        editor?.chain().focus().insertContent(`<a href="${normalized}">${title}</a> `).run();
+                    } else {
+                        editor?.chain().focus().extendMarkRange('link').setLink({ href: normalized }).run();
+                    }
                     return true;
                 }
                 return false;
             },
             handleClick: (view, pos, event) => {
                 const target = event.target as HTMLElement;
-                if (target.tagName === 'A' && event.ctrlKey) {
-                    const href = target.getAttribute('href');
-                    if (href) { window.open(normalizeUrl(href), '_blank', 'noopener,noreferrer'); return true; }
+                const link = target.closest('a');
+                if (link) {
+                    const href = link.getAttribute('href');
+                    const isCtrlOrMeta = event.ctrlKey || event.metaKey;
+
+                    // Open links on click if not in editable mode, OR if Ctrl/Cmd is held
+                    // editor instance from useEditor might not be available here yet, so we use view
+                    const isEditableView = view.getEditable(); // Check if view itself is editable
+                    if (href && (!isEditableView || isCtrlOrMeta)) {
+                        event.preventDefault();
+                        window.open(normalizeUrl(href), '_blank', 'noopener,noreferrer');
+                        return true;
+                    }
                 }
                 return false;
+            }
+        },
+        onSelectionUpdate: ({ editor }) => {
+            // If selection changes and we're not editing a link, reset URL/Text states
+            if (!editor.isActive('link') && !showLinkModal) {
+                setLinkUrl('');
+                setLinkText('');
             }
         }
     });
 
-    useEffect(() => { if (editor) editor.setEditable(isEditable); }, [editor, isEditable]);
-    useEffect(() => { if (editor && content !== editor.getHTML()) editor.commands.setContent(content); }, [content, editor]);
 
     const setLink = useCallback(() => {
         if (!editor) return;
+        const { from, to } = editor.state.selection;
+        const selectedText = editor.state.doc.textBetween(from, to, ' ');
+
+        // Set initial values and show modal
+        setLinkText(selectedText);
         setLinkUrl(editor.getAttributes('link').href || '');
-        setIsEditingLink(true);
+        setShowLinkModal(true);
+    }, [editor]);
+
+    const handleLinkSubmit = useCallback((url: string, text: string) => {
+        if (!editor) return;
+
+        // Normalize the URL
+        const normalizedUrl = !/^https?:\/\//i.test(url) && !/^mailto:/i.test(url)
+            ? `https://${url}`
+            : url;
+
+        const finalText = text || url;
+        const { from, to } = editor.state.selection;
+        const selectedText = editor.state.doc.textBetween(from, to, ' ');
+
+        if (selectedText) {
+            // Replace selected text with link
+            editor.chain().focus().insertContent({
+                type: 'text',
+                text: finalText,
+                marks: [{ type: 'link', attrs: { href: normalizedUrl } }]
+            }).run();
+        } else {
+            // No selection - insert the link
+            editor.chain().focus().insertContent([
+                {
+                    type: 'text',
+                    text: finalText,
+                    marks: [{ type: 'link', attrs: { href: normalizedUrl } }]
+                },
+                { type: 'text', text: ' ' }
+            ]).run();
+        }
     }, [editor]);
 
     const applyLink = useCallback(() => {
         if (!editor) return;
-        if (linkUrl === '') editor.chain().focus().extendMarkRange('link').unsetLink().run();
-        else editor.chain().focus().extendMarkRange('link').setLink({ href: normalizeUrl(linkUrl) }).run();
-        setIsEditingLink(false); setLinkUrl('');
-    }, [editor, linkUrl]);
+        if (linkUrl === '') {
+            editor.chain().focus().extendMarkRange('link').unsetLink().run();
+        } else {
+            const normalized = normalizeUrl(linkUrl);
+            const textToUse = linkText || linkUrl;
+
+            if (editor.state.selection.empty) {
+                // Insert brand new link
+                editor.chain().focus().insertContent([
+                    {
+                        type: 'text',
+                        text: textToUse,
+                        marks: [{ type: 'link', attrs: { href: normalized } }]
+                    },
+                    { type: 'text', text: ' ' }
+                ]).run();
+            } else {
+                // Replace selection with link if text changed, otherwise just set link
+                const { from, to } = editor.state.selection;
+                const currentText = editor.state.doc.textBetween(from, to, ' ');
+                if (linkText && linkText !== currentText) {
+                    editor.chain().focus().insertContent({
+                        type: 'text',
+                        text: linkText,
+                        marks: [{ type: 'link', attrs: { href: normalized } }]
+                    }).run();
+                } else {
+                    editor.chain().focus().extendMarkRange('link').setLink({ href: normalized }).run();
+                }
+            }
+        }
+        // Just clear the state, don't reference non-existent setIsEditingLink
+        setLinkUrl('');
+        setLinkText('');
+    }, [editor, linkUrl, linkText]);
 
     const addImage = useCallback(() => {
         if (!editor) return;
@@ -204,29 +321,33 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
         (window as any).find(searchQuery, false, false, true, false, true, false);
     };
 
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k' && editor?.isFocused) {
+                e.preventDefault();
+                setLink();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [editor, setLink]);
+
+    useEffect(() => { if (editor) editor.setEditable(isEditable); }, [editor, isEditable]);
+    useEffect(() => { if (editor && content !== editor.getHTML()) editor.commands.setContent(content); }, [content, editor]);
+
+    // Expose openLinkModal globally for slash command
+    useEffect(() => {
+        (window as any).openLinkModal = () => setLink();
+        return () => {
+            delete (window as any).openLinkModal;
+        };
+    }, [setLink]);
+
     if (!editor) return null;
 
     return (
         <div className="border border-border rounded-lg overflow-hidden bg-background flex flex-col h-full relative">
-            {/* Bubble Menus */}
-            <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }} shouldShow={({ editor }) => isEditable && editor.isActive('link')}>
-                <div className="flex items-center gap-1 p-2 bg-background-card border border-border rounded-lg shadow-elevated">
-                    {isEditingLink ? (
-                        <>
-                            <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' ? applyLink() : e.key === 'Escape' && setIsEditingLink(false)}
-                                placeholder="Enter URL..." className="px-2 py-1 text-sm bg-background border border-border rounded text-text-primary w-48 focus:outline-none" autoFocus />
-                            <button onClick={applyLink} className="px-2 py-1 text-xs bg-accent-green text-white rounded">Save</button>
-                        </>
-                    ) : (
-                        <div className="flex items-center gap-1">
-                            <span className="text-xs text-text-muted px-2 truncate max-w-[150px]">{editor.getAttributes('link').href}</span>
-                            <button onClick={() => window.open(normalizeUrl(editor.getAttributes('link').href), '_blank')} className="p-1.5 text-accent-blue"><ExternalLink size={14} /></button>
-                            <button onClick={() => setIsEditingLink(true)} className="p-1.5 text-text-muted"><Pencil size={14} /></button>
-                            <button onClick={() => editor.chain().focus().unsetLink().run()} className="p-1.5 text-accent-red"><Unlink size={14} /></button>
-                        </div>
-                    )}
-                </div>
-            </BubbleMenu>
 
             {/* Table Menu */}
             <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }} shouldShow={({ editor }) => isEditable && editor.isActive('table')}>
@@ -334,8 +455,30 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
 
                     <div className="w-px h-5 bg-border mx-1" />
 
-                    <ToolbarButton onClick={() => editor.chain().focus().sinkListItem('listItem').run()} disabled={!editor.can().sinkListItem('listItem')} title="Indent (List)"><Indent size={16} /></ToolbarButton>
-                    <ToolbarButton onClick={() => editor.chain().focus().liftListItem('listItem').run()} disabled={!editor.can().liftListItem('listItem')} title="Outdent (List)"><Outdent size={16} /></ToolbarButton>
+                    <ToolbarButton
+                        onClick={() => {
+                            if (editor.can().sinkListItem('listItem')) {
+                                editor.chain().focus().sinkListItem('listItem').run();
+                            } else {
+                                (editor.commands as any).indent();
+                            }
+                        }}
+                        title="Indent"
+                    >
+                        <Indent size={16} />
+                    </ToolbarButton>
+                    <ToolbarButton
+                        onClick={() => {
+                            if (editor.can().liftListItem('listItem')) {
+                                editor.chain().focus().liftListItem('listItem').run();
+                            } else {
+                                (editor.commands as any).outdent();
+                            }
+                        }}
+                        title="Outdent"
+                    >
+                        <Outdent size={16} />
+                    </ToolbarButton>
 
                     <div className="w-px h-5 bg-border mx-1" />
 
@@ -382,6 +525,15 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
             )}
 
             <EditorContent editor={editor} className="flex-1 overflow-y-auto min-h-0 bg-background" />
+
+            {/* Link Modal */}
+            <LinkModal
+                isOpen={showLinkModal}
+                onClose={() => setShowLinkModal(false)}
+                onSubmit={handleLinkSubmit}
+                initialText={linkText}
+                initialUrl={linkUrl}
+            />
         </div>
     );
 }

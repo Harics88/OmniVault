@@ -272,7 +272,7 @@ export default function TaskPanel({
                                 {isEditing ? (
                                     <div className="relative min-h-[1.5rem] flex items-center cursor-pointer" onClick={() => dueDateRef.current?.showPicker()}>
                                         <span className="text-text-primary pointer-events-none">
-                                            {editedTask.due_date ? format(new Date(editedTask.due_date), 'MMM d, yyyy, h:mm a') : 'Set due date'}
+                                            {editedTask.due_date ? format(new Date(editedTask.due_date), 'MMM d, yyyy') : 'Set due date'}
                                         </span>
                                         <input
                                             ref={dueDateRef}
@@ -284,7 +284,7 @@ export default function TaskPanel({
                                     </div>
                                 ) : (
                                     <span className="font-medium">
-                                        {task.due_date ? format(new Date(task.due_date), 'MMM d, yyyy, h:mm a') : 'Not set'}
+                                        {task.due_date ? format(new Date(task.due_date), 'MMM d, yyyy') : 'Not set'}
                                     </span>
                                 )}
                             </div>
@@ -300,7 +300,7 @@ export default function TaskPanel({
                                     {isEditing ? (
                                         <div className="relative min-h-[1.5rem] flex items-center cursor-pointer" onClick={() => startedAtRef.current?.showPicker()}>
                                             <span className="text-text-primary pointer-events-none">
-                                                {editedTask.started_at ? format(new Date(editedTask.started_at), 'MMM d, yyyy, h:mm a') : 'Not started'}
+                                                {editedTask.started_at ? format(new Date(editedTask.started_at), 'MMM d, yyyy') : 'Not started'}
                                             </span>
                                             <input
                                                 ref={startedAtRef}
@@ -312,7 +312,7 @@ export default function TaskPanel({
                                         </div>
                                     ) : (
                                         <span className="font-medium">
-                                            {task.started_at ? format(new Date(task.started_at), 'MMM d, yyyy, h:mm a') : 'Not started'}
+                                            {task.started_at ? format(new Date(task.started_at), 'MMM d, yyyy') : 'Not started'}
                                         </span>
                                     )}
                                 </div>
@@ -326,7 +326,7 @@ export default function TaskPanel({
                                     {isEditing ? (
                                         <div className="relative min-h-[1.5rem] flex items-center cursor-pointer" onClick={() => completedAtRef.current?.showPicker()}>
                                             <span className="text-text-primary pointer-events-none">
-                                                {editedTask.completed_at ? format(new Date(editedTask.completed_at), 'MMM d, yyyy, h:mm a') : 'Not completed'}
+                                                {editedTask.completed_at ? format(new Date(editedTask.completed_at), 'MMM d, yyyy') : 'Not completed'}
                                             </span>
                                             <input
                                                 ref={completedAtRef}
@@ -338,7 +338,7 @@ export default function TaskPanel({
                                         </div>
                                     ) : (
                                         <span className="font-medium">
-                                            {task.completed_at ? format(new Date(task.completed_at), 'MMM d, yyyy, h:mm a') : 'Not completed'}
+                                            {task.completed_at ? format(new Date(task.completed_at), 'MMM d, yyyy') : 'Not completed'}
                                         </span>
                                     )}
                                 </div>

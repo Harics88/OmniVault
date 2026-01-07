@@ -52,14 +52,9 @@ export default function Sidebar({ onSearchClick }: SidebarProps) {
             {/* Logo */}
             <div className="p-4 border-b border-border">
                 <div className="flex items-center gap-3">
-                    <div className="relative w-8 h-8 flex items-center justify-center">
-                        <div className="absolute inset-0 bg-gradient-to-br from-accent-blue to-cyan-500 rounded-lg transform rotate-3"></div>
-                        <div className="absolute inset-0 bg-background-card border border-accent-blue/30 rounded-lg flex items-center justify-center transform -rotate-2">
-                            <Check className="text-accent-blue" size={20} strokeWidth={3} />
-                        </div>
-                    </div>
-                    <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-text-primary to-text-secondary">
-                        MyTasker
+                    <img src="/omnivault-logo.png" alt="Omni Vault Logo" className="w-8 h-8 rounded-lg shadow-sm" />
+                    <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-500">
+                        Omni Vault
                     </span>
                 </div>
             </div>

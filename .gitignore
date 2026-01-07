@@ -15,6 +15,11 @@ standalone/dist/
 !standalone/dist/MyTasker.exe
 MyTasker-Standalone/
 
+# Tauri
+frontend/src-tauri/target/
+frontend/src-tauri/Cargo.lock
+frontend/src-tauri/WixTools
+
 # Database
 *.db
 data/*.db

@@ -99,7 +99,7 @@ export default function TaskTableView({
                     className="flex items-center gap-4 px-6 py-3 bg-background-elevated/40 hover:bg-background-elevated/60 transition-all cursor-pointer border-y border-border/20 sticky top-[48px] z-10 backdrop-blur-md rounded-t-xl"
                     onClick={() => toggleSection(status)}
                 >
-                    <div className="flex-1 min-w-[300px] flex items-center gap-3">
+                    <div className="flex-1 min-w-[400px] max-w-[400px] flex items-center gap-3">
                         <div className={`p-1 rounded-lg ${isArchived ? 'bg-background-elevated' : config.bg} transition-colors`}>
                             {isCollapsed ? <ChevronRight size={14} className="text-text-muted shrink-0" /> : <ChevronDown size={14} className="text-text-muted shrink-0" />}
                         </div>
@@ -130,10 +130,13 @@ export default function TaskTableView({
                                     onClick={() => onTaskClick(task)}
                                     className={`flex items-center gap-4 px-6 py-3 transition-all group cursor-pointer hover:bg-background-elevated/40 relative active:scale-[0.998]`}
                                 >
-                                    <div className="flex-1 min-w-[300px] overflow-hidden">
+                                    <div className="flex-1 min-w-[400px] max-w-[400px] overflow-hidden">
                                         <div className="flex items-center gap-3 pl-2">
-                                            <span className={`text-sm font-medium transition-all ${task.status === 'done' ? 'text-text-muted/60 line-through' : 'text-text-primary group-hover:text-accent-blue'}`}>
-                                                {task.title}
+                                            <span
+                                                className={`text-sm font-medium transition-all truncate ${task.status === 'done' ? 'text-text-muted/60 line-through' : 'text-text-primary group-hover:text-accent-blue'}`}
+                                                title={task.title.length > 50 ? task.title : undefined}
+                                            >
+                                                {task.title.length > 50 ? task.title.substring(0, 50) + '...' : task.title}
                                             </span>
                                             {task.subtasks?.length > 0 && (
                                                 <div className="flex items-center gap-1 bg-background-elevated/50 px-2 py-0.5 rounded-md border border-border/30 shadow-sm shrink-0">
@@ -157,17 +160,17 @@ export default function TaskTableView({
                                     {/* Dates */}
                                     <div className="w-48 flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors">
                                         <Calendar size={12} className="opacity-40" />
-                                        {task.due_date ? format(new Date(task.due_date), 'MMM d, yyyy · h:mm a') : <span className="opacity-20">No due date</span>}
+                                        {task.due_date ? format(new Date(task.due_date), 'MMM d, yyyy') : <span className="opacity-20">No due date</span>}
                                     </div>
 
                                     <div className="w-48 flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors">
                                         <Clock size={12} className="opacity-40" />
-                                        {task.started_at ? format(new Date(task.started_at), 'MMM d, yyyy · h:mm a') : <span className="opacity-20">Not started</span>}
+                                        {task.started_at ? format(new Date(task.started_at), 'MMM d, yyyy') : <span className="opacity-20">Not started</span>}
                                     </div>
 
                                     <div className="w-48 flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors">
                                         <Check size={12} className="opacity-40" />
-                                        {task.completed_at ? format(new Date(task.completed_at), 'MMM d, yyyy · h:mm a') : <span className="opacity-20">Unfinished</span>}
+                                        {task.completed_at ? format(new Date(task.completed_at), 'MMM d, yyyy') : <span className="opacity-20">Unfinished</span>}
                                     </div>
 
                                     {/* Status Pill */}
@@ -214,7 +217,7 @@ export default function TaskTableView({
                 <div className="min-w-max">
                     {/* Main Table Header */}
                     <div className="flex items-center gap-4 px-6 py-4 bg-background-card/80 border-b border-border/50 text-[10px] font-black text-text-muted uppercase tracking-[0.25em] sticky top-0 z-20 shrink-0 backdrop-blur-xl">
-                        <div className="flex-1 min-w-[300px] flex items-center gap-2">
+                        <div className="flex-1 min-w-[400px] max-w-[400px] flex items-center gap-2">
                             <span>Title / Objective</span>
                         </div>
                         <div className="w-24 text-center shrink-0">Priority</div>

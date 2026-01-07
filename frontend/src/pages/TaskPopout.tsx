@@ -369,7 +369,7 @@ export default function TaskPopout() {
                                 {isEditing ? (
                                     <div className="relative min-h-[1.5rem] flex items-center cursor-pointer" onClick={() => dueDateRef.current?.showPicker()}>
                                         <span className="text-text-primary pointer-events-none">
-                                            {displayTask.due_date ? format(new Date(displayTask.due_date), 'MMM d, yyyy, h:mm a') : 'Set due date'}
+                                            {displayTask.due_date ? format(new Date(displayTask.due_date), 'MMM d, yyyy') : 'Set due date'}
                                         </span>
                                         <input
                                             ref={dueDateRef}
@@ -380,7 +380,7 @@ export default function TaskPopout() {
                                         />
                                     </div>
                                 ) : (
-                                    <div>{displayTask.due_date ? format(new Date(displayTask.due_date), 'MMM d, yyyy, h:mm a') : 'Not set'}</div>
+                                    <div>{displayTask.due_date ? format(new Date(displayTask.due_date), 'MMM d, yyyy') : 'Not set'}</div>
                                 )}
                             </div>
                         </div>
@@ -392,7 +392,7 @@ export default function TaskPopout() {
                                 {isEditing ? (
                                     <div className="relative min-h-[1.5rem] flex items-center cursor-pointer" onClick={() => startedAtRef.current?.showPicker()}>
                                         <span className="text-text-primary pointer-events-none">
-                                            {displayTask.started_at ? format(new Date(displayTask.started_at), 'MMM d, yyyy, h:mm a') : 'Not started'}
+                                            {displayTask.started_at ? format(new Date(displayTask.started_at), 'MMM d, yyyy') : 'Not started'}
                                         </span>
                                         <input
                                             ref={startedAtRef}
@@ -403,7 +403,7 @@ export default function TaskPopout() {
                                         />
                                     </div>
                                 ) : (
-                                    <div>{displayTask.started_at ? format(new Date(displayTask.started_at), 'MMM d, yyyy, h:mm a') : 'Not started'}</div>
+                                    <div>{displayTask.started_at ? format(new Date(displayTask.started_at), 'MMM d, yyyy') : 'Not started'}</div>
                                 )}
                             </div>
                         </div>
@@ -415,7 +415,7 @@ export default function TaskPopout() {
                                 {isEditing ? (
                                     <div className="relative min-h-[1.5rem] flex items-center cursor-pointer" onClick={() => completedAtRef.current?.showPicker()}>
                                         <span className="text-text-primary pointer-events-none">
-                                            {displayTask.completed_at ? format(new Date(displayTask.completed_at), 'MMM d, yyyy, h:mm a') : 'Not completed'}
+                                            {displayTask.completed_at ? format(new Date(displayTask.completed_at), 'MMM d, yyyy') : 'Not completed'}
                                         </span>
                                         <input
                                             ref={completedAtRef}
@@ -426,7 +426,7 @@ export default function TaskPopout() {
                                         />
                                     </div>
                                 ) : (
-                                    <div>{displayTask.completed_at ? format(new Date(displayTask.completed_at), 'MMM d, yyyy, h:mm a') : 'Not completed'}</div>
+                                    <div>{displayTask.completed_at ? format(new Date(displayTask.completed_at), 'MMM d, yyyy') : 'Not completed'}</div>
                                 )}
                             </div>
                         </div>

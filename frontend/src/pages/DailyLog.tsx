@@ -195,7 +195,7 @@ export default function DailyLog() {
             <header className="sticky top-0 z-10 bg-background border-b border-border px-8 py-4">
                 <div className="flex items-center justify-between max-w-4xl mx-auto">
                     <div className="flex items-center gap-4">
-                        <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
+                        <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2 whitespace-nowrap shrink-0">
                             <CalendarIcon size={24} className="text-accent-blue" />
                             Daily Log
                         </h1>
@@ -313,25 +313,27 @@ export default function DailyLog() {
                     </div>
 
                     {/* Save Status */}
-                    <div className="flex items-center gap-2 text-sm">
-                        {isSaving ? (
-                            <>
-                                <Loader2 size={14} className="animate-spin text-accent-blue" />
-                                <span className="text-text-muted">Saving...</span>
-                            </>
-                        ) : lastSaved ? (
-                            <>
-                                <Save size={14} className="text-accent-green" />
-                                <span className="text-text-muted">
-                                    Saved {format(lastSaved, 'h:mm a')}
-                                </span>
-                            </>
-                        ) : (
-                            <>
-                                <Clock size={14} className="text-text-muted" />
-                                <span className="text-text-muted">Auto-save enabled</span>
-                            </>
-                        )}
+                    <div className="flex items-center gap-3 text-sm shrink-0 ml-4">
+                        <div className="flex items-center gap-2 whitespace-nowrap min-w-[150px] justify-end">
+                            {isSaving ? (
+                                <>
+                                    <Loader2 size={14} className="animate-spin text-accent-blue" />
+                                    <span className="text-text-muted">Saving...</span>
+                                </>
+                            ) : lastSaved ? (
+                                <>
+                                    <Save size={14} className="text-accent-green" />
+                                    <span className="text-text-muted">
+                                        Saved {format(lastSaved, 'h:mm a')}
+                                    </span>
+                                </>
+                            ) : (
+                                <>
+                                    <Clock size={14} className="text-text-muted" />
+                                    <span className="text-text-muted">Auto-save enabled</span>
+                                </>
+                            )}
+                        </div>
 
                         {/* Edit/Save Toggle */}
                         {!isEditable ? (
@@ -340,24 +342,24 @@ export default function DailyLog() {
                                     originalContentRef.current = content;
                                     setIsEditable(true);
                                 }}
-                                className="flex items-center gap-2 px-3 py-1.5 bg-accent-blue text-white rounded-md hover:bg-accent-blue/90 transition-colors ml-4"
+                                className="flex items-center gap-2 px-4 py-2 bg-accent-blue text-white rounded-lg hover:bg-accent-blue/90 transition-all font-medium whitespace-nowrap shadow-sm active:scale-95"
                             >
-                                <Edit size={14} />
+                                <Edit size={16} />
                                 <span>Edit Log</span>
                             </button>
                         ) : (
-                            <div className="flex items-center gap-2 ml-4">
+                            <div className="flex items-center gap-2">
                                 <button
                                     onClick={handleCancel}
-                                    className="px-3 py-1.5 text-text-muted hover:text-text-primary hover:bg-background-hover rounded-md transition-colors"
+                                    className="px-4 py-2 text-text-muted hover:text-text-primary hover:bg-background-hover rounded-lg transition-colors font-medium whitespace-nowrap"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleSave}
-                                    className="flex items-center gap-2 px-3 py-1.5 bg-accent-green text-white rounded-md hover:bg-accent-green/90 transition-colors"
+                                    className="flex items-center gap-2 px-4 py-2 bg-accent-green text-white rounded-lg hover:bg-accent-green/90 transition-all font-medium whitespace-nowrap shadow-sm active:scale-95"
                                 >
-                                    <Check size={14} />
+                                    <Check size={16} />
                                     <span>Save & Done</span>
                                 </button>
                             </div>

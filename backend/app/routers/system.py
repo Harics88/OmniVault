@@ -11,14 +11,30 @@ from app.models import Task, Note, Snippet, Bookmark
 @router.get("/stats")
 async def get_system_stats(db: AsyncSession = Depends(get_db)):
     """Get system stats like database size and object counts"""
-    db_path = DATABASE_URL.replace("sqlite+aiosqlite:///", "").replace("sqlite:///", "")
-    actual_path = "/app/data/mytasker.db"
-    if not os.path.exists(actual_path):
-        actual_path = db_path
+    database_url = DATABASE_URL
+    if database_url.startswith("sqlite+aiosqlite:///"):
+        db_path = database_url.replace("sqlite+aiosqlite:///", "")
+    elif database_url.startswith("sqlite:///"):
+        db_path = database_url.replace("sqlite:///", "")
+    else:
+        db_path = "mytasker.db" # Fallback
+
+    # Try different possible paths
+    possible_paths = [
+        db_path,
+        os.path.join(os.getcwd(), db_path),
+        os.path.join(os.getcwd(), "backend", db_path),
+        "/app/data/mytasker.db",
+        "data/mytasker.db"
+    ]
     
     size_bytes = 0
-    if os.path.exists(actual_path):
-        size_bytes = os.path.getsize(actual_path)
+    actual_path = None
+    for path in possible_paths:
+        if os.path.exists(path) and os.path.isfile(path):
+            actual_path = path
+            size_bytes = os.path.getsize(path)
+            break
 
     # Entity counts
     task_count = await db.scalar(select(func.count()).select_from(Task))

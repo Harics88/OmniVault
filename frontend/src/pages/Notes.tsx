@@ -843,7 +843,6 @@ function NoteEditor({
     const [content, setContent] = useState(note.content);
     const [icon, setIcon] = useState(note.icon || '📄');
     const [showIconPicker, setShowIconPicker] = useState(false);
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showFolderPicker, setShowFolderPicker] = useState(false);
     const [selectedFolderId, setSelectedFolderId] = useState<number | null>(note.section_id || null);
     const navigate = useNavigate();
@@ -1033,9 +1032,8 @@ function NoteEditor({
                         <Pin size={18} />
                     </button>
 
-                    {/* Delete Button */}
                     <button
-                        onClick={() => setShowDeleteConfirm(true)}
+                        onClick={onDelete}
                         className="p-2 text-accent-red hover:bg-accent-red/10 rounded-lg transition-colors"
                     >
                         <Trash2 size={18} />
@@ -1105,14 +1103,6 @@ function NoteEditor({
                     </div>
                 </div>
             </div>
-
-            <ConfirmModal
-                isOpen={showDeleteConfirm}
-                onClose={() => setShowDeleteConfirm(false)}
-                onConfirm={onDelete}
-                title="Delete Note"
-                message="Are you sure you want to delete this note? This action cannot be undone."
-            />
         </>
     );
 }

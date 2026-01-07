@@ -3,7 +3,7 @@ import tippy from 'tippy.js';
 import {
     Heading1, Heading2, Heading3,
     List, ListOrdered, CheckSquare,
-    Table, Code, Quote, Image as ImageIcon
+    Table, Code, Quote, Image as ImageIcon, Link as LinkIcon
 } from 'lucide-react';
 import React from 'react';
 import CommandList from './CommandList';
@@ -94,10 +94,23 @@ export default {
                     }
                 },
             },
+            {
+                title: 'Hyperlink',
+                description: 'Add a web link',
+                icon: <LinkIcon size={16} />,
+                command: ({ editor, range }: any) => {
+                    editor.chain().focus().deleteRange(range).run();
+                    // Trigger the link modal by calling the setEditing function
+                    // This will be passed from the RichTextEditor component
+                    if (window.openLinkModal) {
+                        window.openLinkModal();
+                    }
+                },
+            },
         ].filter(item =>
             item.title.toLowerCase().includes(query.toLowerCase()) ||
             item.description.toLowerCase().includes(query.toLowerCase())
-        ).slice(0, 10);
+        );
     },
 
     render: () => {

@@ -58,7 +58,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
     useEffect(() => {
         const searchItems = async () => {
-            if (query.length < 1) {
+            if (query.length < 2) {
                 setResults([]);
                 return;
             }
@@ -75,7 +75,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
             }
         };
 
-        const timer = setTimeout(searchItems, 200);
+        const timer = setTimeout(searchItems, 300);
         return () => clearTimeout(timer);
     }, [query]);
 

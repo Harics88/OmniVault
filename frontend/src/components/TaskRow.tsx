@@ -68,7 +68,7 @@ export default function TaskRow({ task, onClick, onStatusChange, onDelete, onEdi
             <div className={`flex items-center gap-1.5 ${isOverdue ? 'text-rose-500' : 'text-text-muted'} group/date`}>
                 <Calendar size={12} className="opacity-60 group-hover/date:opacity-100 transition-opacity" />
                 <span className="text-xs font-medium">
-                    {format(dateObj, 'MMM d, yyyy, h:mm a')}
+                    {format(dateObj, 'MMM d, yyyy')}
                 </span>
             </div>
         );
@@ -77,35 +77,32 @@ export default function TaskRow({ task, onClick, onStatusChange, onDelete, onEdi
     return (
         <div
             onClick={() => onClick(task)}
-            className={`group relative flex items-center gap-4 p-4 bg-background-card hover:bg-background-hover border-b border-border last:border-0 transition-all cursor-pointer ${isMuted ? 'opacity-50' : ''}`}
+            className={`group relative flex items-center gap-2 p-4 bg-background-card hover:bg-background-hover border-b border-border last:border-0 transition-all cursor-pointer ${isMuted ? 'opacity-50' : ''}`}
         >
-            {/* Left Indicator Strip */}
-            <div className={`absolute left-0 top-0 bottom-0 w-1 ${indicatorColor}`} />
-
             {/* Title Section */}
-            <div className="flex-1 min-w-0 ml-2">
-                <h4 className={`font-medium truncate ${statusKey === 'DONE' ? 'text-text-muted line-through' : 'text-text-primary'}`}>
-                    {task.title}
+            <div className="flex-1 min-w-[400px] max-w-[400px]">
+                <h4 className={`m-0 font-medium truncate ${statusKey === 'DONE' ? 'text-text-muted line-through' : 'text-text-primary'}`} title={task.title.length > 50 ? task.title : undefined}>
+                    {task.title.length > 50 ? task.title.substring(0, 50) + '...' : task.title}
                 </h4>
             </div>
 
             {/* Due Date */}
-            <div className="w-48 flex-shrink-0">
+            <div className="w-32 flex-shrink-0">
                 <DateDisplay label="Due" dateValue={task.due_date} status={statusKey} />
             </div>
 
             {/* Started At */}
-            <div className="w-48 flex-shrink-0">
+            <div className="w-32 flex-shrink-0">
                 <DateDisplay label="Started" dateValue={task.started_at} />
             </div>
 
             {/* Completed At */}
-            <div className="w-48 flex-shrink-0">
+            <div className="w-32 flex-shrink-0">
                 <DateDisplay label="Completed" dateValue={task.completed_at} />
             </div>
 
             {/* Status Badge */}
-            <div className="w-32 flex-shrink-0">
+            <div className="w-28 flex-shrink-0">
                 <button
                     onClick={handleStatusClick}
                     className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1.5 w-fit transition-all ${config.bg} ${config.text} ${config.border} hover:brightness-110 active:scale-95`}
@@ -127,7 +124,7 @@ export default function TaskRow({ task, onClick, onStatusChange, onDelete, onEdi
             </div>
 
             {/* Progress */}
-            <div className="w-32 flex-shrink-0 flex items-center">
+            <div className="w-24 flex-shrink-0 flex items-center">
                 <div className="flex-1 h-2 bg-background-elevated/50 rounded-full overflow-hidden border border-border/10">
                     <div
                         className={`h-full rounded-full transition-all duration-700 ease-out shadow-sm ${progress === 100 ? 'bg-emerald-500' : 'bg-blue-400'
@@ -138,7 +135,7 @@ export default function TaskRow({ task, onClick, onStatusChange, onDelete, onEdi
             </div>
 
             {/* Actions */}
-            <div className="w-20 flex-shrink-0 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="w-16 flex-shrink-0 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                     onClick={(e) => { e.stopPropagation(); onEditClick(task); }}
                     className="p-1.5 hover:bg-blue-500/10 hover:text-blue-400 rounded-lg text-text-muted transition-colors"
@@ -154,6 +151,9 @@ export default function TaskRow({ task, onClick, onStatusChange, onDelete, onEdi
                     <Trash2 size={16} />
                 </button>
             </div>
+
+            {/* Left Indicator Strip - Placed at end to avoid flex gap boundary issues */}
+            <div className={`absolute left-0 top-0 bottom-0 w-1 ${indicatorColor}`} />
         </div>
     );
 }

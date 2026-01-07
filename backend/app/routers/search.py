@@ -16,7 +16,7 @@ router = APIRouter()
 
 @router.get("/", response_model=SearchResponse)
 async def global_search(
-    q: str = Query(..., min_length=1, description="Search query"),
+    q: str = Query(..., min_length=2, description="Search query"),
     limit: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db)
 ):

@@ -108,7 +108,7 @@ export default function TaskCard({ task, onClick, onStatusChange, isDragging, is
                         {task.due_date && (
                             <span className={`flex items-center gap-1 text-xs ${getDueDateColor()}`}>
                                 <Calendar size={12} />
-                                {task.due_date ? format(new Date(task.due_date), 'MMM d, yyyy, h:mm a') : '--'}
+                                {task.due_date ? format(new Date(task.due_date), 'MMM d, yyyy') : '--'}
                             </span>
                         )}
                     </div>

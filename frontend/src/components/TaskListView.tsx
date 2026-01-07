@@ -30,15 +30,15 @@ export default function TaskListView({
     const history = recentHistory || (!hasPartitionedData ? tasks.filter(t => (t.status || '').toLowerCase() === 'done') : []);
 
     const TaskHeader = () => (
-        <div className="flex items-center gap-4 px-4 py-3 bg-background-elevated/50 border-b border-border text-xs font-semibold text-text-muted uppercase tracking-wider">
-            <div className="flex-1 ml-2">Task</div>
-            <div className="w-48">Due Date</div>
-            <div className="w-48">Started</div>
-            <div className="w-48">Completed</div>
-            <div className="w-32">Status</div>
-            <div className="w-20 text-center">Priority</div>
-            <div className="w-32">Progress</div>
-            <div className="w-20"></div>
+        <div className="flex items-center gap-2 px-4 py-3 bg-background-elevated/50 border-b border-border text-xs font-semibold text-text-muted uppercase tracking-wider">
+            <div className="flex-1 min-w-[400px] max-w-[400px] flex-shrink-0">Task Name</div>
+            <div className="w-32 flex-shrink-0">Due Date</div>
+            <div className="w-32 flex-shrink-0">Started</div>
+            <div className="w-32 flex-shrink-0">Completed</div>
+            <div className="w-28 flex-shrink-0">Status</div>
+            <div className="w-20 flex-shrink-0 text-center">Priority</div>
+            <div className="w-24 flex-shrink-0">Progress</div>
+            <div className="w-16 flex-shrink-0"></div>
         </div>
     );
 

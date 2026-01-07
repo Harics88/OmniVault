@@ -20,8 +20,8 @@ export default function Home() {
 
     // Fetch data
     const { data: todayLog } = useQuery({
-        queryKey: ['daily-log', 'today'],
-        queryFn: dailyLogsApi.getToday,
+        queryKey: ['daily-log', format(today, 'yyyy-MM-dd')],
+        queryFn: () => dailyLogsApi.getByDate(format(today, 'yyyy-MM-dd')),
     });
 
     const { data: tasks = [] } = useQuery({
@@ -128,7 +128,7 @@ export default function Home() {
                         ) : (
                             <div className="flex flex-col items-center justify-center h-40 text-text-muted">
                                 <Calendar size={32} className="mb-3 opacity-50" />
-                                <p className="mb-1">No entries yet for today</p>
+                                <p className="mb-1">No entries found for {format(today, 'MMM d')}</p>
                                 <p className="text-xs text-text-muted mb-3">Start documenting your day</p>
                                 <Link
                                     to="/daily-log"
@@ -203,8 +203,11 @@ export default function Home() {
                                     <h4 className="font-medium text-text-primary truncate group-hover:text-accent-blue transition-colors">
                                         {note.title}
                                     </h4>
-                                    <p className="text-xs text-text-muted mt-1">
-                                        {formatSafeDate(note.updated_at)}
+                                    <p className="text-sm text-text-muted/70 line-clamp-2 mt-1 mb-2">
+                                        {note.content ? note.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 100) : 'No content'}
+                                    </p>
+                                    <p className="text-[10px] text-text-muted mt-auto pt-1 border-t border-border/10">
+                                        Last modified {formatSafeDate(note.updated_at)}
                                     </p>
                                 </Link>
                             ))
@@ -280,12 +283,16 @@ export default function Home() {
                     <div className="space-y-2">
                         {recentBookmarks.length > 0 ? (
                             recentBookmarks.slice(0, 4).map((bookmark) => (
-                                <a
+                                <button
                                     key={bookmark.id}
-                                    href={ensureAbsoluteUrl(bookmark.url)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="card card-hover p-3 block group"
+                                    onClick={() => {
+                                        if (bookmark.is_file) {
+                                            bookmarksApi.open(bookmark.id);
+                                        } else {
+                                            window.open(ensureAbsoluteUrl(bookmark.url), '_blank', 'noopener,noreferrer');
+                                        }
+                                    }}
+                                    className="card card-hover p-3 block group w-full text-left"
                                 >
                                     <h4 className="font-medium text-text-primary truncate group-hover:text-accent-blue transition-colors">
                                         {bookmark.title}
@@ -293,7 +300,7 @@ export default function Home() {
                                     <p className="text-xs text-text-muted mt-1 truncate">
                                         {bookmark.url}
                                     </p>
-                                </a>
+                                </button>
                             ))
                         ) : (
                             <div className="card p-6 text-center text-text-muted">
