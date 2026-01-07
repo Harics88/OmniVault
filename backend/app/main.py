@@ -5,18 +5,30 @@ A local-first productivity app for data engineers
 
 import logging
 import time
+import sys
+import os
 from datetime import datetime
+from pathlib import Path
 from typing import Callable
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
 from sqlalchemy import text
 
 from app.database import engine, Base, get_db
 from app.routers import daily_logs, tasks, notes, snippets, bookmarks, search, sections, system
+
+# Determine frontend static files location
+if getattr(sys, 'frozen', False):
+    # Running as PyInstaller bundle
+    FRONTEND_DIR = Path(sys._MEIPASS) / 'frontend_dist'
+else:
+    # Running as script (development)
+    FRONTEND_DIR = Path(__file__).parent.parent / 'frontend' / 'dist'
 
 # Configure structured logging
 logging.basicConfig(
@@ -215,3 +227,45 @@ async def readiness_check():
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={"status": "not ready", "error": str(e)}
         )
+
+
+# Mount static files (for assets like CSS, JS, images)
+if FRONTEND_DIR.exists():
+    logger.info(f"Serving frontend from: {FRONTEND_DIR}")
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="static")
+else:
+    logger.warning(f"Frontend directory not found: {FRONTEND_DIR}")
+
+
+# Serve frontend for all non-API routes (SPA fallback)
+@app.get("/{full_path:path}")
+async def serve_frontend(full_path: str):
+    """
+    Serve the React frontend for all non-API routes.
+    This enables client-side routing in the SPA.
+    """
+    # Skip API routes
+    if full_path.startswith("api/"):
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"error": "Not Found", "path": f"/{full_path}"}
+        )
+    
+    # Check if it's a request for a specific file
+    requested_file = FRONTEND_DIR / full_path
+    if requested_file.is_file():
+        return FileResponse(requested_file)
+    
+    # Default to index.html for client-side routing
+    index_file = FRONTEND_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    
+    # Fallback if index.html doesn't exist
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={
+            "error": "Frontend not found",
+            "message": "Please build the frontend first: cd frontend && npm run build"
+        }
+    )
