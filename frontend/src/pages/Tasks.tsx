@@ -60,6 +60,17 @@ export default function Tasks() {
     });
     const [showArchived, setShowArchived] = useState(false);
     const [openInEditMode, setOpenInEditMode] = useState(false);
+    const [enablePersonal, setEnablePersonal] = useState(() => localStorage.getItem('enablePersonalTasks') === 'true');
+    const [personalFilter, setPersonalFilter] = useState<'all' | 'work' | 'personal'>('work');
+
+    // Re-check settings on storage change (e.g. from Settings tab)
+    useEffect(() => {
+        const handleStorageChange = () => {
+            setEnablePersonal(localStorage.getItem('enablePersonalTasks') === 'true');
+        };
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, []);
 
     useEffect(() => {
         localStorage.setItem('taskViewMode', viewMode);
@@ -73,12 +84,23 @@ export default function Tasks() {
     }, [searchInput]);
 
     const { data: tasks = [], isLoading } = useQuery({
-        queryKey: ['tasks', searchQuery],
-        queryFn: () => tasksApi.getAll(undefined, searchQuery || undefined),
+        queryKey: ['tasks', searchQuery, enablePersonal, personalFilter],
+        queryFn: () => {
+            let isPersonal: boolean | undefined = undefined;
+            if (enablePersonal) {
+                if (personalFilter === 'personal') isPersonal = true;
+                if (personalFilter === 'work') isPersonal = false;
+            }
+            return tasksApi.getAll(undefined, searchQuery || undefined, isPersonal);
+        },
     });
 
     const createMutation = useMutation({
-        mutationFn: (task: CreateTask) => tasksApi.create(task),
+        mutationFn: (task: CreateTask) => {
+            let isPersonal = false;
+            if (enablePersonal && personalFilter === 'personal') isPersonal = true;
+            return tasksApi.create({ ...task, is_personal: isPersonal });
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
             queryClient.invalidateQueries({ queryKey: ['system'] });
@@ -250,6 +272,29 @@ export default function Tasks() {
                             <button onClick={() => setViewMode('board')} className={`p-1.5 rounded-md transition-all ${viewMode === 'board' ? 'bg-accent-blue text-white shadow-sm' : 'text-text-muted hover:text-text-primary hover:bg-background-hover'}`} title="Board View"><LayoutGrid size={18} /></button>
                             <button onClick={() => setViewMode('table')} className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-accent-blue text-white shadow-sm' : 'text-text-muted hover:text-text-primary hover:bg-background-hover'}`} title="All Tasks (Table View)"><Table2 size={18} /></button>
                         </div>
+
+                        {enablePersonal && (
+                            <div className="flex items-center gap-1 bg-background-card p-1 rounded-lg border border-border ml-4">
+                                <button
+                                    onClick={() => setPersonalFilter('work')}
+                                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${personalFilter === 'work' ? 'bg-accent-blue text-white shadow-sm' : 'text-text-muted hover:text-text-primary hover:bg-background-hover'}`}
+                                >
+                                    Work
+                                </button>
+                                <button
+                                    onClick={() => setPersonalFilter('personal')}
+                                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${personalFilter === 'personal' ? 'bg-accent-blue text-white shadow-sm' : 'text-text-muted hover:text-text-primary hover:bg-background-hover'}`}
+                                >
+                                    Personal
+                                </button>
+                                <button
+                                    onClick={() => setPersonalFilter('all')}
+                                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${personalFilter === 'all' ? 'bg-accent-blue text-white shadow-sm' : 'text-text-muted hover:text-text-primary hover:bg-background-hover'}`}
+                                >
+                                    All
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-3">

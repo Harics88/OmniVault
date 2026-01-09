@@ -29,6 +29,7 @@ export interface Task {
     due_date: string | null;
     started_at: string | null;
     completed_at: string | null;
+    is_personal: boolean;
     order: number;
     subtasks: Subtask[];
     created_at: string;
@@ -43,6 +44,7 @@ export interface CreateTask {
     status?: TaskStatus;
     priority?: TaskPriority;
     due_date?: string | null;
+    is_personal?: boolean;
     subtasks?: CreateSubtask[];
 }
 
@@ -54,6 +56,7 @@ export interface UpdateTask {
     due_date?: string | null;
     started_at?: string | null;
     completed_at?: string | null;
+    is_personal?: boolean;
     order?: number;
 }
 
@@ -171,6 +174,7 @@ export interface CreateTask {
     status?: TaskStatus;
     priority?: TaskPriority;
     due_date?: string | null;
+    is_personal?: boolean;
     subtasks?: CreateSubtask[];
 }
 
@@ -182,6 +186,7 @@ export interface UpdateTask {
     due_date?: string | null;
     started_at?: string | null;
     completed_at?: string | null;
+    is_personal?: boolean;
     order?: number;
 }
 

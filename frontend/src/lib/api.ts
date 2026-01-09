@@ -85,10 +85,11 @@ export const dailyLogsApi = {
 // ============ Tasks API ============
 
 export const tasksApi = {
-    getAll: async (status?: string, search?: string): Promise<Task[]> => {
+    getAll: async (status?: string, search?: string, is_personal?: boolean): Promise<Task[]> => {
         const params = new URLSearchParams();
         if (status) params.append('status', status);
         if (search) params.append('search', search);
+        if (is_personal !== undefined) params.append('is_personal', String(is_personal));
         const queryString = params.toString();
         const { data } = await api.get(`/tasks/${queryString ? `?${queryString}` : ''}`);
         return data;

@@ -68,6 +68,7 @@ class TaskBase(BaseModel):
     due_date: Optional[datetime] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    is_personal: bool = False
 
 
 class TaskCreate(TaskBase):
@@ -82,6 +83,7 @@ class TaskUpdate(BaseModel):
     due_date: Optional[datetime] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    is_personal: Optional[bool] = None
     order: Optional[int] = None
 
 

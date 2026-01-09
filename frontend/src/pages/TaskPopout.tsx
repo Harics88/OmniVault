@@ -129,6 +129,11 @@ export default function TaskPopout() {
         setEditedTask((prev: Task | null) => prev ? { ...prev, priority } : null);
     };
 
+    const handlePersonalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!editedTask || !isEditing) return;
+        setEditedTask((prev: Task | null) => prev ? { ...prev, is_personal: e.target.checked } : null);
+    };
+
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!editedTask) return;
         setEditedTask((prev: Task | null) => prev ? { ...prev, title: e.target.value } : null);
@@ -167,6 +172,7 @@ export default function TaskPopout() {
         if (editedTask.description !== task.description) updates.description = editedTask.description;
         if (editedTask.status !== task.status) updates.status = editedTask.status;
         if (editedTask.priority !== task.priority) updates.priority = editedTask.priority;
+        if (editedTask.is_personal !== task.is_personal) updates.is_personal = editedTask.is_personal;
         if (!datesEqual(editedTask.due_date, task.due_date)) updates.due_date = editedTask.due_date;
         if (!datesEqual(editedTask.started_at, task.started_at)) updates.started_at = editedTask.started_at;
         if (!datesEqual(editedTask.completed_at, task.completed_at)) updates.completed_at = editedTask.completed_at;
@@ -253,6 +259,16 @@ export default function TaskPopout() {
                 <div className="flex items-center gap-2">
                     {isEditing ? (
                         <>
+                            <div className="flex items-center gap-2 mr-2">
+                                <label className="text-sm text-text-muted cursor-pointer select-none" htmlFor="popout-personal-check">Personal</label>
+                                <input
+                                    id="popout-personal-check"
+                                    type="checkbox"
+                                    checked={displayTask.is_personal}
+                                    onChange={handlePersonalChange}
+                                    className="w-4 h-4 rounded border-border text-accent-blue focus:ring-accent-blue cursor-pointer"
+                                />
+                            </div>
                             <button
                                 onClick={handleCancel}
                                 className="px-3 py-1.5 text-sm text-text-muted hover:bg-background-hover rounded-lg transition-colors"
@@ -269,16 +285,21 @@ export default function TaskPopout() {
                             </button>
                         </>
                     ) : (
-                        <button
-                            onClick={() => {
-                                setEditedTask(task);
-                                setIsEditing(true);
-                            }}
-                            className="p-2 hover:bg-background-hover rounded-lg transition-colors text-text-muted hover:text-accent-blue"
-                            title="Edit Task"
-                        >
-                            <Edit2 size={18} />
-                        </button>
+                        <>
+                            {task.is_personal && (
+                                <span className="text-xs font-medium text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-full mr-2">Personal</span>
+                            )}
+                            <button
+                                onClick={() => {
+                                    setEditedTask(task);
+                                    setIsEditing(true);
+                                }}
+                                className="p-2 hover:bg-background-hover rounded-lg transition-colors text-text-muted hover:text-accent-blue"
+                                title="Edit Task"
+                            >
+                                <Edit2 size={18} />
+                            </button>
+                        </>
                     )}
                     <button
                         onClick={() => setShowDeleteConfirm(true)}
