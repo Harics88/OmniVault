@@ -478,8 +478,7 @@ function SubtaskItem({
                 {subtask.completed && <Check size={12} className="text-white" strokeWidth={3} />}
             </button>
             {isEditing ? (
-                <input
-                    type="text"
+                <textarea
                     defaultValue={subtask.title}
                     onBlur={(e) => {
                         if (e.target.value !== subtask.title) {
@@ -487,11 +486,23 @@ function SubtaskItem({
                         }
                     }}
                     onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                            (e.target as HTMLInputElement).blur();
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            (e.target as HTMLTextAreaElement).blur();
                         }
                     }}
-                    className="flex-1 text-sm bg-transparent border-none focus:ring-0 p-0 text-text-primary h-5 mb-0.5"
+                    className="flex-1 text-sm bg-transparent border-none focus:ring-0 p-0 text-text-primary leading-relaxed resize-none min-h-[1.5rem] overflow-hidden"
+                    rows={1}
+                    onInput={(e) => {
+                        (e.target as HTMLTextAreaElement).style.height = 'auto';
+                        (e.target as HTMLTextAreaElement).style.height = (e.target as HTMLTextAreaElement).scrollHeight + 'px';
+                    }}
+                    ref={(el) => {
+                        if (el) {
+                            el.style.height = 'auto';
+                            el.style.height = el.scrollHeight + 'px';
+                        }
+                    }}
                 />
             ) : (
                 <span className={`flex-1 text-sm ${subtask.completed ? 'text-text-muted line-through' : 'text-text-primary'}`}>{subtask.title}</span>

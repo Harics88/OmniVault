@@ -12,10 +12,10 @@
     *   **Why**: Visualizing dependencies is crucial for DEs. This could also visualize how tasks relate to specific notes or code snippets.
     *   **Implementation**: Use `react-force-graph` or `reactflow` to render nodes (entities) and edges (links/references).
 
-3.  **Cron Expression Generator & Validator**
-    *   **Description**: A utility tool (standalone or within Snippets) to generate, explain, and validate cron schedules.
-    *   **Why**: Scheduling ETL jobs is a daily task.
-    *   **Implementation**: A UI with dropdowns for frequency that generates the cron string, or takes a string and explains it in plain English (using `cronstrue`).
+3.  **Export/Import Data (Backup System)**
+    *   **Description**: A robust system to export all vault data (Tasks, Notes, Settings) to a JSON/ZIP file and import it back.
+    *   **Why**: Local-first means "user owns the data". Easy backups are essential for trust.
+    *   **Implementation**: Backend endpoints to dump SQLite to JSON and zip `data/` folder. Frontend "Export" button in Settings.
 
 4.  **Habit Tracker**
     *   **Description**: A simple daily checklist for recurring habits (e.g., "Check Airflow Logs", "Zero Inbox", "Drink Water") that resets daily.
@@ -27,10 +27,10 @@
     *   **Why**: Better organization and cross-referencing of knowledge and tasks.
     *   **Implementation**: New DB table `Tags`, association tables for entities, and a "Tags" management page.
 
-6.  **Content Templates**
-    *   **Description**: Pre-defined templates for Daily Logs (e.g., "Standup notes", "End of day reflection") and Notes (e.g., "Design Doc", "Post-Mortem").
-    *   **Why**: Reduces friction when starting a new document. Standardizes engineering documentation.
-    *   **Implementation**: A "Templates" setting section where users can define markdown snippets that can be inserted via the `Slash` command or a button.
+6.  **Activity Heatmap**
+    *   **Description**: A GitHub-style contribution graph showing activity (Tasks completed, Logs written, Snippets created) over the last year.
+    *   **Why**: meaningful visualization of productivity and consistency.
+    *   **Implementation**: A new widget on the Dashboard or Profile page using `react-calendar-heatmap`.
 
 7.  **Command Palette (Quick Open)**
     *   **Description**: Enhance the global search (`Ctrl+K`) to act as a command palette.

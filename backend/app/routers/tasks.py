@@ -147,6 +147,10 @@ async def update_task(
             if not task.started_at:
                 task.started_at = datetime.utcnow()
             task.completed_at = datetime.utcnow()
+        elif new_status == TaskStatus.IN_PROGRESS:
+            if not task.started_at:
+                task.started_at = datetime.utcnow()
+            task.completed_at = None
         elif new_status == TaskStatus.NOT_STARTED:
             task.started_at = None
             task.completed_at = None
