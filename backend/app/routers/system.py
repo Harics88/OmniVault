@@ -20,12 +20,16 @@ async def get_system_stats(db: AsyncSession = Depends(get_db)):
         db_path = "mytasker.db" # Fallback
 
     # Try different possible paths
+    # Handle relative paths properly relative to the backend app root
+    current_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # Goes up to backend root
+
     possible_paths = [
         db_path,
+        os.path.abspath(db_path),
         os.path.join(os.getcwd(), db_path),
-        os.path.join(os.getcwd(), "backend", db_path),
+        os.path.join(current_dir, db_path.lstrip("/.")), # Handle ../data/mytasker.db relative to backend/
+        os.path.join(current_dir, "data", "mytasker.db"),
         "/app/data/mytasker.db",
-        "data/mytasker.db"
     ]
     
     size_bytes = 0

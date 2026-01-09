@@ -7,10 +7,10 @@
     *   **Why**: Since this is a "Local-First" vault, users often want to manage their whole life (work + personal) in one place but keep them visually distinct.
     *   **Implementation**: Add an `is_personal` boolean flag to the `Task` model. Add a "Personal Mode" toggle in Settings. When enabled, a "Personal" view appears in the Tasks module, or a toggle filters the main list.
 
-2.  **Smart Copy & Deep Linking (Notes)**
-    *   **Description**: A "Smart Copy" feature that copies a link to a note in multiple formats (HTML hyperlink for Word/OneNote, Plain Text for Notepad). Includes registering a custom protocol (`omnivault://`) so these links open the app directly to the specific note.
-    *   **Why**: Data Engineers often document findings in external tools (OneNote, Jira). Quick linking back to the source of truth (Omni Vault) streamlines context switching.
-    *   **Implementation**: Use Clipboard API to write `text/plain` and `text/html`. Register custom URI scheme in OS (Registry/Plist). Handle arguments in the app launcher.
+2.  **Smart Paste & Deep Linking**
+    *   **Description**: A "Smart Paste" feature that preserves rich hyperlinks when pasting from external apps (Lotus Notes, Outlook) instead of stripping them to plain text. Includes registering a custom protocol (`omnivault://`) so these links open the app directly to the specific note.
+    *   **Why**: Preserving context from emails and external docs is critical. Deep linking allows external docs to point back into the vault.
+    *   **Implementation**: Handle `text/html` in Editor paste events. Register custom URI scheme in OS (Registry/Plist). Handle arguments in the app launcher.
 
 3.  **Data Lineage Visualization**
     *   **Description**: Visual graph showing relationships between Tasks, Notes, Snippets, and even externally defined data assets.
@@ -57,21 +57,22 @@
     *   **Why**: Different users care about different metrics (e.g., some want "Active Tasks" top, others want "Recent Notes").
     *   **Implementation**: Store a JSON layout config in Settings. Use a grid layout library or simple conditional rendering.
 
-## 2. Technical Feasibility Analysis: Smart Copy & Deep Linking
+## 2. Technical Feasibility Analysis: Smart Paste & Deep Linking
 
-### Clipboard Handling (Multi-MIME Write)
-*   **Goal**: Copy plain text URI (`omnivault://note/123`) AND HTML Link (`<a href="...">Title</a>`) simultaneously.
-*   **Feasibility**: Supported by the modern `Clipboard API`.
+### Clipboard Handling (Smart Paste)
+*   **Goal**: Detect when `text/html` on the clipboard contains a valid hyperlink and paste it as a rich link instead of plain text.
+*   **Feasibility**: Tiptap `handlePaste` prop allows intercepting clipboard events.
 *   **Code Strategy**:
     ```javascript
-    const blobText = new Blob([url], { type: 'text/plain' });
-    const blobHtml = new Blob([`<a href="${url}">${title}</a>`], { type: 'text/html' });
-    await navigator.clipboard.write([
-        new ClipboardItem({
-            'text/plain': blobText,
-            'text/html': blobHtml,
-        })
-    ]);
+    handlePaste: (view, event) => {
+        const html = event.clipboardData?.getData('text/html');
+        if (html) {
+            // Parse HTML, check if it's a single anchor tag
+            // If yes, manually insert <a href="...">text</a> content
+            // Return true to prevent default behavior
+        }
+        return false;
+    }
     ```
 
 ### Deep Linking (Protocol Handler)

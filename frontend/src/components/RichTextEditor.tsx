@@ -170,8 +170,28 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
                     }
                 }
 
-                // If we have HTML, let Tiptap handle it (it might contain a link with a title)
-                if (html) return false;
+                // Smart Paste: Preserve links from HTML (e.g. Outlook/Notes)
+                if (html) {
+                    // Check if the HTML contains a link structure we want to preserve
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const links = doc.getElementsByTagName('a');
+
+                    // If content is just a single link (or wrapped in simple containers)
+                    if (links.length === 1 && doc.body.textContent?.trim().length === links[0].textContent?.trim().length) {
+                        const href = links[0].getAttribute('href');
+                        const linkText = links[0].textContent;
+
+                        if (href && linkText) {
+                            // Manually insert the link to ensure it's preserved
+                            editor?.chain().focus().insertContent(`<a href="${href}">${linkText}</a> `).run();
+                            return true; // Prevent default paste
+                        }
+                    }
+
+                    // Otherwise let Tiptap handle generic HTML
+                    return false;
+                }
 
                 // Handle plain text URLs
                 if (text && /^https?:\/\//.test(normalizeUrl(text))) {
