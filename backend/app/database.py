@@ -9,9 +9,13 @@ from sqlalchemy.orm import DeclarativeBase
 # Database URL - SQLite for local-first storage
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///../data/mytasker.db")
 
+# Ensure using aiosqlite
+if not DATABASE_URL.startswith("sqlite+aiosqlite"):
+    DATABASE_URL = DATABASE_URL.replace("sqlite://", "sqlite+aiosqlite://")
+
 # Create async engine
 engine = create_async_engine(
-    DATABASE_URL.replace("sqlite:///", "sqlite+aiosqlite:///"),
+    DATABASE_URL,
     echo=False,
     future=True
 )

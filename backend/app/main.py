@@ -54,6 +54,21 @@ async def lifespan(app: FastAPI):
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+
+            # Migration check: Add is_personal column if missing
+            try:
+                # Check if is_personal column exists
+                result = await conn.execute(text("PRAGMA table_info(tasks)"))
+                columns = [row[1] for row in result.fetchall()]
+
+                if "is_personal" not in columns:
+                    logger.info("Adding missing 'is_personal' column to tasks table...")
+                    await conn.execute(text("ALTER TABLE tasks ADD COLUMN is_personal BOOLEAN DEFAULT 0"))
+                    logger.info("'is_personal' column added successfully")
+            except Exception as migration_error:
+                logger.error(f"Migration failed: {migration_error}")
+                # Continue anyway, as the column might exist or this is a fresh install
+
         logger.info("Database tables created successfully")
     except Exception as e:
         logger.error(f"Failed to create database tables: {e}")

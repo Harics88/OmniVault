@@ -114,6 +114,11 @@ export default function TaskPanel({
         setEditedTask((prev: Task) => ({ ...prev, priority }));
     };
 
+    const handlePersonalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!isEditing) return;
+        setEditedTask((prev: Task) => ({ ...prev, is_personal: e.target.checked }));
+    };
+
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setEditedTask((prev: Task) => ({ ...prev, title: e.target.value }));
     };
@@ -142,6 +147,7 @@ export default function TaskPanel({
         if (editedTask.description !== task.description) updates.description = editedTask.description;
         if (editedTask.status !== task.status) updates.status = editedTask.status;
         if (editedTask.priority !== task.priority) updates.priority = editedTask.priority;
+        if (editedTask.is_personal !== task.is_personal) updates.is_personal = editedTask.is_personal;
         if (!datesEqual(editedTask.due_date, task.due_date)) updates.due_date = editedTask.due_date;
         if (!datesEqual(editedTask.started_at, task.started_at)) updates.started_at = editedTask.started_at;
         if (!datesEqual(editedTask.completed_at, task.completed_at)) updates.completed_at = editedTask.completed_at;
@@ -198,6 +204,21 @@ export default function TaskPanel({
                 <div className="flex items-center justify-between p-4 border-b border-border">
                     <h2 className="font-semibold text-text-primary">Task Details</h2>
                     <div className="flex items-center gap-2">
+                        {isEditing && (
+                            <div className="flex items-center gap-2 mr-2">
+                                <label className="text-sm text-text-muted cursor-pointer select-none" htmlFor="personal-check">Personal</label>
+                                <input
+                                    id="personal-check"
+                                    type="checkbox"
+                                    checked={editedTask.is_personal}
+                                    onChange={handlePersonalChange}
+                                    className="w-4 h-4 rounded border-border text-accent-blue focus:ring-accent-blue cursor-pointer"
+                                />
+                            </div>
+                        )}
+                        {!isEditing && task.is_personal && (
+                            <span className="text-xs font-medium text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-full mr-2">Personal</span>
+                        )}
                         {!isEditing && (
                             <button onClick={() => setIsEditing(true)} className="p-2 hover:bg-background-hover rounded-lg text-text-muted hover:text-accent-blue"><Edit2 size={18} /></button>
                         )}
@@ -478,8 +499,7 @@ function SubtaskItem({
                 {subtask.completed && <Check size={12} className="text-white" strokeWidth={3} />}
             </button>
             {isEditing ? (
-                <input
-                    type="text"
+                <textarea
                     defaultValue={subtask.title}
                     onBlur={(e) => {
                         if (e.target.value !== subtask.title) {
@@ -487,11 +507,23 @@ function SubtaskItem({
                         }
                     }}
                     onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                            (e.target as HTMLInputElement).blur();
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            (e.target as HTMLTextAreaElement).blur();
                         }
                     }}
-                    className="flex-1 text-sm bg-transparent border-none focus:ring-0 p-0 text-text-primary h-5 mb-0.5"
+                    className="flex-1 text-sm bg-transparent border-none focus:ring-0 p-0 text-text-primary leading-relaxed resize-none min-h-[1.5rem] overflow-hidden"
+                    rows={1}
+                    onInput={(e) => {
+                        (e.target as HTMLTextAreaElement).style.height = 'auto';
+                        (e.target as HTMLTextAreaElement).style.height = (e.target as HTMLTextAreaElement).scrollHeight + 'px';
+                    }}
+                    ref={(el) => {
+                        if (el) {
+                            el.style.height = 'auto';
+                            el.style.height = el.scrollHeight + 'px';
+                        }
+                    }}
                 />
             ) : (
                 <span className={`flex-1 text-sm ${subtask.completed ? 'text-text-muted line-through' : 'text-text-primary'}`}>{subtask.title}</span>

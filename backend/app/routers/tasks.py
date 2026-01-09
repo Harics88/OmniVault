@@ -23,16 +23,20 @@ router = APIRouter()
 async def get_tasks(
     status: Optional[TaskStatus] = None,
     search: Optional[str] = None,
+    is_personal: Optional[bool] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get all tasks, optionally filtered by status and search query"""
+    """Get all tasks, optionally filtered by status, personal flag and search query"""
     query = select(Task).options(selectinload(Task.subtasks)).order_by(asc(Task.order), desc(Task.created_at))
     
     if status:
         query = query.where(Task.status == status)
     
+    if is_personal is not None:
+        query = query.where(Task.is_personal == is_personal)
+
     if search:
         search_pattern = f"%{search}%"
         query = query.where(
@@ -147,6 +151,10 @@ async def update_task(
             if not task.started_at:
                 task.started_at = datetime.utcnow()
             task.completed_at = datetime.utcnow()
+        elif new_status == TaskStatus.IN_PROGRESS:
+            if not task.started_at:
+                task.started_at = datetime.utcnow()
+            task.completed_at = None
         elif new_status == TaskStatus.NOT_STARTED:
             task.started_at = None
             task.completed_at = None
