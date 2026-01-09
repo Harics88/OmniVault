@@ -1,11 +1,11 @@
 # Omni Vault Analysis & Roadmap
 
-## 1. Feature Ideas (Tailored for Data Engineers)
+## 1. Feature Ideas (Tailored for Data Engineers & Productivity)
 
-1.  **SQL Playground / Query Runner**
-    *   **Description**: A built-in tool to execute SQL queries against the local SQLite database or external database connections (Postgres, MySQL, Snowflake).
-    *   **Why**: Data Engineers live in SQL. Having a quick way to test queries or inspect local data without switching tools would be highly valuable.
-    *   **Implementation**: A new page with a code editor (monaco-editor), a results table, and connection management.
+1.  **Personal Todos (Private Vault)**
+    *   **Description**: A dedicated space or category for personal tasks, distinct from work/project tasks. This feature would be optional, controlled by a toggle in the Settings.
+    *   **Why**: Since this is a "Local-First" vault, users often want to manage their whole life (work + personal) in one place but keep them visually distinct.
+    *   **Implementation**: Add an `is_personal` boolean flag to the `Task` model. Add a "Personal Mode" toggle in Settings. When enabled, a "Personal" view appears in the Tasks module, or a toggle filters the main list.
 
 2.  **Data Lineage Visualization**
     *   **Description**: Visual graph showing relationships between Tasks, Notes, Snippets, and even externally defined data assets.
@@ -17,20 +17,20 @@
     *   **Why**: Scheduling ETL jobs is a daily task.
     *   **Implementation**: A UI with dropdowns for frequency that generates the cron string, or takes a string and explains it in plain English (using `cronstrue`).
 
-4.  **JSON/YAML Formatter & Validator**
-    *   **Description**: specific tools to format, validate, and convert between JSON and YAML.
-    *   **Why**: Configuration files (Airflow DAGs, dbt `dbt_project.yml`, Kubernetes manifests) are ubiquitous.
-    *   **Implementation**: A split-pane view in "Snippets" or a new "Tools" section.
+4.  **Habit Tracker**
+    *   **Description**: A simple daily checklist for recurring habits (e.g., "Check Airflow Logs", "Zero Inbox", "Drink Water") that resets daily.
+    *   **Why**: Builds consistency. Complements the "Daily Log" feature perfectly.
+    *   **Implementation**: A new widget on the Dashboard or Daily Log page. Stores history of completion.
 
 5.  **Tag Manager & Unified Tagging System**
     *   **Description**: A centralized system to manage tags across Notes, Tasks, and Snippets. Currently, `Note` has a `tags` string column, but a proper many-to-many relationship or a unified UI to manage them would be better.
     *   **Why**: Better organization and cross-referencing of knowledge and tasks.
     *   **Implementation**: New DB table `Tags`, association tables for entities, and a "Tags" management page.
 
-6.  **Git Integration / Version Control for Notes**
-    *   **Description**: Ability to sync Notes and Snippets to a private Git repository.
-    *   **Why**: DEs trust Git. Backing up knowledge as Markdown/Code files provides peace of mind and version history.
-    *   **Implementation**: Backend integration with `gitpython` to commit and push changes in the `data/` directory or a specific export folder.
+6.  **Content Templates**
+    *   **Description**: Pre-defined templates for Daily Logs (e.g., "Standup notes", "End of day reflection") and Notes (e.g., "Design Doc", "Post-Mortem").
+    *   **Why**: Reduces friction when starting a new document. Standardizes engineering documentation.
+    *   **Implementation**: A "Templates" setting section where users can define markdown snippets that can be inserted via the `Slash` command or a button.
 
 7.  **Command Palette (Quick Open)**
     *   **Description**: Enhance the global search (`Ctrl+K`) to act as a command palette.
@@ -47,12 +47,31 @@
     *   **Why**: DE workflows are often sequential (e.g., "Design Schema" must happen before "Build Pipeline").
     *   **Implementation**: Add `parent_task_id` or a self-referential many-to-many table for dependencies. Visualize in Task view.
 
-10. **Regex Tester**
-    *   **Description**: A tool to test regular expressions against sample text.
-    *   **Why**: Parsing logs and data often requires Regex.
-    *   **Implementation**: A simple UI with "Pattern", "Flags", and "Test String" inputs.
+10. **Customizable Dashboard Widgets**
+    *   **Description**: Allow users to toggle and reorder widgets on the Home Dashboard.
+    *   **Why**: Different users care about different metrics (e.g., some want "Active Tasks" top, others want "Recent Notes").
+    *   **Implementation**: Store a JSON layout config in Settings. Use a grid layout library or simple conditional rendering.
 
-## 2. Scope for UI Improvements
+## 2. Scope for "Personal Todos" Implementation
+
+This feature is feasible and fits well within the existing architecture.
+
+### Database Changes (`backend/app/models.py`)
+*   **Modify `Task` model**: Add `is_personal: Mapped[bool] = mapped_column(Boolean, default=False)`.
+*   **Migration**: Since Alembic isn't explicitly set up in the file list (though SQLAlchemy is used), we would need to add the column to the SQLite DB on startup or create a migration script.
+
+### Backend Logic (`backend/app/routers/tasks.py`)
+*   **Filter**: Update `get_tasks` endpoint to accept a `type` or `is_personal` query parameter.
+*   **Create/Update**: Update schemas (`TaskCreate`, `TaskUpdate`) to accept `is_personal`.
+
+### Frontend Changes
+*   **Settings Page**: Add a toggle switch: "Enable Personal Tasks". Store this in local storage or user settings.
+*   **Tasks Page**:
+    *   If enabled, show a segment control or tabs: `[Work] [Personal] [All]`.
+    *   Update `TaskCard` or `TaskRow` to visually distinguish personal tasks (e.g., different color badge or icon).
+    *   Update `TaskPopout` (Create/Edit modal) to include a "Personal Task" checkbox.
+
+## 3. Scope for UI Improvements
 
 ### 1. Sidebar & Navigation
 *   **Collapsible Sidebar**: The current sidebar is fixed width (`w-60`). Adding a collapse button to shrink it to icons-only would reclaim screen real estate for the editor or wide tables.
@@ -73,7 +92,7 @@
 ### 5. Status Bar
 *   **Global Status**: Move the "Storage" indicator from the sidebar to a bottom app-wide status bar. This bar could also show "Sync Status", "Last Saved", or "Git Branch" info.
 
-## 3. Suggested Easy Keyboard Shortcut Keys
+## 4. Suggested Easy Keyboard Shortcut Keys
 
 Current shortcuts use `Cmd+Shift+Letter` which requires two modifier keys. Simpler "Chord" or "Single Key" shortcuts (Gmail/Jira style) are faster.
 
