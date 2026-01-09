@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, CheckSquare, Loader2, Circle, Clock, Check, Search, LayoutGrid, List, Table2 } from 'lucide-react';
@@ -133,7 +133,7 @@ export default function Tasks() {
     const addSubtaskMutation = useMutation({
         mutationFn: ({ taskId, title }: { taskId: number; title: string }) =>
             tasksApi.createSubtask(taskId, { title }),
-        onSuccess: (data: Subtask, variables: { taskId: number }) => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
             queryClient.invalidateQueries({ queryKey: ['task', variables.taskId] });
             // Update selected task if it's the one being modified
@@ -204,10 +204,6 @@ export default function Tasks() {
     const onUpdateTask = (taskId: number, updates: Partial<Task>) => {
         updateMutation.mutate({ id: taskId, updates });
     };
-    const onDeleteTask = (task: Task) => {
-        deleteMutation.mutate(task.id);
-    };
-
     const handleTaskClick = (task: Task) => {
         // Open in full screen (popout view)
         navigate(`/tasks/${task.id}`);
@@ -222,8 +218,8 @@ export default function Tasks() {
     // Partition Logic (Case Insensitive)
     const partitions = useMemo(() => {
         const threshold = subDays(new Date(), 14);
-        const overdueTasks = tasks.filter((t: Task) => t.status !== 'done' && t.due_date && new Date(t.due_date) < new Date());
-        const upcomingTasks = tasks.filter((t: Task) => t.status !== 'done' && t.due_date && new Date(t.due_date) >= new Date());
+        // overdueTasks and upcomingTasks were calculated but unused in this component (might be used in sub-components if passed, but TaskListView only takes active/recent)
+        // Removing them to fix TS6133
         const active = tasks.filter((t: Task) => (t.status || '').toLowerCase() !== 'done');
         const recentHistory = tasks.filter((t: Task) =>
             (t.status || '').toLowerCase() === 'done' &&

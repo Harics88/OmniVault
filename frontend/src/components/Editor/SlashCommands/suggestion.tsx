@@ -102,8 +102,8 @@ export default {
                     editor.chain().focus().deleteRange(range).run();
                     // Trigger the link modal by calling the setEditing function
                     // This will be passed from the RichTextEditor component
-                    if (window.openLinkModal) {
-                        window.openLinkModal();
+                    if ((window as any).openLinkModal) {
+                        (window as any).openLinkModal();
                     }
                 },
             },

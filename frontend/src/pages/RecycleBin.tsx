@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Trash2, RotateCcw, Loader2, AlertCircle, FileText, CheckSquare, Square, XCircle } from 'lucide-react';
+import { Trash2, RotateCcw, Loader2, CheckSquare, Square, XCircle } from 'lucide-react';
 import { notesApi } from '../lib/api';
 import type { Note } from '../types';
 import ConfirmModal from '../components/ConfirmModal';

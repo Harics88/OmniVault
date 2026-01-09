@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Save, Clock, Loade
 import { dailyLogsApi } from '../lib/api';
 import RichTextEditor from '../components/RichTextEditor';
 import Calendar from '../components/Calendar';
+import type { DailyLog } from '../types';
 
 // Helper function to strip HTML tags from preview text
 function stripHtml(html: string): string {
@@ -179,7 +180,6 @@ export default function DailyLog() {
 
     const goToPrevDay = () => goToDate(subDays(currentDate, 1));
     const goToNextDay = () => goToDate(addDays(currentDate, 1));
-    const goToToday = () => goToDate(new Date());
 
     if (isLoading) {
         return (

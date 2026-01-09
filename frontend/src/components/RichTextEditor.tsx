@@ -21,7 +21,7 @@ import { Extension } from '@tiptap/core';
 import { common, createLowlight } from 'lowlight';
 import {
     Bold, Italic, Underline as UnderlineIcon, List, ListOrdered, Link as LinkIcon, Image as ImageIcon,
-    Quote, Code, Undo, Redo, ExternalLink, Pencil, Unlink, CheckSquare, Table as TableIcon,
+    Quote, Code, Undo, Redo, CheckSquare, Table as TableIcon,
     Columns, Rows, Trash2, Highlighter, AlignLeft, AlignCenter, AlignRight,
     Minus, Search as SearchIcon, Palette, X, Replace, ChevronDown, Indent, Outdent
 } from 'lucide-react';
@@ -155,15 +155,10 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
                         event.preventDefault();
                         const file = item.getAsFile();
                         if (file) {
-                            compressImage(file).then(compressed => {
-                                const reader = new FileReader();
-                                reader.onload = (e) => {
-                                    const result = e.target?.result as string;
-                                    view.dispatch(view.state.tr.replaceSelectionWith(
-                                        view.state.schema.nodes.image.create({ src: result })
-                                    ));
-                                };
-                                reader.readAsDataURL(compressed);
+                            compressImage(file).then(compressedDataUrl => {
+                                view.dispatch(view.state.tr.replaceSelectionWith(
+                                    view.state.schema.nodes.image.create({ src: compressedDataUrl })
+                                ));
                             });
                         }
                         return true;
@@ -214,7 +209,7 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
                 }
                 return false;
             },
-            handleClick: (view, pos, event) => {
+            handleClick: (view, _pos, event) => {
                 const target = event.target as HTMLElement;
                 const link = target.closest('a');
                 if (link) {
@@ -223,7 +218,8 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
 
                     // Open links on click if not in editable mode, OR if Ctrl/Cmd is held
                     // editor instance from useEditor might not be available here yet, so we use view
-                    const isEditableView = view.getEditable(); // Check if view itself is editable
+                    // Check if view itself is editable (prop is usually a function or boolean)
+                    const isEditableView = !!view.props.editable;
                     if (href && (!isEditableView || isCtrlOrMeta)) {
                         event.preventDefault();
                         window.open(normalizeUrl(href), '_blank', 'noopener,noreferrer');
@@ -286,43 +282,6 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
         }
     }, [editor]);
 
-    const applyLink = useCallback(() => {
-        if (!editor) return;
-        if (linkUrl === '') {
-            editor.chain().focus().extendMarkRange('link').unsetLink().run();
-        } else {
-            const normalized = normalizeUrl(linkUrl);
-            const textToUse = linkText || linkUrl;
-
-            if (editor.state.selection.empty) {
-                // Insert brand new link
-                editor.chain().focus().insertContent([
-                    {
-                        type: 'text',
-                        text: textToUse,
-                        marks: [{ type: 'link', attrs: { href: normalized } }]
-                    },
-                    { type: 'text', text: ' ' }
-                ]).run();
-            } else {
-                // Replace selection with link if text changed, otherwise just set link
-                const { from, to } = editor.state.selection;
-                const currentText = editor.state.doc.textBetween(from, to, ' ');
-                if (linkText && linkText !== currentText) {
-                    editor.chain().focus().insertContent({
-                        type: 'text',
-                        text: linkText,
-                        marks: [{ type: 'link', attrs: { href: normalized } }]
-                    }).run();
-                } else {
-                    editor.chain().focus().extendMarkRange('link').setLink({ href: normalized }).run();
-                }
-            }
-        }
-        // Just clear the state, don't reference non-existent setIsEditingLink
-        setLinkUrl('');
-        setLinkText('');
-    }, [editor, linkUrl, linkText]);
 
     const addImage = useCallback(() => {
         if (!editor) return;
