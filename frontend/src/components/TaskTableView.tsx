@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Circle, Clock, Check, Triangle, Trash2, CheckSquare, Calendar, ArrowRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Circle, Clock, Check, Triangle, Trash2, CheckSquare, Calendar, ArrowRight, Search } from 'lucide-react';
 import { format, isPast, subDays } from 'date-fns';
 import type { Task, TaskStatus } from '../types';
 
@@ -120,7 +120,7 @@ export default function TaskTableView({
 
                 {!isCollapsed && (
                     <div className="bg-background/20 divide-y divide-border/5 rounded-b-xl border-x border-b border-border/10 overflow-hidden shadow-sm">
-                        {sectionTasks.map((task, idx) => {
+                        {sectionTasks.map((task) => {
                             const pKey = (task.priority || 'MEDIUM').toUpperCase();
                             const pStyle = priorityConfig[pKey] || priorityConfig.MEDIUM;
 

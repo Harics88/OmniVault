@@ -80,6 +80,7 @@ export interface Note {
     is_pinned: boolean;
     tags: string;
     section: NoteSection | null;
+    deleted_at?: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -238,6 +239,7 @@ export interface UpdateSnippet {
     code?: string;
     language?: string;
     description?: string;
+    is_pinned?: boolean;
 }
 
 export interface CreateBookmarkCategory {

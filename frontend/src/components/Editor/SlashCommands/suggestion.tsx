@@ -16,7 +16,7 @@ export default {
                 description: 'Big section heading',
                 icon: <Heading1 size={16} />,
                 command: ({ editor, range }: any) => {
-                    editor.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run();
+                    editor.chain().focus().deleteRange(range).toggleHeading({ level: 1 }).run();
                 },
             },
             {
@@ -24,7 +24,7 @@ export default {
                 description: 'Medium section heading',
                 icon: <Heading2 size={16} />,
                 command: ({ editor, range }: any) => {
-                    editor.chain().focus().deleteRange(range).setNode('heading', { level: 2 }).run();
+                    editor.chain().focus().deleteRange(range).toggleHeading({ level: 2 }).run();
                 },
             },
             {
@@ -32,7 +32,7 @@ export default {
                 description: 'Small section heading',
                 icon: <Heading3 size={16} />,
                 command: ({ editor, range }: any) => {
-                    editor.chain().focus().deleteRange(range).setNode('heading', { level: 3 }).run();
+                    editor.chain().focus().deleteRange(range).toggleHeading({ level: 3 }).run();
                 },
             },
             {
@@ -102,8 +102,8 @@ export default {
                     editor.chain().focus().deleteRange(range).run();
                     // Trigger the link modal by calling the setEditing function
                     // This will be passed from the RichTextEditor component
-                    if (window.openLinkModal) {
-                        window.openLinkModal();
+                    if ((window as any).openLinkModal) {
+                        (window as any).openLinkModal();
                     }
                 },
             },
