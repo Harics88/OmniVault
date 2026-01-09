@@ -7,52 +7,82 @@
     *   **Why**: Since this is a "Local-First" vault, users often want to manage their whole life (work + personal) in one place but keep them visually distinct.
     *   **Implementation**: Add an `is_personal` boolean flag to the `Task` model. Add a "Personal Mode" toggle in Settings. When enabled, a "Personal" view appears in the Tasks module, or a toggle filters the main list.
 
-2.  **Data Lineage Visualization**
+2.  **Smart Copy & Deep Linking (Notes)**
+    *   **Description**: A "Smart Copy" feature that copies a link to a note in multiple formats (HTML hyperlink for Word/OneNote, Plain Text for Notepad). Includes registering a custom protocol (`omnivault://`) so these links open the app directly to the specific note.
+    *   **Why**: Data Engineers often document findings in external tools (OneNote, Jira). Quick linking back to the source of truth (Omni Vault) streamlines context switching.
+    *   **Implementation**: Use Clipboard API to write `text/plain` and `text/html`. Register custom URI scheme in OS (Registry/Plist). Handle arguments in the app launcher.
+
+3.  **Data Lineage Visualization**
     *   **Description**: Visual graph showing relationships between Tasks, Notes, Snippets, and even externally defined data assets.
     *   **Why**: Visualizing dependencies is crucial for DEs. This could also visualize how tasks relate to specific notes or code snippets.
     *   **Implementation**: Use `react-force-graph` or `reactflow` to render nodes (entities) and edges (links/references).
 
-3.  **Export/Import Data (Backup System)**
+4.  **Export/Import Data (Backup System)**
     *   **Description**: A robust system to export all vault data (Tasks, Notes, Settings) to a JSON/ZIP file and import it back.
     *   **Why**: Local-first means "user owns the data". Easy backups are essential for trust.
     *   **Implementation**: Backend endpoints to dump SQLite to JSON and zip `data/` folder. Frontend "Export" button in Settings.
 
-4.  **Habit Tracker**
+5.  **Habit Tracker**
     *   **Description**: A simple daily checklist for recurring habits (e.g., "Check Airflow Logs", "Zero Inbox", "Drink Water") that resets daily.
     *   **Why**: Builds consistency. Complements the "Daily Log" feature perfectly.
     *   **Implementation**: A new widget on the Dashboard or Daily Log page. Stores history of completion.
 
-5.  **Tag Manager & Unified Tagging System**
+6.  **Tag Manager & Unified Tagging System**
     *   **Description**: A centralized system to manage tags across Notes, Tasks, and Snippets. Currently, `Note` has a `tags` string column, but a proper many-to-many relationship or a unified UI to manage them would be better.
     *   **Why**: Better organization and cross-referencing of knowledge and tasks.
     *   **Implementation**: New DB table `Tags`, association tables for entities, and a "Tags" management page.
 
-6.  **Activity Heatmap**
+7.  **Activity Heatmap**
     *   **Description**: A GitHub-style contribution graph showing activity (Tasks completed, Logs written, Snippets created) over the last year.
     *   **Why**: meaningful visualization of productivity and consistency.
     *   **Implementation**: A new widget on the Dashboard or Profile page using `react-calendar-heatmap`.
 
-7.  **Command Palette (Quick Open)**
+8.  **Command Palette (Quick Open)**
     *   **Description**: Enhance the global search (`Ctrl+K`) to act as a command palette.
     *   **Why**: Power users prefer keyboard-driven workflows.
     *   **Implementation**: Allow typing `>` to access commands like "Create Task", "Toggle Theme", "Go to Settings", "Run Query".
 
-8.  **Pomodoro Timer / Focus Mode**
+9.  **Pomodoro Timer / Focus Mode**
     *   **Description**: A simple timer integrated into the sidebar or top bar to track focused work sessions.
     *   **Why**: Productivity technique often used by engineers to maintain focus during coding blocks.
     *   **Implementation**: A timer component in `Sidebar` or `Layout` with notifications.
 
-9.  **Task Dependencies (Blocking/Blocked By)**
+10. **Task Dependencies (Blocking/Blocked By)**
     *   **Description**: Explicitly link tasks that block others.
     *   **Why**: DE workflows are often sequential (e.g., "Design Schema" must happen before "Build Pipeline").
     *   **Implementation**: Add `parent_task_id` or a self-referential many-to-many table for dependencies. Visualize in Task view.
 
-10. **Customizable Dashboard Widgets**
+11. **Customizable Dashboard Widgets**
     *   **Description**: Allow users to toggle and reorder widgets on the Home Dashboard.
     *   **Why**: Different users care about different metrics (e.g., some want "Active Tasks" top, others want "Recent Notes").
     *   **Implementation**: Store a JSON layout config in Settings. Use a grid layout library or simple conditional rendering.
 
-## 2. Scope for "Personal Todos" Implementation
+## 2. Technical Feasibility Analysis: Smart Copy & Deep Linking
+
+### Clipboard Handling (Multi-MIME Write)
+*   **Goal**: Copy plain text URI (`omnivault://note/123`) AND HTML Link (`<a href="...">Title</a>`) simultaneously.
+*   **Feasibility**: Supported by the modern `Clipboard API`.
+*   **Code Strategy**:
+    ```javascript
+    const blobText = new Blob([url], { type: 'text/plain' });
+    const blobHtml = new Blob([`<a href="${url}">${title}</a>`], { type: 'text/html' });
+    await navigator.clipboard.write([
+        new ClipboardItem({
+            'text/plain': blobText,
+            'text/html': blobHtml,
+        })
+    ]);
+    ```
+
+### Deep Linking (Protocol Handler)
+*   **Windows**: Requires adding registry keys at install time (or first run).
+    *   `HKEY_CLASSES_ROOT\omnivault`
+    *   `URL Protocol` = ""
+    *   `shell\open\command` = `"path\to\OmniVault.exe" "%1"`
+*   **App Launch**: `app_webview.py` needs to check `sys.argv`. If an arg starts with `omnivault://`, parse the ID and tell the frontend to navigate.
+*   **Running Instance**: If the app is already running, we need a mechanism (like a lockfile or a named pipe) to send the new URL to the existing instance instead of opening a new one. `pywebview` might handle single-instance locking, or we implement a simple socket listener.
+
+## 3. Scope for "Personal Todos" Implementation
 
 This feature is feasible and fits well within the existing architecture.
 
@@ -71,7 +101,7 @@ This feature is feasible and fits well within the existing architecture.
     *   Update `TaskCard` or `TaskRow` to visually distinguish personal tasks (e.g., different color badge or icon).
     *   Update `TaskPopout` (Create/Edit modal) to include a "Personal Task" checkbox.
 
-## 3. Scope for UI Improvements
+## 4. Scope for UI Improvements
 
 ### 1. Sidebar & Navigation
 *   **Collapsible Sidebar**: The current sidebar is fixed width (`w-60`). Adding a collapse button to shrink it to icons-only would reclaim screen real estate for the editor or wide tables.
@@ -92,7 +122,7 @@ This feature is feasible and fits well within the existing architecture.
 ### 5. Status Bar
 *   **Global Status**: Move the "Storage" indicator from the sidebar to a bottom app-wide status bar. This bar could also show "Sync Status", "Last Saved", or "Git Branch" info.
 
-## 4. Suggested Easy Keyboard Shortcut Keys
+## 5. Suggested Easy Keyboard Shortcut Keys
 
 Current shortcuts use `Cmd+Shift+Letter` which requires two modifier keys. Simpler "Chord" or "Single Key" shortcuts (Gmail/Jira style) are faster.
 
