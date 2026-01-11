@@ -20,7 +20,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy import text
 
 from app.database import engine, Base, get_db
-from app.routers import daily_logs, tasks, notes, snippets, bookmarks, search, sections, system
+from app.routers import daily_logs, tasks, notes, snippets, bookmarks, search, sections, system, data
 
 # Determine frontend static files location
 if getattr(sys, 'frozen', False):
@@ -184,6 +184,7 @@ app.include_router(snippets.router, prefix="/api/snippets", tags=["Snippets"])
 app.include_router(bookmarks.router, prefix="/api/bookmarks", tags=["Bookmarks"])
 app.include_router(search.router, prefix="/api/search", tags=["Search"])
 app.include_router(system.router, prefix="/api/system", tags=["System"])
+app.include_router(data.router, prefix="/api/data", tags=["Data"])
 
 
 @app.get("/api/health")

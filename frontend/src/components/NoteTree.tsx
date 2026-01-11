@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Plus, MoreHorizontal, FileText, Pin, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronRight, ChevronDown, Plus, FileText, Pin, Trash2 } from 'lucide-react';
 import type { NoteTreeItem } from '../types';
 
 interface NoteTreeProps {

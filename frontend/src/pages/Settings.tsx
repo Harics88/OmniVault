@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Settings as SettingsIcon, HardDrive, ShieldCheck, Download, Upload } from 'lucide-react';
 import axios from 'axios';
 
@@ -17,7 +17,7 @@ export default function Settings() {
     const handleExport = async () => {
         setIsExporting(true);
         try {
-            const response = await axios.get('http://localhost:8000/api/data/export', {
+            const response = await axios.get('/api/data/export', {
                 responseType: 'blob'
             });
             const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -52,7 +52,7 @@ export default function Settings() {
         formData.append('file', file);
 
         try {
-            await axios.post('http://localhost:8000/api/data/import', formData, {
+            await axios.post('/api/data/import', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             alert('Import successful! The application needs to restart to apply changes.');

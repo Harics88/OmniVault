@@ -1,4 +1,3 @@
-import React from 'react';
 import { Keyboard } from 'lucide-react';
 
 export default function Shortcuts() {

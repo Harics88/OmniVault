@@ -1,5 +1,3 @@
-import React from 'react';
-
 // File icon component with Untitled UI style
 interface FileIconProps {
     extension: string;

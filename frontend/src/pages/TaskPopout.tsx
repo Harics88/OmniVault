@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, Check, Circle, Clock, Trash2, Calendar, Plus, Save, Edit2, Triangle, ListTodo, GripVertical } from 'lucide-react';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import type { Task, TaskStatus, TaskPriority, Subtask } from '../types';
 import { format } from 'date-fns';
 import { tasksApi } from '../lib/api';

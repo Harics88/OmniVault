@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { CheckSquare, FileText, Code, Bookmark, Calendar } from 'lucide-react';
 
 export interface MentionListProps {

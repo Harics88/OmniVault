@@ -1,10 +1,5 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
-import {
-    FileText,
-    List, ListOrdered, CheckSquare,
-    Table, Code, Quote, Image as ImageIcon,
-    Type
-} from 'lucide-react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { Type } from 'lucide-react';
 
 export interface CommandListProps {
     items: any[];

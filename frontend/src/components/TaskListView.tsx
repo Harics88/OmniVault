@@ -1,4 +1,3 @@
-import React from 'react';
 import { ListFilter } from 'lucide-react';
 import type { Task, TaskStatus } from '../types';
 import TaskRow from './TaskRow';
@@ -11,7 +10,7 @@ interface TaskListViewProps {
     onStatusChange: (taskId: number, status: TaskStatus) => void;
     onDelete: (taskId: number) => void;
     onEditClick: (task: Task) => void;
-    onCreateTask: () => void;
+    onCreateTask?: () => void;
 }
 
 export default function TaskListView({
@@ -22,7 +21,6 @@ export default function TaskListView({
     onStatusChange,
     onDelete,
     onEditClick,
-    onCreateTask
 }: TaskListViewProps) {
     // If partitioned tasks are provided, use them. Otherwise, fallback to flat 'tasks' prop for backward compatibility.
     const hasPartitionedData = activeTasks !== undefined || recentHistory !== undefined;

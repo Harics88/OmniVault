@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { MoreVertical, Plus, Trash2, Edit2, Globe } from 'lucide-react';
 import type { Bookmark, BookmarkCategory } from '../types';
 import { getFileIcon } from '../utils/fileIcons';

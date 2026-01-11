@@ -9,8 +9,6 @@ import {
     Search,
     Settings,
     Keyboard,
-    Layers,
-    Check,
     Trash2,
     HardDrive
 } from 'lucide-react';

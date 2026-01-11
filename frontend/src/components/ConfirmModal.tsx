@@ -20,7 +20,6 @@ export default function ConfirmModal({
     message,
     confirmText = 'Delete',
     cancelText = 'Cancel',
-    type = 'danger'
 }: ConfirmModalProps) {
     const confirmButtonRef = useRef<HTMLButtonElement>(null);
 

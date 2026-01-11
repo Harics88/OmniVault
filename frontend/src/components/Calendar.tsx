@@ -76,11 +76,6 @@ export default function Calendar({ selectedDate, onSelectDate, onClose, datesWit
         const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
         const dateFormat = "d";
-        const rows = [];
-        let days = [];
-        let day = startDate;
-        let formattedDate = "";
-
         const allDays = eachDayOfInterval({ start: startDate, end: endDate });
 
         return (

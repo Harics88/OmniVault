@@ -21,17 +21,32 @@ async def get_system_stats(db: AsyncSession = Depends(get_db)):
 
     # Try different possible paths
     # Handle relative paths properly relative to the backend app root
-    current_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # Goes up to backend root
+    # Current file is backend/app/routers/system.py
+    # Backend root is backend/
+    backend_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    # Handle relative path from backend root (e.g. "../data/mytasker.db" relative to "backend/app")
+    # Actually, DATABASE_URL is usually relative to where the app is started (backend/)
 
     possible_paths = [
-        db_path,
-        os.path.abspath(db_path),
-        os.path.join(os.getcwd(), db_path),
-        os.path.join(current_dir, db_path.lstrip("/.")), # Handle ../data/mytasker.db relative to backend/
-        os.path.join(current_dir, "data", "mytasker.db"),
-        "/app/data/mytasker.db",
+        db_path, # As is (relative to CWD)
+        os.path.abspath(db_path), # Absolute
+        os.path.join(backend_root, db_path), # Relative to backend root
     ]
     
+    # Special handling for common relative paths like "../data/mytasker.db"
+    if db_path.startswith(".."):
+        # Resolve .. relative to backend_root if it was meant to be relative to app/
+        # But if we run from backend/, then ".." puts us outside backend/
+        pass
+
+    # Add hardcoded fallback for likely Docker/Standard paths
+    possible_paths.extend([
+        os.path.join(backend_root, "mytasker.db"),
+        "/app/backend/mytasker.db",
+        "/app/mytasker.db"
+    ])
+
     size_bytes = 0
     actual_path = None
     for path in possible_paths:
