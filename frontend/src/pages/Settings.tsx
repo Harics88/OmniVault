@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Settings as SettingsIcon, HardDrive, ShieldCheck, Download, Upload } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Settings as SettingsIcon, HardDrive, ShieldCheck, Download, Upload, Tag } from 'lucide-react';
 import axios from 'axios';
+import TagManager from '../components/TagManager';
 
 export default function Settings() {
+    const [isTagManagerOpen, setIsTagManagerOpen] = useState(false);
     const [enablePersonal, setEnablePersonal] = useState(() => {
         return localStorage.getItem('enablePersonalTasks') === 'true';
     });
@@ -17,7 +19,7 @@ export default function Settings() {
     const handleExport = async () => {
         setIsExporting(true);
         try {
-            const response = await axios.get('http://localhost:8000/api/data/export', {
+            const response = await axios.get('/api/data/export', {
                 responseType: 'blob'
             });
             const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -52,7 +54,7 @@ export default function Settings() {
         formData.append('file', file);
 
         try {
-            await axios.post('http://localhost:8000/api/data/import', formData, {
+            await axios.post('/api/data/import', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             alert('Import successful! The application needs to restart to apply changes.');
@@ -104,6 +106,20 @@ export default function Settings() {
                             />
                             <div className="w-11 h-6 bg-background-elevated peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-blue"></div>
                         </label>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-lg">
+                        <div>
+                            <div className="text-base font-semibold text-text-primary">Manage Tags</div>
+                            <p className="text-sm text-text-muted">Create and manage your global tags</p>
+                        </div>
+                        <button
+                            onClick={() => setIsTagManagerOpen(true)}
+                            className="btn btn-ghost border border-border"
+                        >
+                            <Tag size={16} className="mr-2" />
+                            Manage Tags
+                        </button>
                     </div>
                 </section>
 
@@ -177,6 +193,8 @@ export default function Settings() {
                     </div>
                 </section>
             </div>
+
+            <TagManager isOpen={isTagManagerOpen} onClose={() => setIsTagManagerOpen(false)} />
         </div>
     );
 }

@@ -1,32 +1,28 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import SearchModal from './SearchModal';
-import { useState, useEffect } from 'react';
+import CommandPalette from './CommandPalette';
+import PomodoroTimer from './PomodoroTimer';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 export default function Layout() {
-    const [isSearchOpen, setIsSearchOpen] = useState(false);
-
     // Initialize keyboard shortcuts
     useKeyboardShortcuts();
 
-    useEffect(() => {
-        const handleOpenSearch = () => setIsSearchOpen(true);
-        const handleCloseModal = () => setIsSearchOpen(false);
-
-        window.addEventListener('open-search', handleOpenSearch);
-        window.addEventListener('close-modal', handleCloseModal);
-
-        return () => {
-            window.removeEventListener('open-search', handleOpenSearch);
-            window.removeEventListener('close-modal', handleCloseModal);
-        };
-    }, []);
+    // Trigger Command Palette instead of Search Modal
+    const handleSearchClick = () => {
+        const event = new KeyboardEvent('keydown', {
+            key: 'k',
+            metaKey: true,
+            ctrlKey: true, // fallback
+            bubbles: true
+        });
+        document.dispatchEvent(event);
+    };
 
     return (
         <div className="flex h-screen bg-background overflow-hidden">
             {/* Sidebar */}
-            <Sidebar onSearchClick={() => setIsSearchOpen(true)} />
+            <Sidebar onSearchClick={handleSearchClick} />
 
             {/* Main Content Area */}
             <main className="flex-1 overflow-auto">
@@ -35,8 +31,11 @@ export default function Layout() {
                 </div>
             </main>
 
-            {/* Search Modal */}
-            <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+            {/* Command Palette (replaces Search Modal) */}
+            <CommandPalette />
+
+            {/* Floating Widgets */}
+            <PomodoroTimer />
         </div>
     );
 }

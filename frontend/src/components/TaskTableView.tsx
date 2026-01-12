@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight, Circle, Clock, Check, Triangle, Trash2, CheckSquare, Calendar, ArrowRight, Search } from 'lucide-react';
 import { format, isPast, subDays } from 'date-fns';
 import type { Task, TaskStatus } from '../types';

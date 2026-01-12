@@ -3,10 +3,62 @@ import { useNavigate } from 'react-router-dom';
 
 export function useKeyboardShortcuts() {
     const navigate = useNavigate();
+    const [lastKey, setLastKey] = useState<{ key: string, time: number } | null>(null);
 
     const handleKeyDown = useCallback((event: KeyboardEvent) => {
+        // Ignore if input/textarea is focused
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes((event.target as HTMLElement).tagName) || (event.target as HTMLElement).isContentEditable) {
+            return;
+        }
+
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
         const modKey = isMac ? event.metaKey : event.ctrlKey;
+        const now = Date.now();
+
+        // Single Key Shortcuts (when no modifier)
+        if (!modKey && !event.shiftKey && !event.altKey) {
+            // '/' for Search
+            if (event.key === '/') {
+                event.preventDefault();
+                window.dispatchEvent(new CustomEvent('open-search'));
+                return;
+            }
+
+            // 'c' for Create (Generic)
+            if (event.key === 'c') {
+                // If on tasks page, might trigger new task.
+                // For now, let's make it smart based on route, or open command palette
+                // window.dispatchEvent(new CustomEvent('open-command-palette'));
+                return;
+            }
+
+            // '?' for Help
+            if (event.key === '?') {
+                 navigate('/shortcuts');
+                 return;
+            }
+
+            // G-Chord Navigation (g then ...)
+            if (event.key === 'g') {
+                setLastKey({ key: 'g', time: now });
+                return;
+            }
+
+            // Check for chords
+            if (lastKey && lastKey.key === 'g' && (now - lastKey.time) < 1000) {
+                setLastKey(null); // Reset
+                switch (event.key) {
+                    case 'h': navigate('/'); return;
+                    case 't': navigate('/tasks'); return;
+                    case 'n': navigate('/notes'); return;
+                    case 's': navigate('/snippets'); return;
+                    case 'b': navigate('/bookmarks'); return;
+                    case 'd': navigate('/daily-log'); return;
+                }
+            }
+        }
+
+        // Original Modifier Shortcuts (Keep for backward compat)
 
         // Cmd/Ctrl + D - Go to today's daily log
         if (modKey && event.key === 'd') {
@@ -38,7 +90,7 @@ export function useKeyboardShortcuts() {
             window.dispatchEvent(new CustomEvent('close-modal'));
         }
 
-        // Navigation shortcuts
+        // Navigation shortcuts (Legacy)
         if (modKey && event.shiftKey) {
             switch (event.key) {
                 case 'H':
@@ -63,7 +115,7 @@ export function useKeyboardShortcuts() {
                     break;
             }
         }
-    }, [navigate]);
+    }, [navigate, lastKey]);
 
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown);

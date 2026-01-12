@@ -10,6 +10,20 @@ import enum
 
 from app.database import Base
 
+# Association Tables
+task_tags = Table(
+    "task_tags",
+    Base.metadata,
+    Column("task_id", Integer, ForeignKey("tasks.id"), primary_key=True),
+    Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
+)
+
+note_tags = Table(
+    "note_tags",
+    Base.metadata,
+    Column("note_id", Integer, ForeignKey("notes.id"), primary_key=True),
+    Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
+)
 
 class TaskStatus(str, enum.Enum):
     """Task status enumeration"""
@@ -128,6 +142,7 @@ class Task(Base):
         cascade="all, delete-orphan",
         order_by="Subtask.order"
     )
+    tags: Mapped[List["Tag"]] = relationship("Tag", secondary=task_tags, back_populates="tasks")
 
 
 class Subtask(Base):
@@ -202,6 +217,7 @@ class Note(Base):
         secondary=task_note_association,
         back_populates="notes"
     )
+    tags_rel: Mapped[List["Tag"]] = relationship("Tag", secondary=note_tags, back_populates="notes")
 
 
 class Snippet(Base):
@@ -263,3 +279,23 @@ class Bookmark(Base):
         secondary=log_bookmark_association,
         back_populates="bookmarks"
     )
+
+
+class Tag(Base):
+    __tablename__ = "tags"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String, unique=True, index=True)
+    color: Mapped[str] = mapped_column(String, default="#3b82f6") # Default Blue
+
+    # Relationships
+    tasks: Mapped[List["Task"]] = relationship("Task", secondary=task_tags, back_populates="tags")
+    notes: Mapped[List["Note"]] = relationship("Note", secondary=note_tags, back_populates="tags_rel")
+
+class Habit(Base):
+    __tablename__ = "habits"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    title: Mapped[str] = mapped_column(String)
+    streak: Mapped[int] = mapped_column(Integer, default=0)
+    last_completed_date: Mapped[Optional[str]] = mapped_column(String, nullable=True) # ISO Date YYYY-MM-DD

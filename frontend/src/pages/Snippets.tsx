@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Plus, Code, Search, Loader2, Trash2, Edit2, X, MoreHorizontal, Copy, Check, Pin, Database, Terminal, FileCode, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Code, Search, Loader2, Trash2, Edit2, X, Pin, Database, Terminal, ChevronUp, ChevronDown } from 'lucide-react';
 import { snippetsApi } from '../lib/api';
 import CodeBlock from '../components/CodeBlock';
 import type { Snippet, CreateSnippet, UpdateSnippet } from '../types';

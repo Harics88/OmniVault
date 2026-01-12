@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { X, Check, Circle, Clock, Trash2, Calendar, Plus, Save, Edit2, Maximize2, Minimize2, Triangle, GripVertical } from 'lucide-react';
+import { X, Check, Circle, Clock, Calendar, Plus, Edit2, Maximize2, Minimize2, Triangle, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import type { Task, TaskStatus, TaskPriority, Subtask } from '../types';
 import { format } from 'date-fns';

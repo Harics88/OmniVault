@@ -1,6 +1,5 @@
 import { ReactRenderer } from '@tiptap/react';
 import tippy from 'tippy.js';
-import React from 'react';
 import MentionList from './MentionList';
 import { searchApi } from '../../../lib/api';
 

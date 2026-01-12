@@ -5,7 +5,6 @@ import {
     List, ListOrdered, CheckSquare,
     Table, Code, Quote, Image as ImageIcon, Link as LinkIcon
 } from 'lucide-react';
-import React from 'react';
 import CommandList from './CommandList';
 
 export default {
