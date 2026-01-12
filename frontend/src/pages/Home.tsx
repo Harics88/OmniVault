@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { useState, useEffect } from 'react';
 import {
     Calendar,
     CheckSquare,
@@ -9,14 +10,40 @@ import {
     Bookmark,
     ArrowRight,
     Sparkles,
+    Layout,
+    Eye,
+    EyeOff
 } from 'lucide-react';
 import { dailyLogsApi, tasksApi, notesApi, snippetsApi, bookmarksApi, systemApi } from '../lib/api';
 import TaskCard from '../components/TaskCard';
+import ActivityHeatmap from '../components/ActivityHeatmap';
+import HabitTracker from '../components/HabitTracker';
 
 export default function Home() {
     const today = new Date();
     const greeting = getGreeting();
     const navigate = useNavigate();
+    const [configMode, setConfigMode] = useState(false);
+    const [visibleWidgets, setVisibleWidgets] = useState(() => {
+        const saved = localStorage.getItem('dashboardWidgets');
+        return saved ? JSON.parse(saved) : {
+            heatmap: true,
+            habits: true,
+            todayLog: true,
+            activeTasks: true,
+            recentNotes: true,
+            recentSnippets: true,
+            recentBookmarks: true
+        };
+    });
+
+    useEffect(() => {
+        localStorage.setItem('dashboardWidgets', JSON.stringify(visibleWidgets));
+    }, [visibleWidgets]);
+
+    const toggleWidget = (key: string) => {
+        setVisibleWidgets((prev: Record<string, boolean>) => ({ ...prev, [key]: !prev[key] }));
+    };
 
     // Fetch data
     const { data: todayLog } = useQuery({
@@ -66,18 +93,63 @@ export default function Home() {
     return (
         <div className="p-8 max-w-6xl mx-auto animate-fade-in">
             {/* Header */}
-            <header className="mb-8">
-                <div className="flex items-center gap-2 text-accent-blue mb-2">
-                    <Sparkles size={20} />
-                    <span className="text-sm font-medium">{format(today, 'EEEE, MMMM d, yyyy')}</span>
+            <header className="mb-8 flex items-start justify-between">
+                <div>
+                    <div className="flex items-center gap-2 text-accent-blue mb-2">
+                        <Sparkles size={20} />
+                        <span className="text-sm font-medium">{format(today, 'EEEE, MMMM d, yyyy')}</span>
+                    </div>
+                    <h1 className="text-3xl font-bold text-text-primary mb-2">
+                        {greeting}, Welcome Back
+                    </h1>
+                    <p className="text-text-secondary">
+                        Here's what's happening with your workspace today.
+                    </p>
                 </div>
-                <h1 className="text-3xl font-bold text-text-primary mb-2">
-                    {greeting}, Welcome Back
-                </h1>
-                <p className="text-text-secondary">
-                    Here's what's happening with your workspace today.
-                </p>
+                <button
+                    onClick={() => setConfigMode(!configMode)}
+                    className={`p-2 rounded-lg transition-colors ${configMode ? 'bg-accent-blue text-white' : 'text-text-muted hover:bg-background-elevated'}`}
+                    title="Customize Dashboard"
+                >
+                    <Layout size={20} />
+                </button>
             </header>
+
+            {configMode && (
+                <div className="mb-8 p-4 bg-background-card border border-border rounded-xl animate-fade-in">
+                    <h3 className="text-sm font-bold text-text-primary mb-3 uppercase tracking-wider">Visible Widgets</h3>
+                    <div className="flex flex-wrap gap-3">
+                        {Object.keys(visibleWidgets).map(key => (
+                            <button
+                                key={key}
+                                onClick={() => toggleWidget(key)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 transition-all ${
+                                    visibleWidgets[key]
+                                    ? 'bg-accent-blue/10 text-accent-blue border border-accent-blue/20'
+                                    : 'bg-background-elevated text-text-muted border border-border'
+                                }`}
+                            >
+                                {visibleWidgets[key] ? <Eye size={14} /> : <EyeOff size={14} />}
+                                {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Top Row: Activity Heatmap & Habits */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                {visibleWidgets.heatmap && (
+                    <div className="lg:col-span-2">
+                        <ActivityHeatmap />
+                    </div>
+                )}
+                {visibleWidgets.habits && (
+                    <div className="lg:col-span-1">
+                        <HabitTracker />
+                    </div>
+                )}
+            </div>
 
             {/* Quick Stats */}
             <div className="grid grid-cols-4 gap-4 mb-8">
@@ -109,214 +181,224 @@ export default function Home() {
 
             <div className="grid grid-cols-3 gap-6">
                 {/* Today's Log */}
-                <div className="col-span-2">
-                    <SectionHeader
-                        icon={Calendar}
-                        title="Today's Log"
-                        linkTo="/daily-log"
-                        linkLabel="Open Editor"
-                        iconColor="text-amber-500"
-                    />
-                    <div className="card p-6 min-h-[200px] max-h-[300px] overflow-y-auto">
-                        {todayLog?.content ? (
-                            <div
-                                className="prose prose-invert max-w-none text-text-primary"
-                                dangerouslySetInnerHTML={{
-                                    __html: todayLog.content.slice(0, 800) + (todayLog.content.length > 800 ? '...' : '')
-                                }}
-                            />
-                        ) : (
-                            <div className="flex flex-col items-center justify-center h-40 text-text-muted">
-                                <Calendar size={32} className="mb-3 opacity-50" />
-                                <p className="mb-1">No entries found for {format(today, 'MMM d')}</p>
-                                <p className="text-xs text-text-muted mb-3">Start documenting your day</p>
-                                <Link
-                                    to="/daily-log"
-                                    className="px-4 py-2 bg-amber-500/10 text-amber-500 rounded-lg hover:bg-amber-500/20 transition-colors text-sm flex items-center gap-2"
-                                >
-                                    <Calendar size={16} />
-                                    Start writing
-                                </Link>
-                            </div>
-                        )}
+                {visibleWidgets.todayLog && (
+                    <div className="col-span-2">
+                        <SectionHeader
+                            icon={Calendar}
+                            title="Today's Log"
+                            linkTo="/daily-log"
+                            linkLabel="Open Editor"
+                            iconColor="text-amber-500"
+                        />
+                        <div className="card p-6 min-h-[200px] max-h-[300px] overflow-y-auto">
+                            {todayLog?.content ? (
+                                <div
+                                    className="prose prose-invert max-w-none text-text-primary"
+                                    dangerouslySetInnerHTML={{
+                                        __html: todayLog.content.slice(0, 800) + (todayLog.content.length > 800 ? '...' : '')
+                                    }}
+                                />
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-40 text-text-muted">
+                                    <Calendar size={32} className="mb-3 opacity-50" />
+                                    <p className="mb-1">No entries found for {format(today, 'MMM d')}</p>
+                                    <p className="text-xs text-text-muted mb-3">Start documenting your day</p>
+                                    <Link
+                                        to="/daily-log"
+                                        className="px-4 py-2 bg-amber-500/10 text-amber-500 rounded-lg hover:bg-amber-500/20 transition-colors text-sm flex items-center gap-2"
+                                    >
+                                        <Calendar size={16} />
+                                        Start writing
+                                    </Link>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Active Tasks */}
-                <div>
-                    <SectionHeader
-                        icon={CheckSquare}
-                        title="Active Tasks"
-                        linkTo="/tasks"
-                        linkLabel="View All"
-                        count={activeTasks.length}
-                        iconColor="text-emerald-500"
-                    />
-                    <div className="space-y-3">
-                        {activeTasks.length > 0 ? (
-                            activeTasks.map((task) => (
-                                <TaskCard
-                                    key={task.id}
-                                    task={task}
-                                    onClick={() => navigate(`/tasks/${task.id}`)}
-                                    onStatusChange={() => { }}
-                                    isCompact={true}
-                                />
-                            ))
-                        ) : (
-                            <div className="card p-6 text-center text-text-muted">
-                                <CheckSquare size={24} className="mx-auto mb-2 opacity-50" />
-                                <p className="mb-1">No active tasks</p>
-                                <p className="text-xs text-text-muted mb-3">All caught up!</p>
-                                <Link
-                                    to="/tasks"
-                                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500/20 transition-colors text-sm"
-                                >
-                                    <CheckSquare size={16} />
-                                    Create Task
-                                </Link>
-                            </div>
-                        )}
+                {visibleWidgets.activeTasks && (
+                    <div>
+                        <SectionHeader
+                            icon={CheckSquare}
+                            title="Active Tasks"
+                            linkTo="/tasks"
+                            linkLabel="View All"
+                            count={activeTasks.length}
+                            iconColor="text-emerald-500"
+                        />
+                        <div className="space-y-3">
+                            {activeTasks.length > 0 ? (
+                                activeTasks.map((task: any) => (
+                                    <TaskCard
+                                        key={task.id}
+                                        task={task}
+                                        onClick={() => navigate(`/tasks/${task.id}`)}
+                                        onStatusChange={() => { }}
+                                        isCompact={true}
+                                    />
+                                ))
+                            ) : (
+                                <div className="card p-6 text-center text-text-muted">
+                                    <CheckSquare size={24} className="mx-auto mb-2 opacity-50" />
+                                    <p className="mb-1">No active tasks</p>
+                                    <p className="text-xs text-text-muted mb-3">All caught up!</p>
+                                    <Link
+                                        to="/tasks"
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500/20 transition-colors text-sm"
+                                    >
+                                        <CheckSquare size={16} />
+                                        Create Task
+                                    </Link>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* Quick Access Section */}
             <div className="mt-8 grid grid-cols-3 gap-6">
                 {/* Recent Notes */}
-                <div>
-                    <SectionHeader
-                        icon={FileText}
-                        title="Recent Notes"
-                        linkTo="/notes"
-                        linkLabel="View All"
-                        iconColor="text-purple-500"
-                    />
-                    <div className="space-y-2">
-                        {recentNotes.length > 0 ? (
-                            recentNotes.slice(0, 4).map((note) => (
-                                <Link
-                                    key={note.id}
-                                    to={`/notes/${note.id}`}
-                                    className="card card-hover p-3 block group"
-                                >
-                                    <h4 className="font-medium text-text-primary truncate group-hover:text-accent-blue transition-colors">
-                                        {note.title}
-                                    </h4>
-                                    <p className="text-sm text-text-muted/70 line-clamp-2 mt-1 mb-2">
-                                        {note.content ? note.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 100) : 'No content'}
-                                    </p>
-                                    <p className="text-[10px] text-text-muted mt-auto pt-1 border-t border-border/10">
-                                        Last modified {formatSafeDate(note.updated_at)}
-                                    </p>
-                                </Link>
-                            ))
-                        ) : (
-                            <div className="card p-6 text-center text-text-muted">
-                                <FileText size={24} className="mx-auto mb-2 opacity-50 text-purple-500" />
-                                <p className="text-sm mb-3">No notes yet</p>
-                                <Link
-                                    to="/notes"
-                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 text-purple-500 rounded-lg hover:bg-purple-500/20 transition-colors text-xs"
-                                >
-                                    <FileText size={14} />
-                                    Create Note
-                                </Link>
-                            </div>
-                        )}
+                {visibleWidgets.recentNotes && (
+                    <div>
+                        <SectionHeader
+                            icon={FileText}
+                            title="Recent Notes"
+                            linkTo="/notes"
+                            linkLabel="View All"
+                            iconColor="text-purple-500"
+                        />
+                        <div className="space-y-2">
+                            {recentNotes.length > 0 ? (
+                                recentNotes.slice(0, 4).map((note: any) => (
+                                    <Link
+                                        key={note.id}
+                                        to={`/notes/${note.id}`}
+                                        className="card card-hover p-3 block group"
+                                    >
+                                        <h4 className="font-medium text-text-primary truncate group-hover:text-accent-blue transition-colors">
+                                            {note.title}
+                                        </h4>
+                                        <p className="text-sm text-text-muted/70 line-clamp-2 mt-1 mb-2">
+                                            {note.content ? note.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 100) : 'No content'}
+                                        </p>
+                                        <p className="text-[10px] text-text-muted mt-auto pt-1 border-t border-border/10">
+                                            Last modified {formatSafeDate(note.updated_at)}
+                                        </p>
+                                    </Link>
+                                ))
+                            ) : (
+                                <div className="card p-6 text-center text-text-muted">
+                                    <FileText size={24} className="mx-auto mb-2 opacity-50 text-purple-500" />
+                                    <p className="text-sm mb-3">No notes yet</p>
+                                    <Link
+                                        to="/notes"
+                                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 text-purple-500 rounded-lg hover:bg-purple-500/20 transition-colors text-xs"
+                                    >
+                                        <FileText size={14} />
+                                        Create Note
+                                    </Link>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Recent Snippets */}
-                <div>
-                    <SectionHeader
-                        icon={Code}
-                        title="Recent Snippets"
-                        linkTo="/snippets"
-                        linkLabel="View All"
-                        iconColor="text-sky-500"
-                    />
-                    <div className="space-y-2">
-                        {recentSnippets.length > 0 ? (
-                            recentSnippets.slice(0, 4).map((snippet) => (
-                                <Link
-                                    key={snippet.id}
-                                    to={`/snippets/${snippet.id}`}
-                                    className="card card-hover p-3 block group"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <h4 className="font-medium text-text-primary truncate flex-1 group-hover:text-accent-blue transition-colors">
-                                            {snippet.title}
-                                        </h4>
-                                        <span className="badge badge-blue">{snippet.language}</span>
-                                    </div>
-                                    <p className="text-xs text-text-muted mt-1">
-                                        {formatSafeDate(snippet.updated_at)}
-                                    </p>
-                                </Link>
-                            ))
-                        ) : (
-                            <div className="card p-6 text-center text-text-muted">
-                                <Code size={24} className="mx-auto mb-2 opacity-50 text-sky-500" />
-                                <p className="text-sm mb-3">No snippets yet</p>
-                                <Link
-                                    to="/snippets"
-                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-sky-500/10 text-sky-500 rounded-lg hover:bg-sky-500/20 transition-colors text-xs"
-                                >
-                                    <Code size={14} />
-                                    Create Snippet
-                                </Link>
-                            </div>
-                        )}
+                {visibleWidgets.recentSnippets && (
+                    <div>
+                        <SectionHeader
+                            icon={Code}
+                            title="Recent Snippets"
+                            linkTo="/snippets"
+                            linkLabel="View All"
+                            iconColor="text-sky-500"
+                        />
+                        <div className="space-y-2">
+                            {recentSnippets.length > 0 ? (
+                                recentSnippets.slice(0, 4).map((snippet: any) => (
+                                    <Link
+                                        key={snippet.id}
+                                        to={`/snippets/${snippet.id}`}
+                                        className="card card-hover p-3 block group"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="font-medium text-text-primary truncate flex-1 group-hover:text-accent-blue transition-colors">
+                                                {snippet.title}
+                                            </h4>
+                                            <span className="badge badge-blue">{snippet.language}</span>
+                                        </div>
+                                        <p className="text-xs text-text-muted mt-1">
+                                            {formatSafeDate(snippet.updated_at)}
+                                        </p>
+                                    </Link>
+                                ))
+                            ) : (
+                                <div className="card p-6 text-center text-text-muted">
+                                    <Code size={24} className="mx-auto mb-2 opacity-50 text-sky-500" />
+                                    <p className="text-sm mb-3">No snippets yet</p>
+                                    <Link
+                                        to="/snippets"
+                                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-sky-500/10 text-sky-500 rounded-lg hover:bg-sky-500/20 transition-colors text-xs"
+                                    >
+                                        <Code size={14} />
+                                        Create Snippet
+                                    </Link>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Recent Bookmarks */}
-                <div>
-                    <SectionHeader
-                        icon={Bookmark}
-                        title="Recent Bookmarks"
-                        linkTo="/bookmarks"
-                        linkLabel="View All"
-                        iconColor="text-rose-500"
-                    />
-                    <div className="space-y-2">
-                        {recentBookmarks.length > 0 ? (
-                            recentBookmarks.slice(0, 4).map((bookmark) => (
-                                <button
-                                    key={bookmark.id}
-                                    onClick={() => {
-                                        if (bookmark.is_file) {
-                                            bookmarksApi.open(bookmark.id);
-                                        } else {
-                                            window.open(ensureAbsoluteUrl(bookmark.url), '_blank', 'noopener,noreferrer');
-                                        }
-                                    }}
-                                    className="card card-hover p-3 block group w-full text-left"
-                                >
-                                    <h4 className="font-medium text-text-primary truncate group-hover:text-accent-blue transition-colors">
-                                        {bookmark.title}
-                                    </h4>
-                                    <p className="text-xs text-text-muted mt-1 truncate">
-                                        {bookmark.url}
-                                    </p>
-                                </button>
-                            ))
-                        ) : (
-                            <div className="card p-6 text-center text-text-muted">
-                                <Bookmark size={24} className="mx-auto mb-2 opacity-50 text-rose-500" />
-                                <p className="text-sm mb-3">No bookmarks yet</p>
-                                <Link
-                                    to="/bookmarks"
-                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500/20 transition-colors text-xs"
-                                >
-                                    <Bookmark size={14} />
-                                    Add Bookmark
-                                </Link>
-                            </div>
-                        )}
+                {visibleWidgets.recentBookmarks && (
+                    <div>
+                        <SectionHeader
+                            icon={Bookmark}
+                            title="Recent Bookmarks"
+                            linkTo="/bookmarks"
+                            linkLabel="View All"
+                            iconColor="text-rose-500"
+                        />
+                        <div className="space-y-2">
+                            {recentBookmarks.length > 0 ? (
+                                recentBookmarks.slice(0, 4).map((bookmark: any) => (
+                                    <button
+                                        key={bookmark.id}
+                                        onClick={() => {
+                                            if (bookmark.is_file) {
+                                                bookmarksApi.open(bookmark.id);
+                                            } else {
+                                                window.open(ensureAbsoluteUrl(bookmark.url), '_blank', 'noopener,noreferrer');
+                                            }
+                                        }}
+                                        className="card card-hover p-3 block group w-full text-left"
+                                    >
+                                        <h4 className="font-medium text-text-primary truncate group-hover:text-accent-blue transition-colors">
+                                            {bookmark.title}
+                                        </h4>
+                                        <p className="text-xs text-text-muted mt-1 truncate">
+                                            {bookmark.url}
+                                        </p>
+                                    </button>
+                                ))
+                            ) : (
+                                <div className="card p-6 text-center text-text-muted">
+                                    <Bookmark size={24} className="mx-auto mb-2 opacity-50 text-rose-500" />
+                                    <p className="text-sm mb-3">No bookmarks yet</p>
+                                    <Link
+                                        to="/bookmarks"
+                                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500/20 transition-colors text-xs"
+                                    >
+                                        <Bookmark size={14} />
+                                        Add Bookmark
+                                    </Link>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* Keyboard Shortcuts Hint */}

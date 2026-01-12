@@ -3,13 +3,14 @@ from fastapi.responses import FileResponse
 import shutil
 import os
 import zipfile
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from app.database import DB_PATH
 
 router = APIRouter()
 
-BACKUP_DIR = Path("/tmp/backups")
+BACKUP_DIR = Path(tempfile.gettempdir()) / "omnivault_backups"
 BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
 @router.get("/export")
