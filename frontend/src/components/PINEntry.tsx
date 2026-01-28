@@ -218,7 +218,7 @@ const PINEntry: React.FC<PINEntryProps> = ({ mode, onSuccess, onCancel }) => {
                                 ? 'Choose a 4-digit PIN to protect your vault'
                                 : step === 'confirm'
                                     ? 'Re-enter your PIN to confirm'
-                                    : 'Optional: add a hint to help you remember your PIN'
+                                    : 'Mandatory: add a hint to help you remember your PIN'
                             : fetchedTip
                                 ? `Hint: ${fetchedTip}`
                                 : 'Enter your 4-digit PIN to access the vault'}
@@ -236,8 +236,8 @@ const PINEntry: React.FC<PINEntryProps> = ({ mode, onSuccess, onCancel }) => {
                         />
                         <button
                             onClick={handleSubmit}
-                            disabled={loading}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-all shadow-lg active:scale-[0.98] disabled:opacity-50"
+                            disabled={loading || !pinTip.trim()}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-all shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {loading ? 'Processing...' : 'Complete Setup'}
                         </button>
@@ -305,6 +305,11 @@ const PINEntry: React.FC<PINEntryProps> = ({ mode, onSuccess, onCancel }) => {
                 <div className="flex flex-col gap-3">
                     <button
                         onClick={() => {
+                            if (step === 'tip') {
+                                setStep('confirm');
+                                setConfirmPin('');
+                                return;
+                            }
                             if (onCancel) {
                                 onCancel();
                             } else {
@@ -314,7 +319,7 @@ const PINEntry: React.FC<PINEntryProps> = ({ mode, onSuccess, onCancel }) => {
                         disabled={loading}
                         className="w-full bg-transparent hover:bg-gray-700/50 text-gray-400 hover:text-white py-2.5 rounded-lg transition-all text-sm font-medium"
                     >
-                        {step === 'tip' ? 'Skip & Finish' : 'Cancel'}
+                        {step === 'tip' ? 'Go Back' : 'Cancel'}
                     </button>
 
                     {/* Loading Indicator */}
@@ -325,8 +330,8 @@ const PINEntry: React.FC<PINEntryProps> = ({ mode, onSuccess, onCancel }) => {
                         </div>
                     )}
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

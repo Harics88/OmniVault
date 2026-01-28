@@ -352,7 +352,7 @@ class SecretResponse(BaseModel):
 # PIN Management Schemas
 class PINSetup(BaseModel):
     pin: str  # 4-digit PIN
-    tip: Optional[str] = None
+    tip: str
 
 
 class PINVerify(BaseModel):

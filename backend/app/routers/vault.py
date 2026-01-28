@@ -31,11 +31,17 @@ async def setup_pin(pin_data: PINSetup, db: AsyncSession = Depends(get_db)):
     Set up the vault PIN for the first time or reset it.
     PIN is hashed and stored persistently in the database.
     """
-    # Validate PIN is 4 digits
     if not pin_data.pin.isdigit() or len(pin_data.pin) != 4:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="PIN must be exactly 4 digits"
+        )
+    
+    # Validate PIN tip is provided
+    if not pin_data.tip or not pin_data.tip.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="PIN tip is mandatory"
         )
     
     hashed = hash_pin(pin_data.pin)
