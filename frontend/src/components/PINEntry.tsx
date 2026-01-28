@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+// Use relative URLs for API calls (works in all environments)
+const API_BASE = '/api';
+
 interface PINEntryProps {
     mode: 'setup' | 'verify';
     onSuccess: () => void;
@@ -23,7 +26,7 @@ const PINEntry: React.FC<PINEntryProps> = ({ mode, onSuccess, onCancel }) => {
         if (mode === 'verify') {
             const fetchStatus = async () => {
                 try {
-                    const response = await fetch('http://localhost:5000/api/vault/pin/status');
+                    const response = await fetch(`${API_BASE}/vault/pin/status`);
                     const data = await response.json();
                     if (data.tip) {
                         setFetchedTip(data.tip);
@@ -128,7 +131,7 @@ const PINEntry: React.FC<PINEntryProps> = ({ mode, onSuccess, onCancel }) => {
                     return;
                 } else {
                     // Setup PIN with tip
-                    const response = await fetch('http://localhost:5000/api/vault/pin/setup', {
+                    const response = await fetch(`${API_BASE}/vault/pin/setup`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ pin, tip: pinTip }),
@@ -144,7 +147,7 @@ const PINEntry: React.FC<PINEntryProps> = ({ mode, onSuccess, onCancel }) => {
                 }
             } else {
                 // Verify PIN
-                const response = await fetch('http://localhost:5000/api/vault/pin/verify', {
+                const response = await fetch(`${API_BASE}/vault/pin/verify`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ pin }),

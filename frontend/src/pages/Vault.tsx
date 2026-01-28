@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import PINEntry from '../components/PINEntry';
 import { Secret, SecretType, CreateSecret, DatabaseMetadata, SFTPMetadata, WebsiteMetadata } from '../types';
 
+// Use relative URLs for API calls (works in all environments)
+const API_BASE = '/api';
+
 const Vault: React.FC = () => {
     const [isUnlocked, setIsUnlocked] = useState(false);
     const [isPinSetup, setIsPinSetup] = useState(false);
@@ -28,7 +31,7 @@ const Vault: React.FC = () => {
 
     const checkPinStatus = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/vault/pin/status');
+            const response = await fetch(`${API_BASE}/vault/pin/status`);
             const data = await response.json();
             setIsPinSetup(data.is_setup);
 
@@ -45,7 +48,7 @@ const Vault: React.FC = () => {
 
     const loadSecrets = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/vault/secrets');
+            const response = await fetch(`${API_BASE}/vault/secrets`);
             if (response.ok) {
                 const data = await response.json();
                 setSecrets(data);
@@ -71,7 +74,7 @@ const Vault: React.FC = () => {
         if (!confirm('Delete this secret?')) return;
 
         try {
-            const response = await fetch(`http://localhost:5000/api/vault/secrets/${id}`, {
+            const response = await fetch(`${API_BASE}/vault/secrets/${id}`, {
                 method: 'DELETE',
             });
 
@@ -95,7 +98,7 @@ const Vault: React.FC = () => {
 
     const handleCopyConnectionString = async (secret: Secret) => {
         try {
-            const response = await fetch(`http://localhost:5000/api/vault/secrets/${secret.id}/connection-string`);
+            const response = await fetch(`${API_BASE}/vault/secrets/${secret.id}/connection-string`);
             if (response.ok) {
                 const data = await response.json();
                 await navigator.clipboard.writeText(data.connection_string);
@@ -607,7 +610,7 @@ const SecretFormModal: React.FC<SecretFormModalProps> = ({ secret, onClose, onSa
         };
 
         try {
-            const url = secret ? `http://localhost:5000/api/vault/secrets/${secret.id}` : 'http://localhost:5000/api/vault/secrets';
+            const url = secret ? `${API_BASE}/vault/secrets/${secret.id}` : `${API_BASE}/vault/secrets`;
             const method = secret ? 'PUT' : 'POST';
 
             const response = await fetch(url, {

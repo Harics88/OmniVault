@@ -27,7 +27,7 @@ export default function Settings() {
     useEffect(() => {
         const fetchVaultStatus = async () => {
             try {
-                const response = await axios.get('http://localhost:5000/api/vault/pin/status');
+                const response = await axios.get('/api/vault/pin/status');
                 setVaultPinEnabled(response.data.is_enabled);
             } catch (error) {
                 console.error('Failed to fetch vault status:', error);
@@ -268,7 +268,7 @@ export default function Settings() {
                                     setVaultPinEnabled(false);
                                     setPinPromptMode(null);
                                     try {
-                                        await axios.post(`http://localhost:5000/api/vault/pin/toggle?enabled=false`);
+                                        await axios.post(`/api/vault/pin/toggle?enabled=false`);
                                     } catch (error) {
                                         console.error('Failed to disable vault PIN:', error);
                                         setVaultPinEnabled(true); // Rollback
@@ -277,7 +277,7 @@ export default function Settings() {
                                     setVaultPinEnabled(true);
                                     setPinPromptMode(null);
                                     try {
-                                        await axios.post(`http://localhost:5000/api/vault/pin/toggle?enabled=true`);
+                                        await axios.post(`/api/vault/pin/toggle?enabled=true`);
                                     } catch (error) {
                                         console.error('Failed to enable vault PIN:', error);
                                         setVaultPinEnabled(false); // Rollback
