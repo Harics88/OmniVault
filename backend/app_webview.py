@@ -48,6 +48,8 @@ class StreamToLogger:
             self.handler.emit(record)
     def flush(self):
         pass
+    def isatty(self):
+        return False
 
 # Only redirect if we don't have a console (frozen build)
 if getattr(sys, 'frozen', False):
