@@ -18,19 +18,28 @@ import sys
 
 # Fix for pythonnet in frozen PyInstaller environment
 if getattr(sys, 'frozen', False):
-    # Set the runtime path for pythonnet
     base_path = sys._MEIPASS
     
-    # Ensure pythonnet can find its runtime DLLs
-    runtime_path = os.path.join(base_path, 'pythonnet', 'runtime')
-    if os.path.exists(runtime_path):
-        os.environ['PYTHONNET_RUNTIME'] = runtime_path
+    # Add paths where pythonnet DLLs might be located to PATH
+    # This helps Windows find the .NET runtime DLLs
+    paths_to_add = [
+        base_path,
+        os.path.join(base_path, 'pythonnet'),
+        os.path.join(base_path, 'pythonnet', 'runtime'),
+        os.path.join(base_path, 'clr_loader'),
+    ]
     
-    # Add the _internal folder to PATH for DLL discovery
-    internal_path = os.path.join(base_path)
-    if internal_path not in os.environ.get('PATH', ''):
-        os.environ['PATH'] = internal_path + os.pathsep + os.environ.get('PATH', '')
+    current_path = os.environ.get('PATH', '')
+    for p in paths_to_add:
+        if os.path.exists(p) and p not in current_path:
+            current_path = p + os.pathsep + current_path
+    
+    os.environ['PATH'] = current_path
+    
+    # Do NOT set PYTHONNET_RUNTIME - it expects a runtime TYPE name
+    # like "netfx" or "coreclr", not a path. Let pythonnet auto-detect.
 '''
+
 
 # Write runtime hook to a file
 runtime_hook_path = backend_dir / 'runtime_hook_pythonnet.py'
