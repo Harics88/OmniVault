@@ -29,9 +29,9 @@ os.environ['DATABASE_URL'] = f'sqlite:///{DATA_DIR}/mytasker.db'
 from app.main import app as fastapi_app
 
 # Backend configuration
-BACKEND_HOST = '127.0.0.1'
-BACKEND_PORT = 8766  # Unique port for webview mode
-FRONTEND_URL = f'http://{BACKEND_HOST}:{BACKEND_PORT}'
+BACKEND_HOST = '0.0.0.0'  # Listen on all interfaces
+BACKEND_PORT = 8766      # Unique port for webview mode
+FRONTEND_URL = f'http://127.0.0.1:{BACKEND_PORT}' # Webview connects to loopback
 
 # Window configuration
 WINDOW_TITLE = 'Omni Vault'
@@ -41,25 +41,29 @@ WINDOW_MIN_WIDTH = 1200
 WINDOW_MIN_HEIGHT = 600
 
 
-def wait_for_backend(url, timeout=20):
+def wait_for_backend(url, timeout=30):
     """Wait for backend to be ready by polling the health endpoint"""
     import requests
     start_time = time.time()
     health_url = f"{url}/api/health"
     print(f"Waiting for backend at {health_url}...")
     
+    last_error = ""
     while time.time() - start_time < timeout:
         try:
             # We use a short timeout for the request itself
             response = requests.get(health_url, timeout=2)
             if response.status_code == 200:
-                print("Backend is ready!")
+                print(f"Backend is ready after {time.time() - start_time:.1f}s")
                 return True
-        except Exception:
+            else:
+                last_error = f"Status: {response.status_code}"
+        except Exception as e:
+            last_error = str(e)
             pass
         time.sleep(0.5)
     
-    print("Backend wait timed out!")
+    print(f"Backend wait timed out! Last error: {last_error}")
     return False
 
 
