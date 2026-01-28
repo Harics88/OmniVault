@@ -137,7 +137,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
+    icon=str(backend_dir / 'icon.ico'),
 )
 
 coll = COLLECT(
