@@ -69,10 +69,17 @@ Omni Vault is now available in **two flavors** - choose the one that fits your w
 ### 📄 **Notes**
 - Hierarchical folder structure with drag-and-drop
 - Rich text editor with full formatting support
+- **Contextual Bubble Menu** for quick formatting on selection
 - **Soft delete** with Recycle Bin
 - Bulk operations (restore, delete, empty bin)
 - Full-text search
 - Breadcrumb navigation
+
+### 🍅 **Focus Mode**
+- Integrated Pomodoro Timer
+- Auto-switching between work and break modes
+- Browser notifications and sound alerts
+- Session history and focus statistics
 
 ### 💻 **Code Snippets**
 - Syntax highlighting for 20+ languages
@@ -149,16 +156,19 @@ If you want to build the standalone executable yourself:
 
 ## ⌨️ Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `Cmd/Ctrl + D` | Go to today's daily log |
-| `Cmd/Ctrl + K` | Open global search |
-| `Cmd/Ctrl + Shift + H` | Go to Home |
-| `Cmd/Ctrl + Shift + T` | Go to Tasks |
-| `Cmd/Ctrl + Shift + N` | Go to Notes |
-| `Cmd/Ctrl + Shift + S` | Go to Snippets |
-| `Cmd/Ctrl + Shift + B` | Go to Bookmarks |
-| `Escape` | Close modals/panels |
+| Shortcut | Action | Alternate |
+|----------|--------|-----------|
+| `Cmd/Ctrl + D` | Go to today's daily log | `g` `d` |
+| `Cmd/Ctrl + K` | Open Command Palette | |
+| `/` | Quick Search | |
+| `?` | Show Shortcuts | |
+| `g` `h` | Go Home | |
+| `g` `t` | Go to Tasks | |
+| `g` `n` | Go to Notes | |
+| `g` `s` | Go to Snippets | |
+| `g` `b` | Go to Bookmarks | |
+| `g` `,` | Go to Settings | |
+| `Escape` | Close modals/panels | |
 
 ---
 

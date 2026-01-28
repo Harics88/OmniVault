@@ -12,7 +12,7 @@ This document tracks all pending features, bugs, and improvements identified dur
 ### 🐛 Bugs to Fix
 
 #### 1. Complete Tag System Integration
-**Status:** Partial Implementation  
+**Status:** Completed ✅ (2026-01-28)
 **Severity:** Medium  
 **Effort:** Medium (2-3 days)
 
@@ -31,41 +31,18 @@ This document tracks all pending features, bugs, and improvements identified dur
 - [x] Add tag management endpoints (add/remove tags)
 - [x] Backend schema updates complete
 - [x] Tag relationships properly exposed
+- [x] Remove general tagging while preserving vault tags (2026-01-28)
 
-**✅ COMPLETED:** 2026-01-11
+**✅ COMPLETED:** 2026-01-28
 
 **Files Modified:**
 - `backend/app/schemas.py` - Added TagRead, TagCreate, TagUpdate schemas; updated TaskResponse and NoteResponse
 - `backend/app/routers/tasks.py` - Added tag loading, tag_id filter, add_tag and remove_tag endpoints
 - `frontend/src/components/TagSelector.tsx` - NEW - Tag selection dropdown component
+- `frontend/src/components/TagManager.tsx` - DELETED
 
 ---
 
-#### 2. Habit Toggle Logic Edge Case
-**Status:** Working but imperfect  
-**Severity:** Low  
-**Effort:** Small (4 hours)
-
-**Problem:**
-When untoggling today's completion, streak decreases by 1, but doesn't perfectly restore state if user completed yesterday.
-
-**Example:**
-- Days 1-5: completed (streak=5)
-- Day 6: complete → streak=6
-- Day 6: untoggle → streak=5 (correct?)
-- If Day 5 was also completed, should we track that?
-
-**Action Items:**
-- [ ] Review habit toggle requirements with users
-- [ ] Consider creating `HabitCompletion` table to store history
-- [ ] Update toggle logic to use completion history
-- [ ] OR: Document current behavior as "simple mode"
-- [ ] Add unit tests for streak calculation scenarios
-
-**Files to Modify:**
-- `backend/app/models.py` - Optionally add HabitCompletion model
-- `backend/app/routers/habits.py` - Update toggle logic
-- Add test file: `backend/tests/test_habits.py`
 
 ---
 
@@ -352,9 +329,11 @@ When untoggling today's completion, streak decreases by 1, but doesn't perfectly
 - Single-instance app handling
 
 **Action Items:**
-- [ ] Implement custom paste handler in RichTextEditor
-- [ ] Parse HTML clipboard content
-- [ ] Register protocol handler (Windows Registry/macOS plist)
+- [x] Implement custom paste handler in RichTextEditor
+- [x] Parse HTML clipboard content
+- [x] Register protocol handler (Windows Registry/macOS plist) - *Pending OS integration*
+- [x] Implement selection-based Bubble Menu (2026-01-28)
+- [x] Fix slash command shortcut conflict (2026-01-28)
 - [ ] Update app launcher to parse arguments
 - [ ] Implement single-instance mechanism
 - [ ] Add protocol link generation in UI
@@ -395,33 +374,11 @@ When untoggling today's completion, streak decreases by 1, but doesn't perfectly
 
 ---
 
-#### 14. Pomodoro Timer / Focus Mode
-**Status:** Not Implemented  
-**Severity:** Low  
-**Effort:** Small (2 days)
-
-**Requirements:**
-- 25-minute timer with breaks
-- Notifications when timer ends
-- Track completed sessions
-- Optional: Link timer to tasks
-
-**Action Items:**
-- [x] Create Timer component
-- [x] Add to Layout (floating widget)
-- [x] Implement countdown logic
-- [x] Add browser notifications
-- [x] Add sound alerts (Web Audio API beep)
-- [x] Store session history (localStorage)
-- [x] Add statistics view (sessions completed, focus time)
-- [x] Auto-mode switching (work → break cycles)
-- [x] Session tracking with visual history
-- [x] Minimized mode for non-intrusive use
-
-**✅ COMPLETED:** 2026-01-11
+**✅ COMPLETED:** 2026-01-28
 
 **Files Modified:**
 - `frontend/src/components/PomodoroTimer.tsx` - Enhanced with session tracking, stats, and auto-switching
+- `frontend/src/components/Layout.tsx` - Integrated as floating widget
 
 ---
 
