@@ -26,28 +26,33 @@ DATA_DIR.mkdir(exist_ok=True)
 import logging
 LOG_FILE = DATA_DIR / 'desktop.log'
 
-class LoggerWriter:
-    def __init__(self, level):
-        self.level = level
-    def write(self, message):
-        if message.strip():
-            self.level(message.strip())
+# Create file handler
+file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+
+# Configure root logger
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+root_logger.addHandler(file_handler)
+
+logger = logging.getLogger('desktop_app')
+
+# Redirect stdout and stderr to the log file instead of the logger to avoid recursion
+class StreamToLogger:
+    def __init__(self, handler):
+        self.handler = handler
+        self.formatter = logging.Formatter('%(message)s')
+    def write(self, body):
+        if body.strip():
+            record = logging.LogRecord('stdout', logging.INFO, '', 0, body.strip(), None, None)
+            self.handler.emit(record)
     def flush(self):
         pass
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(LOG_FILE),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger('desktop_app')
-
-# Redirect stdout and stderr to logger
-sys.stdout = LoggerWriter(logger.info)
-sys.stderr = LoggerWriter(logger.error)
+# Only redirect if we don't have a console (frozen build)
+if getattr(sys, 'frozen', False):
+    sys.stdout = StreamToLogger(file_handler)
+    sys.stderr = StreamToLogger(file_handler)
 
 logger.info(f"Initializing Omni Vault Desktop (Log: {LOG_FILE})")
 
