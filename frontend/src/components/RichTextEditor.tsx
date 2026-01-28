@@ -17,6 +17,7 @@ import TextStyle from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import TextAlign from '@tiptap/extension-text-align';
 import Focus from '@tiptap/extension-focus';
+import BubbleMenuExtension from '@tiptap/extension-bubble-menu';
 import { Extension } from '@tiptap/core';
 import { common, createLowlight } from 'lowlight';
 import {
@@ -139,6 +140,9 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
                 placeholder: placeholder,
             }),
             Image.configure({ HTMLAttributes: { class: 'rounded-lg max-w-full my-2 shadow-sm' } }),
+            BubbleMenuExtension.configure({
+                pluginKey: 'bubbleMenuPlugin',
+            }),
         ],
         onUpdate: ({ editor }) => {
             onChange(editor.getHTML());
