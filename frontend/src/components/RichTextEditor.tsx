@@ -345,7 +345,12 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
         <div className="border border-border rounded-lg overflow-hidden bg-background flex flex-col h-full relative">
 
             {/* Table Menu */}
-            <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }} shouldShow={({ editor }) => isEditable && editor.isActive('table')}>
+            <BubbleMenu
+                pluginKey="tableBubbleMenu"
+                editor={editor}
+                tippyOptions={{ duration: 100 }}
+                shouldShow={({ editor }) => isEditable && editor.isActive('table')}
+            >
                 <div className="flex items-center gap-1 p-1 bg-background-card border border-border rounded-lg shadow-elevated">
                     <ToolbarButton onClick={() => editor.chain().focus().addColumnBefore().run()} title="Add Column Before"><Columns size={14} className="rotate-180" /></ToolbarButton>
                     <ToolbarButton onClick={() => editor.chain().focus().addColumnAfter().run()} title="Add Column After"><Columns size={14} /></ToolbarButton>
@@ -361,6 +366,7 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
 
             {/* Text Selection Bubble Menu */}
             <BubbleMenu
+                pluginKey="textBubbleMenu"
                 editor={editor}
                 tippyOptions={{ duration: 100 }}
                 shouldShow={({ editor, from, to }) => {
