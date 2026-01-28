@@ -95,6 +95,13 @@ Omni Vault is now available in **two flavors** - choose the one that fits your w
 - Category-based grouping
 - External link support with automatic URL validation
 
+### 🔐 **Secure Vault**
+- Encrypted storage for sensitive credentials
+- Dedicated templates for **Websites, Databases, and SFTP**
+- **4-digit PIN protection** with configurable auto-lock
+- PIN Hint/Tip system for secure recovery
+- Local-only storage ensuring data privacy
+
 ---
 
 ## 📸 Screenshots
