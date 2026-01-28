@@ -168,9 +168,9 @@ def main():
         # On Windows, webview.start() should be called from the main thread
         create_window()
         
-        # Use default backend (WinForms on Windows with pythonnet)
-        logger.info("Starting webview with default backend...")
-        webview.start(debug=False)
+        # Use EdgeChromium backend (built into Windows 10/11) - avoids pythonnet dependency
+        logger.info("Starting webview with EdgeChromium backend...")
+        webview.start(gui='edgechromium', debug=False)
                 
     except Exception as e:
         logger.error(f"Error starting webview: {e}", exc_info=True)

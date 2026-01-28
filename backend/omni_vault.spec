@@ -45,16 +45,15 @@ from PyInstaller.utils.hooks import collect_all
 # Collect all jaraco submodules and data
 jaraco_datas, jaraco_binaries, jaraco_hiddenimports = collect_all('jaraco')
 
-# Collect pythonnet and clr_loader (required for PyWebView on Windows)
-pythonnet_datas, pythonnet_binaries, pythonnet_hiddenimports = collect_all('pythonnet')
-clr_datas, clr_binaries, clr_hiddenimports = collect_all('clr_loader')
+# Collect webview data (for EdgeChromium backend)
+webview_datas, webview_binaries, webview_hiddenimports = collect_all('webview')
 
 a = Analysis(
     ['app_webview.py'],
     pathex=[str(backend_dir)],
-    binaries=jaraco_binaries + pythonnet_binaries + clr_binaries,
-    datas=datas + jaraco_datas + pythonnet_datas + clr_datas,
-    hiddenimports=hiddenimports + jaraco_hiddenimports + pythonnet_hiddenimports + clr_hiddenimports + ['pkg_resources', 'clr', 'System', 'System.Windows.Forms'],
+    binaries=jaraco_binaries + webview_binaries,
+    datas=datas + jaraco_datas + webview_datas,
+    hiddenimports=hiddenimports + jaraco_hiddenimports + webview_hiddenimports + ['pkg_resources'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
