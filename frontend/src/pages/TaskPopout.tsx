@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, Check, Circle, Clock, Trash2, Calendar, Plus, Save, Edit2, Triangle, ListTodo, GripVertical } from 'lucide-react';
@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { tasksApi } from '../lib/api';
 import RichTextEditor from '../components/RichTextEditor';
 import ConfirmModal from '../components/ConfirmModal';
+import { useTaskEditor } from '../hooks/useTaskEditor';
 
 const statusOptions: { value: TaskStatus; label: string; icon: typeof Circle; color: string }[] = [
     { value: 'not_started', label: 'Not Started', icon: Circle, color: 'text-text-muted' },
@@ -36,11 +37,7 @@ export default function TaskPopout() {
     }, [navigate]);
 
     const [newSubtask, setNewSubtask] = useState('');
-    const [isEditing, setIsEditing] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const dueDateRef = useRef<HTMLInputElement>(null);
-    const startedAtRef = useRef<HTMLInputElement>(null);
-    const completedAtRef = useRef<HTMLInputElement>(null);
 
     // Fetch task data
     const { data: task, isLoading, error } = useQuery({
@@ -49,20 +46,6 @@ export default function TaskPopout() {
         enabled: !!taskId,
     });
 
-    const [editedTask, setEditedTask] = useState<Task | null>(null);
-
-    // Sync editedTask with task data
-    useEffect(() => {
-        if (!task) return;
-
-        if (!isEditing || task.id !== editedTask?.id) {
-            setEditedTask(task);
-        } else {
-            // Update subtasks from task while editing to keep them live (for sync with backend/panel)
-            setEditedTask((prev: Task | null) => prev ? { ...prev, subtasks: task.subtasks } : task);
-        }
-    }, [task, isEditing, editedTask?.id]);
-
     // Mutations
     const updateMutation = useMutation({
         mutationFn: ({ id, updates }: { id: number; updates: Partial<Task> }) =>
@@ -70,7 +53,6 @@ export default function TaskPopout() {
         onSuccess: (updatedTask) => {
             queryClient.setQueryData(['task', taskId], updatedTask);
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
-            setIsEditing(false);
         },
     });
 
@@ -119,77 +101,67 @@ export default function TaskPopout() {
         },
     });
 
-    const handleStatusChange = (status: TaskStatus) => {
-        if (!editedTask || !isEditing) return;
-        setEditedTask((prev: Task | null) => prev ? { ...prev, status } : null);
+    // Create a placeholder task for the hook when loading
+    const placeholderTask: Task = {
+        id: taskId || 0,
+        title: '',
+        description: '',
+        status: 'not_started',
+        priority: 'medium',
+        is_personal: false,
+        due_date: null,
+        started_at: null,
+        completed_at: null,
+        order: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        subtasks: [],
     };
 
-    const handlePriorityChange = (priority: TaskPriority) => {
-        if (!editedTask || !isEditing) return;
-        setEditedTask((prev: Task | null) => prev ? { ...prev, priority } : null);
-    };
+    // Use the shared task editor hook
+    const {
+        editedTask,
+        isEditing,
+        dueDateRef,
+        startedAtRef,
+        completedAtRef,
+        startEditing,
+        cancelEditing,
+        save,
+        finishSaving,
+        handleStatusChange,
+        handlePriorityChange,
+        handlePersonalChange,
+        handleTitleChange,
+        handleDescriptionChange,
+        handleDueDateChange,
+        handleStartedAtChange,
+        handleCompletedAtChange,
+        syncSubtasks,
+        resetToTask,
+    } = useTaskEditor({
+        task: task || placeholderTask,
+        onSave: (taskId, updates) => updateMutation.mutate({ id: taskId, updates }),
+        initialEditMode: false,
+    });
 
-    const handlePersonalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!editedTask || !isEditing) return;
-        setEditedTask((prev: Task | null) => prev ? { ...prev, is_personal: e.target.checked } : null);
-    };
+    // Sync editedTask with fetched task data
+    useEffect(() => {
+        if (!task) return;
 
-    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!editedTask) return;
-        setEditedTask((prev: Task | null) => prev ? { ...prev, title: e.target.value } : null);
-    };
-
-    const handleDescriptionChange = (value: string) => {
-        if (!editedTask) return;
-        setEditedTask((prev: Task | null) => prev ? { ...prev, description: value } : null);
-    };
-
-    const handleDueDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!editedTask) return;
-        setEditedTask((prev: Task | null) => prev ? { ...prev, due_date: e.target.value || null } : null);
-    };
-
-    const handleStartedAtChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!editedTask) return;
-        setEditedTask((prev: Task | null) => prev ? { ...prev, started_at: e.target.value || null } : null);
-    };
-
-    const handleCompletedAtChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!editedTask) return;
-        setEditedTask((prev: Task | null) => prev ? { ...prev, completed_at: e.target.value || null } : null);
-    };
-
-    const datesEqual = (d1: any, d2: any) => {
-        if (!d1 && !d2) return true;
-        if (!d1 || !d2) return false;
-        return new Date(d1).getTime() === new Date(d2).getTime();
-    };
-
-    const handleSave = useCallback(() => {
-        if (!task || !editedTask) return;
-        const updates: Partial<Task> = {};
-        if (editedTask.title !== task.title) updates.title = editedTask.title;
-        if (editedTask.description !== task.description) updates.description = editedTask.description;
-        if (editedTask.status !== task.status) updates.status = editedTask.status;
-        if (editedTask.priority !== task.priority) updates.priority = editedTask.priority;
-        if (editedTask.is_personal !== task.is_personal) updates.is_personal = editedTask.is_personal;
-        if (!datesEqual(editedTask.due_date, task.due_date)) updates.due_date = editedTask.due_date;
-        if (!datesEqual(editedTask.started_at, task.started_at)) updates.started_at = editedTask.started_at;
-        if (!datesEqual(editedTask.completed_at, task.completed_at)) updates.completed_at = editedTask.completed_at;
-
-        if (Object.keys(updates).length > 0) {
-            updateMutation.mutate({ id: task.id, updates });
-        } else {
-            setIsEditing(false);
+        if (updateMutation.isSuccess) {
+            finishSaving();
+            updateMutation.reset();
+            return;
         }
-    }, [task, editedTask, updateMutation]);
 
-    const handleCancel = () => {
-        if (task) {
-            setEditedTask(task);
+        if (task.id !== editedTask.id) {
+            resetToTask(task);
+        } else if (isEditing) {
+            // Update subtasks from task while editing to keep them live
+            syncSubtasks(task.subtasks);
         }
-        setIsEditing(false);
-    };
+    }, [task, updateMutation.isSuccess, isEditing, editedTask.id, finishSaving, resetToTask, syncSubtasks, updateMutation]);
 
     const handleAddSubtask = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && newSubtask.trim() && taskId) {
@@ -209,10 +181,9 @@ export default function TaskPopout() {
         items.splice(result.destination.index, 0, reorderedItem);
 
         // Update local state immediately for responsiveness
-        const newSubtasks = items;
-        setEditedTask(prev => prev ? { ...prev, subtasks: newSubtasks } : null);
+        syncSubtasks(items);
 
-        const subtaskIds = newSubtasks.map((item: Subtask) => item.id);
+        const subtaskIds = items.map((item: Subtask) => item.id);
         reorderSubtasksMutation.mutate({ taskId, subtaskIds });
     };
 
@@ -270,13 +241,13 @@ export default function TaskPopout() {
                                 />
                             </div>
                             <button
-                                onClick={handleCancel}
+                                onClick={cancelEditing}
                                 className="px-3 py-1.5 text-sm text-text-muted hover:bg-background-hover rounded-lg transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
-                                onClick={handleSave}
+                                onClick={save}
                                 disabled={updateMutation.isPending}
                                 className="px-3 py-1.5 text-sm bg-accent-blue hover:bg-accent-blue-hover text-white rounded-lg transition-colors flex items-center gap-1"
                             >
@@ -290,10 +261,7 @@ export default function TaskPopout() {
                                 <span className="text-xs font-medium text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-full mr-2">Personal</span>
                             )}
                             <button
-                                onClick={() => {
-                                    setEditedTask(task);
-                                    setIsEditing(true);
-                                }}
+                                onClick={startEditing}
                                 className="p-2 hover:bg-background-hover rounded-lg transition-colors text-text-muted hover:text-accent-blue"
                                 title="Edit Task"
                             >
@@ -513,10 +481,7 @@ export default function TaskPopout() {
                                                                     updates: { completed: newCompleted }
                                                                 });
                                                                 // Optimistic update
-                                                                setEditedTask((prev: Task | null) => prev ? {
-                                                                    ...prev,
-                                                                    subtasks: prev.subtasks?.map(s => s.id === subtask.id ? { ...s, completed: newCompleted } : s)
-                                                                } : null);
+                                                                syncSubtasks(displayTask.subtasks?.map(s => s.id === subtask.id ? { ...s, completed: newCompleted } : s));
                                                             }}
                                                             disabled={!isEditing}
                                                             className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-all ${subtask.completed ? 'bg-accent-green border-accent-green' : 'border-border'} ${isEditing ? 'hover:border-text-muted cursor-pointer' : 'cursor-default opacity-80'}`}

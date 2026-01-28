@@ -1,10 +1,11 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { X, Check, Circle, Clock, Calendar, Plus, Edit2, Maximize2, Minimize2, Triangle, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import type { Task, TaskStatus, TaskPriority, Subtask } from '../types';
 import { format } from 'date-fns';
 import RichTextEditor from './RichTextEditor';
 import ConfirmModal from './ConfirmModal';
+import { useTaskEditor } from '../hooks/useTaskEditor';
 
 interface TaskPanelProps {
     task: Task;
@@ -47,36 +48,53 @@ export default function TaskPanel({
 }: TaskPanelProps) {
     const [newSubtask, setNewSubtask] = useState('');
     const [isResizing, setIsResizing] = useState(false);
-    const [isEditing, setIsEditing] = useState(initialEditMode);
-    const [editedTask, setEditedTask] = useState<Task>(task);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-    const dueDateRef = useRef<HTMLInputElement>(null);
-    const startedAtRef = useRef<HTMLInputElement>(null);
-    const completedAtRef = useRef<HTMLInputElement>(null);
 
-    // Sync editedTask with task prop
+    // Use the shared task editor hook
+    const {
+        editedTask,
+        isEditing,
+        isSaving,
+        dueDateRef,
+        startedAtRef,
+        completedAtRef,
+        startEditing,
+        cancelEditing,
+        save,
+        finishSaving,
+        handleStatusChange,
+        handlePriorityChange,
+        handlePersonalChange,
+        handleTitleChange,
+        handleDescriptionChange,
+        handleDueDateChange,
+        handleStartedAtChange,
+        handleCompletedAtChange,
+        syncSubtasks,
+        resetToTask,
+    } = useTaskEditor({
+        task,
+        onSave: onUpdate,
+        initialEditMode,
+    });
+
+    // Sync editedTask with task prop changes
     useEffect(() => {
         if (isSaving) {
             // Once the task prop updates (e.g. updated_at changes), we can stop saving and exit edit mode
-            setIsSaving(false);
-            setIsEditing(false);
+            finishSaving();
             return;
         }
 
-        if (!isEditing || task.id !== editedTask.id) {
-            setEditedTask(task);
-        } else {
-            // Update subtasks from task while editing to keep them live
-            setEditedTask(prev => ({ ...prev, subtasks: task.subtasks }));
-        }
-
         if (task.id !== editedTask.id) {
-            setIsEditing(initialEditMode);
+            resetToTask(task);
             setIsExpanded(false);
+        } else if (isEditing) {
+            // Update subtasks from task while editing to keep them live
+            syncSubtasks(task.subtasks);
         }
-    }, [task, initialEditMode, isEditing, editedTask.id]);
+    }, [task, isSaving, isEditing, editedTask.id, finishSaving, resetToTask, syncSubtasks]);
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
@@ -99,72 +117,6 @@ export default function TaskPanel({
         document.addEventListener('mouseup', handleMouseUp);
     }, [onWidthChange]);
 
-    const handleDescriptionChange = useCallback((newDescription: string) => {
-        if (!isEditing) return;
-        setEditedTask((prev: Task) => ({ ...prev, description: newDescription }));
-    }, [isEditing]);
-
-    const handleStatusChange = (status: TaskStatus) => {
-        if (!isEditing) return;
-        setEditedTask((prev: Task) => ({ ...prev, status }));
-    };
-
-    const handlePriorityChange = (priority: TaskPriority) => {
-        if (!isEditing) return;
-        setEditedTask((prev: Task) => ({ ...prev, priority }));
-    };
-
-    const handlePersonalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!isEditing) return;
-        setEditedTask((prev: Task) => ({ ...prev, is_personal: e.target.checked }));
-    };
-
-    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setEditedTask((prev: Task) => ({ ...prev, title: e.target.value }));
-    };
-
-    const handleDueDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setEditedTask((prev: Task) => ({ ...prev, due_date: e.target.value || null }));
-    };
-
-    const handleStartedAtChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setEditedTask((prev: Task) => ({ ...prev, started_at: e.target.value || null }));
-    };
-
-    const handleCompletedAtChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setEditedTask((prev: Task) => ({ ...prev, completed_at: e.target.value || null }));
-    };
-
-    const datesEqual = (d1: any, d2: any) => {
-        if (!d1 && !d2) return true;
-        if (!d1 || !d2) return false;
-        return new Date(d1).getTime() === new Date(d2).getTime();
-    };
-
-    const handleSave = () => {
-        const updates: Partial<Task> = {};
-        if (editedTask.title !== task.title) updates.title = editedTask.title;
-        if (editedTask.description !== task.description) updates.description = editedTask.description;
-        if (editedTask.status !== task.status) updates.status = editedTask.status;
-        if (editedTask.priority !== task.priority) updates.priority = editedTask.priority;
-        if (editedTask.is_personal !== task.is_personal) updates.is_personal = editedTask.is_personal;
-        if (!datesEqual(editedTask.due_date, task.due_date)) updates.due_date = editedTask.due_date;
-        if (!datesEqual(editedTask.started_at, task.started_at)) updates.started_at = editedTask.started_at;
-        if (!datesEqual(editedTask.completed_at, task.completed_at)) updates.completed_at = editedTask.completed_at;
-
-        if (Object.keys(updates).length > 0) {
-            onUpdate(task.id, updates);
-            setIsSaving(true); // Don't set isEditing(false) yet, wait for prop sync
-        } else {
-            setIsEditing(false);
-        }
-    };
-
-    const handleCancel = () => {
-        setEditedTask(task);
-        setIsEditing(false);
-    };
-
     const handleAddSubtask = () => {
         if (newSubtask.trim()) {
             onAddSubtask(task.id, newSubtask.trim());
@@ -181,7 +133,7 @@ export default function TaskPanel({
         items.splice(result.destination.index, 0, reorderedItem);
 
         // Update local state immediately for responsiveness
-        setEditedTask(prev => ({ ...prev, subtasks: items }));
+        syncSubtasks(items);
 
         const subtaskIds = items.map(item => item.id);
         onReorderSubtasks(task.id, subtaskIds);
@@ -220,7 +172,7 @@ export default function TaskPanel({
                             <span className="text-xs font-medium text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-full mr-2">Personal</span>
                         )}
                         {!isEditing && (
-                            <button onClick={() => setIsEditing(true)} className="p-2 hover:bg-background-hover rounded-lg text-text-muted hover:text-accent-blue"><Edit2 size={18} /></button>
+                            <button onClick={startEditing} className="p-2 hover:bg-background-hover rounded-lg text-text-muted hover:text-accent-blue"><Edit2 size={18} /></button>
                         )}
                         <button onClick={() => setIsExpanded(!isExpanded)} className="p-2 hover:bg-background-hover rounded-lg text-text-muted hover:text-accent-blue">
                             {isExpanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
@@ -396,10 +348,7 @@ export default function TaskPanel({
                                                                 const newCompleted = !subtask.completed;
                                                                 onUpdateSubtask(task.id, subtask.id, { completed: newCompleted });
                                                                 // Optimistic update for toggling
-                                                                setEditedTask(prev => ({
-                                                                    ...prev,
-                                                                    subtasks: prev.subtasks?.map(s => s.id === subtask.id ? { ...s, completed: newCompleted } : s)
-                                                                }));
+                                                                syncSubtasks(editedTask.subtasks?.map(s => s.id === subtask.id ? { ...s, completed: newCompleted } : s));
                                                             }}
                                                             onDelete={() => onDeleteSubtask(task.id, subtask.id)}
                                                             onUpdateTitle={(title) => onUpdateSubtask(task.id, subtask.id, { title })}
@@ -437,12 +386,12 @@ export default function TaskPanel({
                 <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border bg-background-card flex gap-3">
                     {isEditing ? (
                         <>
-                            <button onClick={handleSave} className="flex-1 bg-accent-green text-white py-2 rounded-lg hover:bg-accent-green/90">Save</button>
-                            <button onClick={handleCancel} className="flex-1 bg-background-elevated py-2 rounded-lg hover:bg-background-hover border border-border">Cancel</button>
+                            <button onClick={save} className="flex-1 bg-accent-green text-white py-2 rounded-lg hover:bg-accent-green/90">Save</button>
+                            <button onClick={cancelEditing} className="flex-1 bg-background-elevated py-2 rounded-lg hover:bg-background-hover border border-border">Cancel</button>
                         </>
                     ) : (
                         <>
-                            <button onClick={() => setIsEditing(true)} className="flex-1 bg-background-elevated py-2 rounded-lg hover:bg-background-hover border border-border">Edit</button>
+                            <button onClick={startEditing} className="flex-1 bg-background-elevated py-2 rounded-lg hover:bg-background-hover border border-border">Edit</button>
                             <button onClick={() => setShowDeleteConfirm(true)} className="flex-1 text-accent-red hover:bg-accent-red/10 rounded-lg">Delete</button>
                         </>
                     )}
