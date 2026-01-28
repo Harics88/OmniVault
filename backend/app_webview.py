@@ -26,35 +26,27 @@ DATA_DIR.mkdir(exist_ok=True)
 import logging
 LOG_FILE = DATA_DIR / 'desktop.log'
 
-# Create file handler
+# Configure logging
 file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
 file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 
-# Configure root logger
-root_logger = logging.getLogger()
-root_logger.setLevel(logging.INFO)
-root_logger.addHandler(file_handler)
-
+# Set root logger
+logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().addHandler(file_handler)
 logger = logging.getLogger('desktop_app')
 
-# Redirect stdout and stderr to the log file instead of the logger to avoid recursion
-class StreamToLogger:
-    def __init__(self, handler):
-        self.handler = handler
-        self.formatter = logging.Formatter('%(message)s')
-    def write(self, body):
-        if body.strip():
-            record = logging.LogRecord('stdout', logging.INFO, '', 0, body.strip(), None, None)
-            self.handler.emit(record)
-    def flush(self):
-        pass
-    def isatty(self):
-        return False
-
-# Only redirect if we don't have a console (frozen build)
+# DLL Search Path Fix for pythonnet / PyInstaller
 if getattr(sys, 'frozen', False):
-    sys.stdout = StreamToLogger(file_handler)
-    sys.stderr = StreamToLogger(file_handler)
+    # Add _internal/pythonnet/runtime to PATH for DLL discovery
+    runtime_dir = os.path.join(sys._MEIPASS, 'pythonnet', 'runtime')
+    if os.path.exists(runtime_dir):
+        os.environ['PATH'] = runtime_dir + os.pathsep + os.environ.get('PATH', '')
+        # For Python 3.8+, also use add_dll_directory
+        if hasattr(os, 'add_dll_directory'):
+            try:
+                os.add_dll_directory(runtime_dir)
+            except:
+                pass
 
 logger.info(f"Initializing Omni Vault Desktop (Log: {LOG_FILE})")
 
