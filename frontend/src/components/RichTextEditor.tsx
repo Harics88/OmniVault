@@ -348,7 +348,7 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
             <BubbleMenu
                 pluginKey="tableBubbleMenu"
                 editor={editor}
-                tippyOptions={{ duration: 150, appendTo: 'parent' }}
+                tippyOptions={{ duration: 150, appendTo: () => document.body }}
                 shouldShow={({ editor }) => isEditable && editor.isActive('table')}
             >
                 <div className="flex items-center gap-1 p-1 bg-background-card border border-accent-blue/30 rounded-lg shadow-elevated z-50">
@@ -368,7 +368,7 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
             <BubbleMenu
                 pluginKey="textBubbleMenu"
                 editor={editor}
-                tippyOptions={{ duration: 150, appendTo: 'parent' }}
+                tippyOptions={{ duration: 150, appendTo: () => document.body }}
                 shouldShow={({ editor, from, to }) => {
                     // Only show if editable, selection is not empty, and not inside a table or code block
                     return isEditable && !editor.isActive('table') && !editor.isActive('codeBlock') && from !== to;
