@@ -123,21 +123,9 @@ def main():
         # On Windows, webview.start() should be called from the main thread
         create_window()
         
-        # Try EdgeChromium first (modern Edge), fallback to CEF, then default
-        # This avoids the pythonnet/.NET Framework issues with WinForms backend
-        gui_options = ['edgechromium', 'cef', None]
-        
-        for gui in gui_options:
-            try:
-                print(f"Attempting to start with GUI backend: {gui or 'default'}")
-                webview.start(debug=False, gui=gui)
-                break
-            except Exception as e:
-                if gui is None:
-                    # Last resort failed, re-raise
-                    raise
-                print(f"Backend '{gui}' failed: {e}, trying next...")
-                continue
+        # Use default backend (WinForms on Windows with pythonnet)
+        print("Starting webview with default backend...")
+        webview.start(debug=False)
                 
     except Exception as e:
         print(f"Error starting webview: {e}")
@@ -149,10 +137,9 @@ def main():
         print("TROUBLESHOOTING:")
         print("=" * 60)
         print("If you're seeing pythonnet or .NET errors, try:")
-        print("1. Install Microsoft Edge WebView2 Runtime:")
-        print("   https://developer.microsoft.com/en-us/microsoft-edge/webview2/")
-        print("2. Make sure .NET Framework 4.7+ is installed")
-        print("3. Run the app as Administrator")
+        print("1. Make sure .NET Framework 4.7+ is installed")
+        print("2. Run the app as Administrator")
+        print("3. Try reinstalling the app")
         print("=" * 60)
         
         input("\nPress Enter to exit...")
@@ -163,4 +150,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 

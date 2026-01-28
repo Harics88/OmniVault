@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import sys
+import os
 from pathlib import Path
 
 block_cipher = None
@@ -9,6 +10,32 @@ block_cipher = None
 backend_dir = Path(SPECPATH)
 project_root = backend_dir.parent
 frontend_dist = project_root / 'frontend' / 'dist'
+
+# Create a runtime hook to fix pythonnet initialization
+runtime_hook_code = '''
+import os
+import sys
+
+# Fix for pythonnet in frozen PyInstaller environment
+if getattr(sys, 'frozen', False):
+    # Set the runtime path for pythonnet
+    base_path = sys._MEIPASS
+    
+    # Ensure pythonnet can find its runtime DLLs
+    runtime_path = os.path.join(base_path, 'pythonnet', 'runtime')
+    if os.path.exists(runtime_path):
+        os.environ['PYTHONNET_RUNTIME'] = runtime_path
+    
+    # Add the _internal folder to PATH for DLL discovery
+    internal_path = os.path.join(base_path)
+    if internal_path not in os.environ.get('PATH', ''):
+        os.environ['PATH'] = internal_path + os.pathsep + os.environ.get('PATH', '')
+'''
+
+# Write runtime hook to a file
+runtime_hook_path = backend_dir / 'runtime_hook_pythonnet.py'
+with open(runtime_hook_path, 'w') as f:
+    f.write(runtime_hook_code)
 
 # Data files to include
 datas = [
@@ -31,7 +58,8 @@ hiddenimports = [
     'sqlalchemy.ext.baked',
     'aiosqlite',
     'webview',
-    'webview.platforms.edgechromium',  # Prefer EdgeChromium backend
+    'webview.platforms.winforms',
+    'webview.platforms.edgechromium',
     'jinja2',
     'python-multipart',
     'jaraco.text',
@@ -40,34 +68,42 @@ hiddenimports = [
     'more_itertools',
     'autocommand',
     'pkg_resources',
+    # Pythonnet imports
+    'clr',
+    'clr_loader',
+    'pythonnet',
+    'System',
+    'System.Windows.Forms',
+    'System.Drawing',
+    'System.Threading',
 ]
 
-from PyInstaller.utils.hooks import collect_all
+from PyInstaller.utils.hooks import collect_all, collect_data_files, collect_dynamic_libs
 
 # Collect all jaraco submodules and data
 jaraco_datas, jaraco_binaries, jaraco_hiddenimports = collect_all('jaraco')
 
-# Collect webview for EdgeChromium support
+# Collect webview
 webview_datas, webview_binaries, webview_hiddenimports = collect_all('webview')
 
-# Note: We're NOT collecting pythonnet/clr_loader anymore as they cause
-# compatibility issues on different Windows systems. The EdgeChromium backend
-# (using Microsoft Edge WebView2) is more reliable and widely compatible.
+# Collect pythonnet and clr_loader (required for PyWebView on Windows)
+pythonnet_datas, pythonnet_binaries, pythonnet_hiddenimports = collect_all('pythonnet')
+clr_datas, clr_binaries, clr_hiddenimports = collect_all('clr_loader')
+
+# Also get any dynamic libraries
+pythonnet_libs = collect_dynamic_libs('pythonnet')
+clr_libs = collect_dynamic_libs('clr_loader')
 
 a = Analysis(
     ['app_webview.py'],
     pathex=[str(backend_dir)],
-    binaries=jaraco_binaries + webview_binaries,
-    datas=datas + jaraco_datas + webview_datas,
-    hiddenimports=hiddenimports + jaraco_hiddenimports + webview_hiddenimports,
+    binaries=jaraco_binaries + webview_binaries + pythonnet_binaries + clr_binaries + pythonnet_libs + clr_libs,
+    datas=datas + jaraco_datas + webview_datas + pythonnet_datas + clr_datas,
+    hiddenimports=hiddenimports + jaraco_hiddenimports + webview_hiddenimports + pythonnet_hiddenimports + clr_hiddenimports,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
-    excludes=[
-        'pythonnet',  # Exclude problematic pythonnet
-        'clr_loader',  # Exclude problematic clr_loader
-        'clr',
-    ],
+    runtime_hooks=[str(runtime_hook_path)],
+    excludes=[],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -86,7 +122,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=True,  # Enable console for debugging - change to False for production
+    console=True,  # Keep console for debugging
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
@@ -105,4 +141,5 @@ coll = COLLECT(
     upx_exclude=[],
     name='OmniVault',
 )
+
 
