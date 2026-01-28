@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.17.0",
+    "@tiptap/extension-bubble-menu": "^2.1.0",
     "@tiptap/extension-code-block-lowlight": "^2.1.0",
     "@tiptap/extension-color": "^2.27.1",
     "@tiptap/extension-details": "^2.27.1",
