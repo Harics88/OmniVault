@@ -7,7 +7,6 @@ import sys
 import threading
 import time
 import uvicorn
-import webview
 from pathlib import Path
 
 # Get the base directory
@@ -79,6 +78,8 @@ def start_backend():
 
 def create_window():
     """Create and configure the webview window"""
+    import webview
+    
     # Wait for backend to be ready before opening the window
     if not wait_for_backend(FRONTEND_URL):
         print("Warning: Opening window despite backend timeout...")
@@ -117,13 +118,43 @@ def main():
     
     # Create and start webview window (blocking call)
     try:
+        import webview
+        
         # On Windows, webview.start() should be called from the main thread
         create_window()
-        webview.start(debug=False)
+        
+        # Try EdgeChromium first (modern Edge), fallback to CEF, then default
+        # This avoids the pythonnet/.NET Framework issues with WinForms backend
+        gui_options = ['edgechromium', 'cef', None]
+        
+        for gui in gui_options:
+            try:
+                print(f"Attempting to start with GUI backend: {gui or 'default'}")
+                webview.start(debug=False, gui=gui)
+                break
+            except Exception as e:
+                if gui is None:
+                    # Last resort failed, re-raise
+                    raise
+                print(f"Backend '{gui}' failed: {e}, trying next...")
+                continue
+                
     except Exception as e:
         print(f"Error starting webview: {e}")
         import traceback
         traceback.print_exc()
+        
+        # Show a user-friendly message
+        print("\n" + "=" * 60)
+        print("TROUBLESHOOTING:")
+        print("=" * 60)
+        print("If you're seeing pythonnet or .NET errors, try:")
+        print("1. Install Microsoft Edge WebView2 Runtime:")
+        print("   https://developer.microsoft.com/en-us/microsoft-edge/webview2/")
+        print("2. Make sure .NET Framework 4.7+ is installed")
+        print("3. Run the app as Administrator")
+        print("=" * 60)
+        
         input("\nPress Enter to exit...")
         sys.exit(1)
     
@@ -132,3 +163,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
