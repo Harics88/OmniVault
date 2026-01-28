@@ -25,6 +25,16 @@ DATA_DIR.mkdir(exist_ok=True)
 # Set up logging to file
 import logging
 LOG_FILE = DATA_DIR / 'desktop.log'
+
+class LoggerWriter:
+    def __init__(self, level):
+        self.level = level
+    def write(self, message):
+        if message.strip():
+            self.level(message.strip())
+    def flush(self):
+        pass
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -34,6 +44,11 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger('desktop_app')
+
+# Redirect stdout and stderr to logger
+sys.stdout = LoggerWriter(logger.info)
+sys.stderr = LoggerWriter(logger.error)
+
 logger.info(f"Initializing Omni Vault Desktop (Log: {LOG_FILE})")
 
 # Set database path
@@ -149,17 +164,21 @@ def main():
     except Exception as e:
         logger.error(f"Error starting webview: {e}", exc_info=True)
         
-        # Show a user-friendly message
-        print("\n" + "=" * 60)
-        print("TROUBLESHOOTING:")
-        print("=" * 60)
-        print("If you're seeing pythonnet or .NET errors, try:")
-        print("1. Make sure .NET Framework 4.7+ is installed")
-        print("2. Run the app as Administrator")
-        print("3. Try reinstalling the app")
-        print("=" * 60)
+        # Show a user-friendly message with log path using Windows API
+        try:
+            import ctypes
+            error_msg = f"Omni Vault failed to start.\n\nPlease check the logs for details:\n{LOG_FILE}\n\nError: {str(e)}"
+            ctypes.hwnd = 0
+            ctypes.windll.user32.MessageBoxW(0, error_msg, "Startup Error", 0x10)
+        except:
+            # Fallback to console if ctypes fails
+            print("\n" + "=" * 60)
+            print("STARTUP ERROR:")
+            print("=" * 60)
+            print(f"Please check the log file at:\n{LOG_FILE}")
+            print(f"Error: {e}")
+            print("=" * 60)
         
-        input("\nPress Enter to exit...")
         sys.exit(1)
     
     print("\nApplication closed. Goodbye!")
