@@ -22,6 +22,20 @@ else:
 # Ensure data directory exists
 DATA_DIR.mkdir(exist_ok=True)
 
+# Set up logging to file
+import logging
+LOG_FILE = DATA_DIR / 'desktop.log'
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(LOG_FILE),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger('desktop_app')
+logger.info(f"Initializing Omni Vault Desktop (Log: {LOG_FILE})")
+
 # Set database path
 os.environ['DATABASE_URL'] = f'sqlite:///{DATA_DIR}/mytasker.db'
 
@@ -46,7 +60,7 @@ def wait_for_backend(url, timeout=30):
     import requests
     start_time = time.time()
     health_url = f"{url}/api/health"
-    print(f"Waiting for backend at {health_url}...")
+    logger.info(f"Waiting for backend at {health_url}...")
     
     last_error = ""
     while time.time() - start_time < timeout:
@@ -54,7 +68,7 @@ def wait_for_backend(url, timeout=30):
             # We use a short timeout for the request itself
             response = requests.get(health_url, timeout=2)
             if response.status_code == 200:
-                print(f"Backend is ready after {time.time() - start_time:.1f}s")
+                logger.info(f"Backend is ready after {time.time() - start_time:.1f}s")
                 return True
             else:
                 last_error = f"Status: {response.status_code}"
@@ -63,21 +77,23 @@ def wait_for_backend(url, timeout=30):
             pass
         time.sleep(0.5)
     
-    print(f"Backend wait timed out! Last error: {last_error}")
+    logger.error(f"Backend wait timed out! Last error: {last_error}")
     return False
 
 
 def start_backend():
     """Start FastAPI backend server in background thread"""
-    print(f"Starting backend server on {BACKEND_HOST}:{BACKEND_PORT}")
-    
-    uvicorn.run(
-        fastapi_app,
-        host=BACKEND_HOST,
-        port=BACKEND_PORT,
-        log_level='info',
-        access_log=False
-    )
+    logger.info(f"Starting backend server on {BACKEND_HOST}:{BACKEND_PORT}")
+    try:
+        uvicorn.run(
+            fastapi_app,
+            host=BACKEND_HOST,
+            port=BACKEND_PORT,
+            log_level='info',
+            access_log=False
+        )
+    except Exception as e:
+        logger.error(f"Backend server failed: {e}", exc_info=True)
 
 
 def create_window():
@@ -109,12 +125,11 @@ def create_window():
 
 def main():
     """Main entry point"""
-    print("=" * 60)
-    print("Omni Vault - Local-First Productivity App")
-    print("=" * 60)
-    print(f"Data Directory: {DATA_DIR}")
-    print(f"Database: {os.environ.get('DATABASE_URL')}")
-    print()
+    logger.info("=" * 60)
+    logger.info("Omni Vault - Local-First Productivity App")
+    logger.info("=" * 60)
+    logger.info(f"Data Directory: {DATA_DIR}")
+    logger.info(f"Database: {os.environ.get('DATABASE_URL')}")
     
     # Start backend in separate thread
     backend_thread = threading.Thread(target=start_backend, daemon=True)
@@ -128,13 +143,11 @@ def main():
         create_window()
         
         # Use default backend (WinForms on Windows with pythonnet)
-        print("Starting webview with default backend...")
+        logger.info("Starting webview with default backend...")
         webview.start(debug=False)
                 
     except Exception as e:
-        print(f"Error starting webview: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error starting webview: {e}", exc_info=True)
         
         # Show a user-friendly message
         print("\n" + "=" * 60)
