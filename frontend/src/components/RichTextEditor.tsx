@@ -363,7 +363,7 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
             <BubbleMenu
                 editor={editor}
                 tippyOptions={{ duration: 100 }}
-                shouldShow={({ from, to }) => {
+                shouldShow={({ editor, from, to }) => {
                     // Only show if editable, selection is not empty, and not inside a table or code block
                     return isEditable && !editor.isActive('table') && !editor.isActive('codeBlock') && from !== to;
                 }}
