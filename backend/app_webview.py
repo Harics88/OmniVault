@@ -4,6 +4,36 @@ Runs FastAPI backend and displays React frontend in native window using PyWebVie
 """
 import os
 import sys
+
+# ============================================================
+# CRITICAL: Fix stdout/stderr FIRST before any imports
+# In windowed mode (console=False), sys.stdout is None which breaks uvicorn
+# ============================================================
+class NullWriter:
+    """Null writer that implements all stream methods uvicorn expects"""
+    def write(self, s): pass
+    def flush(self): pass
+    def isatty(self): return False
+    def fileno(self): raise OSError("No file descriptor")
+
+if getattr(sys, 'frozen', False):
+    # Provide dummy streams if they're None (windowed mode)
+    if sys.stdout is None:
+        sys.stdout = NullWriter()
+    if sys.stderr is None:
+        sys.stderr = NullWriter()
+    
+    # DLL Search Path Fix for pythonnet / PyInstaller - MUST be before any .NET imports
+    runtime_dir = os.path.join(sys._MEIPASS, 'pythonnet', 'runtime')
+    if os.path.exists(runtime_dir):
+        os.environ['PATH'] = runtime_dir + os.pathsep + os.environ.get('PATH', '')
+        if hasattr(os, 'add_dll_directory'):
+            try:
+                os.add_dll_directory(runtime_dir)
+            except:
+                pass
+
+# Now safe to import other modules
 import threading
 import time
 import uvicorn
@@ -11,11 +41,9 @@ from pathlib import Path
 
 # Get the base directory
 if getattr(sys, 'frozen', False):
-    # Running as compiled executable
     BASE_DIR = Path(sys._MEIPASS)
     DATA_DIR = Path(os.path.dirname(sys.executable)) / 'data'
 else:
-    # Running as script
     BASE_DIR = Path(__file__).parent
     DATA_DIR = BASE_DIR.parent / 'data'
 
@@ -26,27 +54,11 @@ DATA_DIR.mkdir(exist_ok=True)
 import logging
 LOG_FILE = DATA_DIR / 'desktop.log'
 
-# Configure logging
 file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
 file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-
-# Set root logger
 logging.getLogger().setLevel(logging.INFO)
 logging.getLogger().addHandler(file_handler)
 logger = logging.getLogger('desktop_app')
-
-# DLL Search Path Fix for pythonnet / PyInstaller
-if getattr(sys, 'frozen', False):
-    # Add _internal/pythonnet/runtime to PATH for DLL discovery
-    runtime_dir = os.path.join(sys._MEIPASS, 'pythonnet', 'runtime')
-    if os.path.exists(runtime_dir):
-        os.environ['PATH'] = runtime_dir + os.pathsep + os.environ.get('PATH', '')
-        # For Python 3.8+, also use add_dll_directory
-        if hasattr(os, 'add_dll_directory'):
-            try:
-                os.add_dll_directory(runtime_dir)
-            except:
-                pass
 
 logger.info(f"Initializing Omni Vault Desktop (Log: {LOG_FILE})")
 
