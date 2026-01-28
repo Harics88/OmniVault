@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Circle, Clock, Check, Triangle, Trash2, CheckSquare, Calendar, ArrowRight, Search } from 'lucide-react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { ChevronDown, ChevronRight, Circle, Clock, Check, Triangle, Trash2, CheckSquare, Calendar, Search } from 'lucide-react';
 import { format, isPast, subDays } from 'date-fns';
 import type { Task, TaskStatus } from '../types';
 
@@ -33,6 +33,53 @@ export default function TaskTableView({
     showArchived
 }: TaskTableViewProps) {
     const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({ archived: true });
+
+    // Column Resizing Logic
+    const [colWidths, setColWidths] = useState(() => {
+        const saved = localStorage.getItem('taskTableWidths');
+        return saved ? JSON.parse(saved) : {
+            title: 400,
+            priority: 96,
+            dueDate: 192,
+            commenced: 192,
+            concluded: 192,
+            stage: 128
+        };
+    });
+
+    const resizingCol = useRef<string | null>(null);
+    const startX = useRef<number>(0);
+    const startWidth = useRef<number>(0);
+
+    useEffect(() => {
+        localStorage.setItem('taskTableWidths', JSON.stringify(colWidths));
+    }, [colWidths]);
+
+    const onResizeStart = (e: React.MouseEvent, col: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        resizingCol.current = col;
+        startX.current = e.pageX;
+        startWidth.current = (colWidths as any)[col];
+
+        document.addEventListener('mousemove', onResizeMove);
+        document.addEventListener('mouseup', onResizeEnd);
+        document.body.style.cursor = 'col-resize';
+    };
+
+    const onResizeMove = (e: MouseEvent) => {
+        if (!resizingCol.current) return;
+        const diff = e.pageX - startX.current;
+        const newWidth = Math.max(80, startWidth.current + diff);
+        setColWidths((prev: any) => ({ ...prev, [resizingCol.current!]: newWidth }));
+    };
+
+    const onResizeEnd = () => {
+        resizingCol.current = null;
+        document.removeEventListener('mousemove', onResizeMove);
+        document.removeEventListener('mouseup', onResizeEnd);
+        document.body.style.cursor = 'default';
+    };
 
     // Filter and Group Logic
     const filteredTasks = useMemo(() => {
@@ -99,7 +146,7 @@ export default function TaskTableView({
                     className="flex items-center gap-4 px-6 py-3 bg-background-elevated/40 hover:bg-background-elevated/60 transition-all cursor-pointer border-y border-border/20 sticky top-[48px] z-10 backdrop-blur-md rounded-t-xl"
                     onClick={() => toggleSection(status)}
                 >
-                    <div className="flex-1 min-w-[400px] max-w-[400px] flex items-center gap-3">
+                    <div style={{ width: colWidths.title }} className="shrink-0 flex items-center gap-3">
                         <div className={`p-1 rounded-lg ${isArchived ? 'bg-background-elevated' : config.bg} transition-colors`}>
                             {isCollapsed ? <ChevronRight size={14} className="text-text-muted shrink-0" /> : <ChevronDown size={14} className="text-text-muted shrink-0" />}
                         </div>
@@ -109,12 +156,12 @@ export default function TaskTableView({
                         <span className="text-[10px] bg-background-card px-2.5 py-0.5 rounded-full text-text-muted font-bold border border-border/50 shadow-sm">{sectionTasks.length}</span>
                     </div>
 
-                    {/* Column Alignments */}
-                    <div className="w-24 shrink-0"></div>
-                    <div className="w-48 shrink-0"></div>
-                    <div className="w-48 shrink-0"></div>
-                    <div className="w-48 shrink-0"></div>
-                    <div className="w-32 shrink-0"></div>
+                    {/* Spacer matches group header */}
+                    <div style={{ width: colWidths.priority }} className="shrink-0"></div>
+                    <div style={{ width: colWidths.dueDate }} className="shrink-0"></div>
+                    <div style={{ width: colWidths.commenced }} className="shrink-0"></div>
+                    <div style={{ width: colWidths.concluded }} className="shrink-0"></div>
+                    <div style={{ width: colWidths.stage }} className="shrink-0"></div>
                     <div className="w-12 shrink-0"></div>
                 </div>
 
@@ -130,13 +177,12 @@ export default function TaskTableView({
                                     onClick={() => onTaskClick(task)}
                                     className={`flex items-center gap-4 px-6 py-3 transition-all group cursor-pointer hover:bg-background-elevated/40 relative active:scale-[0.998]`}
                                 >
-                                    <div className="flex-1 min-w-[400px] max-w-[400px] overflow-hidden">
+                                    <div style={{ width: colWidths.title }} className="shrink-0 overflow-hidden">
                                         <div className="flex items-center gap-3 pl-2">
                                             <span
                                                 className={`text-sm font-medium transition-all truncate ${task.status === 'done' ? 'text-text-muted/60 line-through' : 'text-text-primary group-hover:text-accent-blue'}`}
-                                                title={task.title.length > 50 ? task.title : undefined}
                                             >
-                                                {task.title.length > 50 ? task.title.substring(0, 50) + '...' : task.title}
+                                                {task.title}
                                             </span>
                                             {task.subtasks?.length > 0 && (
                                                 <div className="flex items-center gap-1 bg-background-elevated/50 px-2 py-0.5 rounded-md border border-border/30 shadow-sm shrink-0">
@@ -150,31 +196,31 @@ export default function TaskTableView({
                                     </div>
 
                                     {/* Priority Badge */}
-                                    <div className="w-24 shrink-0 flex justify-center">
-                                        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${pStyle.bg} ${pStyle.color} transition-all`}>
+                                    <div style={{ width: colWidths.priority }} className="shrink-0 flex justify-center px-2">
+                                        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${pStyle.bg} ${pStyle.color} transition-all truncate`}>
                                             <pStyle.icon size={10} className={pStyle.className} fill="none" />
                                             <span className="text-[10px] font-bold uppercase tracking-wider">{pStyle.label}</span>
                                         </div>
                                     </div>
 
                                     {/* Dates */}
-                                    <div className="w-48 flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors">
-                                        <Calendar size={12} className="opacity-40" />
-                                        {task.due_date ? format(new Date(task.due_date), 'MMM d, yyyy') : <span className="opacity-20">No due date</span>}
+                                    <div style={{ width: colWidths.dueDate }} className="flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors px-2 truncate">
+                                        <Calendar size={12} className="opacity-40 shrink-0" />
+                                        {task.due_date ? format(new Date(task.due_date), 'MMM d, yyyy') : <span className="opacity-20 italic">No due date</span>}
                                     </div>
 
-                                    <div className="w-48 flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors">
-                                        <Clock size={12} className="opacity-40" />
-                                        {task.started_at ? format(new Date(task.started_at), 'MMM d, yyyy') : <span className="opacity-20">Not started</span>}
+                                    <div style={{ width: colWidths.commenced }} className="flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors px-2 truncate">
+                                        <Clock size={12} className="opacity-40 shrink-0" />
+                                        {task.started_at ? format(new Date(task.started_at), 'MMM d, yyyy') : <span className="opacity-20 italic">Not started</span>}
                                     </div>
 
-                                    <div className="w-48 flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors">
-                                        <Check size={12} className="opacity-40" />
-                                        {task.completed_at ? format(new Date(task.completed_at), 'MMM d, yyyy') : <span className="opacity-20">Unfinished</span>}
+                                    <div style={{ width: colWidths.concluded }} className="flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors px-2 truncate">
+                                        <Check size={12} className="opacity-40 shrink-0" />
+                                        {task.completed_at ? format(new Date(task.completed_at), 'MMM d, yyyy') : <span className="opacity-20 italic">Unfinished</span>}
                                     </div>
 
                                     {/* Status Pill */}
-                                    <div className="w-32 shrink-0">
+                                    <div style={{ width: colWidths.stage }} className="shrink-0 px-2">
                                         <div className="relative group/pill">
                                             <select
                                                 value={task.status}
@@ -198,9 +244,6 @@ export default function TaskTableView({
                                         >
                                             <Trash2 size={13} />
                                         </button>
-                                        <div className="p-2 text-text-muted/30">
-                                            <ArrowRight size={13} />
-                                        </div>
                                     </div>
                                 </div>
                             );
@@ -217,14 +260,61 @@ export default function TaskTableView({
                 <div className="min-w-max">
                     {/* Main Table Header */}
                     <div className="flex items-center gap-4 px-6 py-4 bg-background-card/80 border-b border-border/50 text-[10px] font-black text-text-muted uppercase tracking-[0.25em] sticky top-0 z-20 shrink-0 backdrop-blur-xl">
-                        <div className="flex-1 min-w-[400px] max-w-[400px] flex items-center gap-2">
-                            <span>Title / Objective</span>
+
+                        {/* Title Column */}
+                        <div style={{ width: colWidths.title }} className="shrink-0 flex items-center justify-between group/header">
+                            <span className="truncate">Title / Objective</span>
+                            <div
+                                className="w-1 h-4 bg-border/40 hover:bg-accent-blue/60 cursor-col-resize rounded-full transition-colors opacity-0 group-hover/header:opacity-100"
+                                onMouseDown={(e) => onResizeStart(e, 'title')}
+                            />
                         </div>
-                        <div className="w-24 text-center shrink-0">Priority</div>
-                        <div className="w-48 shrink-0">Target Date</div>
-                        <div className="w-48 shrink-0">Commenced</div>
-                        <div className="w-48 shrink-0">Concluded</div>
-                        <div className="w-32 text-center shrink-0">Current Stage</div>
+
+                        {/* Priority Column */}
+                        <div style={{ width: colWidths.priority }} className="text-center shrink-0 flex items-center justify-between group/header">
+                            <span className="flex-1 truncate">Priority</span>
+                            <div
+                                className="w-1 h-4 bg-border/40 hover:bg-accent-blue/60 cursor-col-resize rounded-full transition-colors opacity-0 group-hover/header:opacity-100"
+                                onMouseDown={(e) => onResizeStart(e, 'priority')}
+                            />
+                        </div>
+
+                        {/* Due Date Column */}
+                        <div style={{ width: colWidths.dueDate }} className="shrink-0 flex items-center justify-between group/header px-2">
+                            <span className="truncate">Target Date</span>
+                            <div
+                                className="w-1 h-4 bg-border/40 hover:bg-accent-blue/60 cursor-col-resize rounded-full transition-colors opacity-0 group-hover/header:opacity-100"
+                                onMouseDown={(e) => onResizeStart(e, 'dueDate')}
+                            />
+                        </div>
+
+                        {/* Started Column */}
+                        <div style={{ width: colWidths.commenced }} className="shrink-0 flex items-center justify-between group/header px-2">
+                            <span className="truncate">Commenced</span>
+                            <div
+                                className="w-1 h-4 bg-border/40 hover:bg-accent-blue/60 cursor-col-resize rounded-full transition-colors opacity-0 group-hover/header:opacity-100"
+                                onMouseDown={(e) => onResizeStart(e, 'commenced')}
+                            />
+                        </div>
+
+                        {/* Completed Column */}
+                        <div style={{ width: colWidths.concluded }} className="shrink-0 flex items-center justify-between group/header px-2">
+                            <span className="truncate">Concluded</span>
+                            <div
+                                className="w-1 h-4 bg-border/40 hover:bg-accent-blue/60 cursor-col-resize rounded-full transition-colors opacity-0 group-hover/header:opacity-100"
+                                onMouseDown={(e) => onResizeStart(e, 'concluded')}
+                            />
+                        </div>
+
+                        {/* Stage Column */}
+                        <div style={{ width: colWidths.stage }} className="text-center shrink-0 flex items-center justify-between group/header">
+                            <span className="flex-1 truncate">Current Stage</span>
+                            <div
+                                className="w-1 h-4 bg-border/40 hover:bg-accent-blue/60 cursor-col-resize rounded-full transition-colors opacity-0 group-hover/header:opacity-100"
+                                onMouseDown={(e) => onResizeStart(e, 'stage')}
+                            />
+                        </div>
+
                         <div className="w-12 shrink-0"></div>
                     </div>
 

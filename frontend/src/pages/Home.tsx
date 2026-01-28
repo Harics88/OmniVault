@@ -17,32 +17,48 @@ import {
 import { dailyLogsApi, tasksApi, notesApi, snippetsApi, bookmarksApi, systemApi } from '../lib/api';
 import TaskCard from '../components/TaskCard';
 import ActivityHeatmap from '../components/ActivityHeatmap';
-import HabitTracker from '../components/HabitTracker';
+import { DragDropContext, Draggable, DropResult } from 'react-beautiful-dnd';
+import { StrictModeDroppable } from '../components/StrictModeDroppable';
+import { loadWidgetConfig, saveWidgetConfig, WidgetConfig } from '../utils/widgetConfig';
+import { GripVertical } from 'lucide-react';
 
 export default function Home() {
     const today = new Date();
     const greeting = getGreeting();
     const navigate = useNavigate();
     const [configMode, setConfigMode] = useState(false);
-    const [visibleWidgets, setVisibleWidgets] = useState(() => {
-        const saved = localStorage.getItem('dashboardWidgets');
-        return saved ? JSON.parse(saved) : {
-            heatmap: true,
-            habits: true,
-            todayLog: true,
-            activeTasks: true,
-            recentNotes: true,
-            recentSnippets: true,
-            recentBookmarks: true
-        };
-    });
+    const [widgets, setWidgets] = useState<WidgetConfig[]>(loadWidgetConfig());
 
     useEffect(() => {
-        localStorage.setItem('dashboardWidgets', JSON.stringify(visibleWidgets));
-    }, [visibleWidgets]);
+        saveWidgetConfig(widgets);
+    }, [widgets]);
 
-    const toggleWidget = (key: string) => {
-        setVisibleWidgets((prev: Record<string, boolean>) => ({ ...prev, [key]: !prev[key] }));
+    const toggleWidget = (id: string) => {
+        setWidgets(prev => prev.map(w =>
+            w.id === id ? { ...w, enabled: !w.enabled } : w
+        ));
+    };
+
+    const onDragEnd = (result: DropResult) => {
+        if (!result.destination) return;
+
+        const items = Array.from(widgets);
+        const [reorderedItem] = items.splice(result.source.index, 1);
+        items.splice(result.destination.index, 0, reorderedItem);
+
+        // Update order property
+        const updated = items.map((item, index) => ({ ...item, order: index }));
+        setWidgets(updated);
+    };
+
+    const getSpanClass = (span: string) => {
+        switch (span) {
+            case 'full': return 'col-span-full';
+            case 'two-thirds': return 'lg:col-span-2 col-span-full';
+            case 'half': return 'lg:col-span-1.5 col-span-full'; // Custom handling might be needed
+            case 'third': return 'lg:col-span-1 col-span-full';
+            default: return 'col-span-full';
+        }
     };
 
     // Fetch data
@@ -90,99 +106,42 @@ export default function Home() {
         return format(date, 'MMM d, h:mm a');
     };
 
-    return (
-        <div className="p-8 max-w-6xl mx-auto animate-fade-in">
-            {/* Header */}
-            <header className="mb-8 flex items-start justify-between">
-                <div>
-                    <div className="flex items-center gap-2 text-accent-blue mb-2">
-                        <Sparkles size={20} />
-                        <span className="text-sm font-medium">{format(today, 'EEEE, MMMM d, yyyy')}</span>
+    const renderWidget = (id: string) => {
+        switch (id) {
+            case 'heatmap':
+                return <ActivityHeatmap />;
+            case 'quickStats':
+                return (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <StatCard
+                            icon={CheckSquare}
+                            label="Active Tasks"
+                            value={activeTasks.length}
+                            color="text-emerald-500"
+                        />
+                        <StatCard
+                            icon={FileText}
+                            label="Notes"
+                            value={systemStats?.counts.notes || 0}
+                            color="text-purple-500"
+                        />
+                        <StatCard
+                            icon={Code}
+                            label="Snippets"
+                            value={systemStats?.counts.snippets || 0}
+                            color="text-sky-500"
+                        />
+                        <StatCard
+                            icon={Bookmark}
+                            label="Bookmarks"
+                            value={systemStats?.counts.bookmarks || 0}
+                            color="text-rose-500"
+                        />
                     </div>
-                    <h1 className="text-3xl font-bold text-text-primary mb-2">
-                        {greeting}, Welcome Back
-                    </h1>
-                    <p className="text-text-secondary">
-                        Here's what's happening with your workspace today.
-                    </p>
-                </div>
-                <button
-                    onClick={() => setConfigMode(!configMode)}
-                    className={`p-2 rounded-lg transition-colors ${configMode ? 'bg-accent-blue text-white' : 'text-text-muted hover:bg-background-elevated'}`}
-                    title="Customize Dashboard"
-                >
-                    <Layout size={20} />
-                </button>
-            </header>
-
-            {configMode && (
-                <div className="mb-8 p-4 bg-background-card border border-border rounded-xl animate-fade-in">
-                    <h3 className="text-sm font-bold text-text-primary mb-3 uppercase tracking-wider">Visible Widgets</h3>
-                    <div className="flex flex-wrap gap-3">
-                        {Object.keys(visibleWidgets).map(key => (
-                            <button
-                                key={key}
-                                onClick={() => toggleWidget(key)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 transition-all ${
-                                    visibleWidgets[key]
-                                    ? 'bg-accent-blue/10 text-accent-blue border border-accent-blue/20'
-                                    : 'bg-background-elevated text-text-muted border border-border'
-                                }`}
-                            >
-                                {visibleWidgets[key] ? <Eye size={14} /> : <EyeOff size={14} />}
-                                {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Top Row: Activity Heatmap & Habits */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                {visibleWidgets.heatmap && (
-                    <div className="lg:col-span-2">
-                        <ActivityHeatmap />
-                    </div>
-                )}
-                {visibleWidgets.habits && (
-                    <div className="lg:col-span-1">
-                        <HabitTracker />
-                    </div>
-                )}
-            </div>
-
-            {/* Quick Stats */}
-            <div className="grid grid-cols-4 gap-4 mb-8">
-                <StatCard
-                    icon={CheckSquare}
-                    label="Active Tasks"
-                    value={activeTasks.length}
-                    color="text-emerald-500"
-                />
-                <StatCard
-                    icon={FileText}
-                    label="Notes"
-                    value={systemStats?.counts.notes || 0}
-                    color="text-purple-500"
-                />
-                <StatCard
-                    icon={Code}
-                    label="Snippets"
-                    value={systemStats?.counts.snippets || 0}
-                    color="text-sky-500"
-                />
-                <StatCard
-                    icon={Bookmark}
-                    label="Bookmarks"
-                    value={systemStats?.counts.bookmarks || 0}
-                    color="text-rose-500"
-                />
-            </div>
-
-            <div className="grid grid-cols-3 gap-6">
-                {/* Today's Log */}
-                {visibleWidgets.todayLog && (
-                    <div className="col-span-2">
+                );
+            case 'todayLog':
+                return (
+                    <div>
                         <SectionHeader
                             icon={Calendar}
                             title="Today's Log"
@@ -214,10 +173,9 @@ export default function Home() {
                             )}
                         </div>
                     </div>
-                )}
-
-                {/* Active Tasks */}
-                {visibleWidgets.activeTasks && (
+                );
+            case 'activeTasks':
+                return (
                     <div>
                         <SectionHeader
                             icon={CheckSquare}
@@ -254,13 +212,9 @@ export default function Home() {
                             )}
                         </div>
                     </div>
-                )}
-            </div>
-
-            {/* Quick Access Section */}
-            <div className="mt-8 grid grid-cols-3 gap-6">
-                {/* Recent Notes */}
-                {visibleWidgets.recentNotes && (
+                );
+            case 'recentNotes':
+                return (
                     <div>
                         <SectionHeader
                             icon={FileText}
@@ -303,10 +257,9 @@ export default function Home() {
                             )}
                         </div>
                     </div>
-                )}
-
-                {/* Recent Snippets */}
-                {visibleWidgets.recentSnippets && (
+                );
+            case 'recentSnippets':
+                return (
                     <div>
                         <SectionHeader
                             icon={Code}
@@ -349,10 +302,9 @@ export default function Home() {
                             )}
                         </div>
                     </div>
-                )}
-
-                {/* Recent Bookmarks */}
-                {visibleWidgets.recentBookmarks && (
+                );
+            case 'recentBookmarks':
+                return (
                     <div>
                         <SectionHeader
                             icon={Bookmark}
@@ -398,8 +350,116 @@ export default function Home() {
                             )}
                         </div>
                     </div>
-                )}
-            </div>
+                );
+            default:
+                return null;
+        }
+    };
+
+    return (
+        <div className="p-8 max-w-6xl mx-auto animate-fade-in">
+            {/* Header */}
+            <header className="mb-8 flex items-start justify-between">
+                <div>
+                    <div className="flex items-center gap-2 text-accent-blue mb-2">
+                        <Sparkles size={20} />
+                        <span className="text-sm font-medium">{format(today, 'EEEE, MMMM d, yyyy')}</span>
+                    </div>
+                    <h1 className="text-3xl font-bold text-text-primary mb-2">
+                        {greeting}, Welcome Back
+                    </h1>
+                    <p className="text-text-secondary">
+                        Here's what's happening with your workspace today.
+                    </p>
+                </div>
+                <button
+                    onClick={() => setConfigMode(!configMode)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${configMode ? 'bg-accent-blue text-white border-accent-blue shadow-lg shadow-accent-blue/20' : 'bg-background-card text-text-muted border-border hover:bg-background-elevated'}`}
+                >
+                    <Layout size={18} />
+                    <span className="text-sm font-bold">Customize</span>
+                </button>
+            </header>
+
+            {configMode && (
+                <div className="mb-8 p-6 bg-background-card border border-border rounded-2xl animate-fade-in shadow-xl">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-xs font-black text-text-muted uppercase tracking-[0.2em]">Dashboard Configuration</h3>
+                        <button
+                            onClick={() => {
+                                localStorage.removeItem('dashboardWidgetConfig');
+                                setWidgets(loadWidgetConfig());
+                            }}
+                            className="text-[10px] font-bold text-accent-blue hover:underline"
+                        >
+                            Reset Defaults
+                        </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {widgets.map(widget => (
+                            <button
+                                key={widget.id}
+                                onClick={() => toggleWidget(widget.id)}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95 ${widget.enabled
+                                    ? 'bg-accent-blue/10 text-accent-blue border border-accent-blue/30'
+                                    : 'bg-background-elevated/50 text-text-muted border border-border/50'
+                                    }`}
+                            >
+                                {widget.enabled ? <Eye size={14} className="shrink-0" /> : <EyeOff size={14} className="shrink-0" />}
+                                {widget.title}
+                            </button>
+                        ))}
+                    </div>
+                    <p className="text-[10px] text-text-muted mt-4 italic">
+                        * Drag items by the handle to reorder. Toggle visibility using the buttons above.
+                    </p>
+                </div>
+            )}
+
+            <DragDropContext onDragEnd={onDragEnd}>
+                <StrictModeDroppable droppableId="dashboard-widgets">
+                    {(provided) => (
+                        <div
+                            {...provided.droppableProps}
+                            ref={provided.innerRef}
+                            className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+                        >
+                            {widgets.filter(w => w.enabled).map((widget, index) => (
+                                <Draggable key={widget.id} draggableId={widget.id} index={index} isDragDisabled={!configMode}>
+                                    {(provided, snapshot) => (
+                                        <div
+                                            ref={provided.innerRef}
+                                            {...provided.draggableProps}
+                                            className={`${getSpanClass(widget.span)} ${snapshot.isDragging ? 'z-50' : ''}`}
+                                            style={{
+                                                ...provided.draggableProps.style,
+                                                transform: snapshot.isDragging
+                                                    ? provided.draggableProps.style?.transform
+                                                    : 'none', // Fix for jumping issues in some layouts
+                                            }}
+                                        >
+                                            <div className={`relative group transition-all ${configMode ? 'ring-2 ring-accent-blue/20 rounded-2xl' : ''}`}>
+                                                {configMode && (
+                                                    <div
+                                                        {...provided.dragHandleProps}
+                                                        className="absolute -left-3 top-1/2 -translate-y-1/2 p-1.5 bg-background-card border border-border rounded-lg shadow-lg z-20 cursor-grab active:cursor-grabbing text-text-muted hover:text-accent-blue transition-colors group-hover:opacity-100 opacity-0"
+                                                    >
+                                                        <GripVertical size={16} />
+                                                    </div>
+                                                )}
+                                                <div className={snapshot.isDragging ? 'opacity-50' : ''}>
+                                                    {renderWidget(widget.id)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </Draggable>
+                            ))}
+                            {provided.placeholder}
+                        </div>
+                    )}
+                </StrictModeDroppable>
+            </DragDropContext>
 
             {/* Keyboard Shortcuts Hint */}
             <div className="mt-12 p-4 card bg-gradient-to-r from-background-card to-background-elevated">

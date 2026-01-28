@@ -1,16 +1,40 @@
-import React, { useState, useRef } from 'react';
-import { Settings as SettingsIcon, HardDrive, ShieldCheck, Download, Upload, Tag } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Settings as SettingsIcon, HardDrive, ShieldCheck, Download, Upload } from 'lucide-react';
 import axios from 'axios';
-import TagManager from '../components/TagManager';
+import { loadWidgetConfig, saveWidgetConfig, WidgetConfig } from '../utils/widgetConfig';
+import { Eye, EyeOff, Layout as LayoutIcon } from 'lucide-react';
+import PINEntry from '../components/PINEntry';
 
 export default function Settings() {
-    const [isTagManagerOpen, setIsTagManagerOpen] = useState(false);
     const [enablePersonal, setEnablePersonal] = useState(() => {
         return localStorage.getItem('enablePersonalTasks') === 'true';
     });
     const [isExporting, setIsExporting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
+    const [widgets, setWidgets] = useState<WidgetConfig[]>(loadWidgetConfig());
+    const [vaultPinEnabled, setVaultPinEnabled] = useState(true);
+    const [pinPromptMode, setPinPromptMode] = useState<'verify' | 'setup' | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const toggleWidget = (id: string) => {
+        const updated = widgets.map(w =>
+            w.id === id ? { ...w, enabled: !w.enabled } : w
+        );
+        setWidgets(updated);
+        saveWidgetConfig(updated);
+    };
+
+    useEffect(() => {
+        const fetchVaultStatus = async () => {
+            try {
+                const response = await axios.get('http://localhost:5000/api/vault/pin/status');
+                setVaultPinEnabled(response.data.is_enabled);
+            } catch (error) {
+                console.error('Failed to fetch vault status:', error);
+            }
+        };
+        fetchVaultStatus();
+    }, []);
 
     // Initial stats fetch removed as 'stats' and 'loading' were unused in UI logic
     // (though 'loading' was used for initial state, but stats data wasn't displayed in this component yet)
@@ -108,18 +132,30 @@ export default function Settings() {
                         </label>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-background border border-border rounded-lg">
-                        <div>
-                            <div className="text-base font-semibold text-text-primary">Manage Tags</div>
-                            <p className="text-sm text-text-muted">Create and manage your global tags</p>
-                        </div>
-                        <button
-                            onClick={() => setIsTagManagerOpen(true)}
-                            className="btn btn-ghost border border-border"
-                        >
-                            <Tag size={16} className="mr-2" />
-                            Manage Tags
-                        </button>
+                </section>
+
+                <section className="bg-background-card border border-border rounded-xl p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                        <LayoutIcon size={20} className="text-accent-blue" />
+                        <h2 className="text-xl font-semibold text-text-primary">Dashboard Widgets</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {widgets.map(widget => (
+                            <div key={widget.id} className="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
+                                <span className="text-sm font-medium text-text-primary">{widget.title}</span>
+                                <button
+                                    onClick={() => toggleWidget(widget.id)}
+                                    className={`p-2 rounded-lg transition-colors ${widget.enabled
+                                        ? 'bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/20'
+                                        : 'bg-background-elevated text-text-muted hover:bg-border'
+                                        }`}
+                                    title={widget.enabled ? 'Hide Widget' : 'Show Widget'}
+                                >
+                                    {widget.enabled ? <Eye size={16} /> : <EyeOff size={16} />}
+                                </button>
+                            </div>
+                        ))}
                     </div>
                 </section>
 
@@ -179,22 +215,80 @@ export default function Settings() {
                         <h2 className="text-xl font-semibold text-text-primary">Privacy & Security</h2>
                     </div>
 
-                    <div className="p-4 bg-background border border-border rounded-lg">
-                        <div className="flex items-center gap-2 text-text-muted mb-1">
-                            <ShieldCheck size={16} />
-                            <span className="text-sm font-medium">Data Privacy</span>
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between p-4 bg-background border border-border rounded-lg">
+                            <div>
+                                <div className="text-base font-semibold text-text-primary">Vault PIN Protection</div>
+                                <p className="text-sm text-text-muted">Require a 4-digit PIN to access your stored credentials</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="sr-only peer"
+                                    checked={vaultPinEnabled}
+                                    onChange={(e) => {
+                                        const enabled = e.target.checked;
+                                        if (!enabled) {
+                                            // Disabling protection requires PIN verification
+                                            setPinPromptMode('verify');
+                                        } else {
+                                            // Enabling protection forces new PIN setup
+                                            setPinPromptMode('setup');
+                                        }
+                                    }}
+                                />
+                                <div className="w-11 h-6 bg-background-elevated peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-blue"></div>
+                            </label>
                         </div>
-                        <div className="text-lg font-semibold text-text-primary">
-                            Local-Only Storage
+
+                        <div className="p-4 bg-background border border-border rounded-lg">
+                            <div className="flex items-center gap-2 text-text-muted mb-1">
+                                <ShieldCheck size={16} />
+                                <span className="text-sm font-medium">Data Privacy</span>
+                            </div>
+                            <div className="text-lg font-semibold text-text-primary">
+                                Local-Only Storage
+                            </div>
+                            <p className="text-xs text-text-muted mt-1 leading-relaxed">
+                                Your data never leaves this machine. All notes, tasks, and settings are stored in a secure local database (SQLite) within your private environment.
+                            </p>
                         </div>
-                        <p className="text-xs text-text-muted mt-1 leading-relaxed">
-                            Your data never leaves this machine. All notes, tasks, and settings are stored in a secure local database (SQLite) within your private environment.
-                        </p>
                     </div>
                 </section>
             </div>
 
-            <TagManager isOpen={isTagManagerOpen} onClose={() => setIsTagManagerOpen(false)} />
+
+            {pinPromptMode && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
+                    <div className="w-full max-w-sm">
+                        <PINEntry
+                            mode={pinPromptMode}
+                            onSuccess={async () => {
+                                if (pinPromptMode === 'verify') {
+                                    setVaultPinEnabled(false);
+                                    setPinPromptMode(null);
+                                    try {
+                                        await axios.post(`http://localhost:5000/api/vault/pin/toggle?enabled=false`);
+                                    } catch (error) {
+                                        console.error('Failed to disable vault PIN:', error);
+                                        setVaultPinEnabled(true); // Rollback
+                                    }
+                                } else if (pinPromptMode === 'setup') {
+                                    setVaultPinEnabled(true);
+                                    setPinPromptMode(null);
+                                    try {
+                                        await axios.post(`http://localhost:5000/api/vault/pin/toggle?enabled=true`);
+                                    } catch (error) {
+                                        console.error('Failed to enable vault PIN:', error);
+                                        setVaultPinEnabled(false); // Rollback
+                                    }
+                                }
+                            }}
+                            onCancel={() => setPinPromptMode(null)}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

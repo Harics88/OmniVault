@@ -13,6 +13,11 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///../data/mytasker.d
 if not DATABASE_URL.startswith("sqlite+aiosqlite"):
     DATABASE_URL = DATABASE_URL.replace("sqlite://", "sqlite+aiosqlite://")
 
+# Extract DB_PATH for file operations
+DB_PATH = DATABASE_URL.replace("sqlite+aiosqlite:///", "").replace("sqlite+aiosqlite://", "")
+if DB_PATH.startswith("../"):
+    DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", DB_PATH))
+
 # Create async engine
 engine = create_async_engine(
     DATABASE_URL,

@@ -5,11 +5,12 @@ interface LinkModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (url: string, text: string) => void;
+    onRemove?: () => void;
     initialText?: string;
     initialUrl?: string;
 }
 
-export default function LinkModal({ isOpen, onClose, onSubmit, initialText = '', initialUrl = '' }: LinkModalProps) {
+export default function LinkModal({ isOpen, onClose, onSubmit, onRemove, initialText = '', initialUrl = '' }: LinkModalProps) {
     const [url, setUrl] = useState(initialUrl);
     const [text, setText] = useState(initialText);
     const urlInputRef = useRef<HTMLInputElement>(null);
@@ -53,7 +54,7 @@ export default function LinkModal({ isOpen, onClose, onSubmit, initialText = '',
                 <div className="flex items-center justify-between p-4 border-b border-border">
                     <div className="flex items-center gap-2">
                         <LinkIcon size={18} className="text-accent-blue" />
-                        <h3 className="font-semibold text-text-primary">Add Link</h3>
+                        <h3 className="font-semibold text-text-primary">{initialUrl ? 'Edit Link' : 'Add Link'}</h3>
                     </div>
                     <button
                         onClick={onClose}
@@ -97,6 +98,18 @@ export default function LinkModal({ isOpen, onClose, onSubmit, initialText = '',
 
                     {/* Action Buttons */}
                     <div className="flex items-center justify-end gap-2 pt-2">
+                        {initialUrl && onRemove && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    onRemove();
+                                    onClose();
+                                }}
+                                className="px-4 py-2 text-sm text-accent-red hover:bg-accent-red/10 rounded-lg transition-all mr-auto font-medium"
+                            >
+                                Remove Link
+                            </button>
+                        )}
                         <button
                             type="button"
                             onClick={onClose}
@@ -107,15 +120,15 @@ export default function LinkModal({ isOpen, onClose, onSubmit, initialText = '',
                         <button
                             type="submit"
                             disabled={!url.trim()}
-                            className="px-4 py-2 text-sm bg-accent-blue text-white rounded-lg hover:bg-accent-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md"
+                            className="px-4 py-2 text-sm bg-accent-blue text-white rounded-lg hover:bg-accent-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md font-medium"
                         >
-                            Add Link
+                            {initialUrl ? 'Update Link' : 'Add Link'}
                         </button>
                     </div>
                 </form>
 
                 {/* Helper text */}
-                <div className="px-4 pb-3 text-xs text-text-muted">
+                <div className="px-4 pb-3 text-[10px] text-text-muted italic border-t border-border/50 pt-2 mx-4 mb-2">
                     <p>💡 Tip: If display text is empty, the URL will be shown</p>
                 </div>
             </div>

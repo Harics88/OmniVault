@@ -273,3 +273,67 @@ export interface UpdateBookmark {
     is_file?: boolean;
     order?: number;
 }
+
+// Vault/Secret types
+export type SecretType = 'database' | 'sftp' | 'website';
+
+export interface Secret {
+    id: number;
+    type: SecretType;
+    label: string;
+    metadata: string; // JSON string
+    tags?: string;
+    username: string | null;
+    password: string;
+    notes: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface DatabaseMetadata {
+    host: string;
+    port: number;
+    db_type: 'postgresql' | 'mysql' | 'oracle' | 'mssql';
+    sid?: string; // For Oracle
+    database?: string; // For Postgres/MySQL
+}
+
+export interface SFTPMetadata {
+    host: string;
+    port: number;
+    url?: string;
+    ssh_key_path?: string;
+}
+
+export interface WebsiteMetadata {
+    url: string;
+}
+
+export interface CreateSecret {
+    type: SecretType;
+    label: string;
+    metadata: string;
+    tags?: string;
+    username?: string | null;
+    password: string;
+    notes?: string | null;
+}
+
+export interface UpdateSecret {
+    type?: SecretType;
+    label?: string;
+    metadata?: string;
+    tags?: string;
+    username?: string | null;
+    password?: string;
+    notes?: string | null;
+}
+
+export interface ConnectionString {
+    connection_string: string;
+    host: string;
+    port: number;
+    database: string;
+    db_type: string;
+}
+

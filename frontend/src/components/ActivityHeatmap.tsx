@@ -31,16 +31,29 @@ export default function ActivityHeatmap() {
     const today = new Date();
 
     return (
-        <div className="bg-background-card border border-border rounded-xl p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-                <Activity size={20} className="text-accent-green" />
-                <h2 className="text-lg font-semibold text-text-primary">Activity</h2>
+        <div className="card p-6 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                    <Activity size={18} className="text-emerald-500" />
+                    <h2 className="font-bold text-text-primary text-sm uppercase tracking-wider">Activity Heatmap</h2>
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                    <span>Less</span>
+                    <div className="flex gap-1">
+                        <div className="w-2.5 h-2.5 rounded-[2px] bg-background-elevated" />
+                        <div className="w-2.5 h-2.5 rounded-[2px] bg-emerald-500/20" />
+                        <div className="w-2.5 h-2.5 rounded-[2px] bg-emerald-500/40" />
+                        <div className="w-2.5 h-2.5 rounded-[2px] bg-emerald-500/60" />
+                        <div className="w-2.5 h-2.5 rounded-[2px] bg-emerald-500/80" />
+                    </div>
+                    <span>More</span>
+                </div>
             </div>
 
-            <div className="w-full overflow-x-auto">
-                <div className="min-w-[600px]">
+            <div className="w-full mt-auto">
+                <div className="heatmap-container">
                     <CalendarHeatmap
-                        startDate={subDays(today, 120)}
+                        startDate={subDays(today, 200)}
                         endDate={today}
                         values={stats}
                         classForValue={(value: ActivityStat | null) => {
@@ -53,22 +66,33 @@ export default function ActivityHeatmap() {
                             if (!value || !value.date) return null;
                             return {
                                 'data-tooltip-id': 'heatmap-tooltip',
-                                'data-tooltip-content': `${format(new Date(value.date), 'MMM d, yyyy')}: ${value.count} contributions`,
+                                'data-tooltip-content': `${format(new Date(value.date), 'MMM d, yyyy')}: ${value.count} activity points`,
                             };
                         }}
-                        showWeekdayLabels
                     />
-                    <Tooltip id="heatmap-tooltip" />
+                    <Tooltip id="heatmap-tooltip" className="z-50" />
                 </div>
             </div>
 
             <style>{`
-                .react-calendar-heatmap .color-empty { fill: rgba(128, 128, 128, 0.1); }
-                .react-calendar-heatmap .color-scale-1 { fill: rgba(34, 197, 94, 0.2); }
-                .react-calendar-heatmap .color-scale-2 { fill: rgba(34, 197, 94, 0.4); }
-                .react-calendar-heatmap .color-scale-3 { fill: rgba(34, 197, 94, 0.6); }
-                .react-calendar-heatmap .color-scale-4 { fill: rgba(34, 197, 94, 0.8); }
-                .react-calendar-heatmap text { fill: #888; font-size: 10px; }
+                .heatmap-container .react-calendar-heatmap .color-empty { 
+                    fill: var(--bg-elevated); 
+                    rx: 2px;
+                    ry: 2px;
+                }
+                .heatmap-container .react-calendar-heatmap .color-scale-1 { fill: rgba(16, 185, 129, 0.2); rx: 2px; ry: 2px; }
+                .heatmap-container .react-calendar-heatmap .color-scale-2 { fill: rgba(16, 185, 129, 0.4); rx: 2px; ry: 2px; }
+                .heatmap-container .react-calendar-heatmap .color-scale-3 { fill: rgba(16, 185, 129, 0.6); rx: 2px; ry: 2px; }
+                .heatmap-container .react-calendar-heatmap .color-scale-4 { fill: rgba(16, 185, 129, 0.8); rx: 2px; ry: 2px; }
+                .heatmap-container .react-calendar-heatmap text { 
+                    fill: var(--text-muted); 
+                    font-size: 8px; 
+                    font-weight: 500;
+                }
+                .react-calendar-heatmap rect:hover {
+                    stroke: var(--accent-blue);
+                    stroke-width: 1px;
+                }
             `}</style>
         </div>
     );

@@ -8,6 +8,7 @@ import Notes from './pages/Notes'
 import RecycleBin from './pages/RecycleBin'
 import Snippets from './pages/Snippets'
 import Bookmarks from './pages/Bookmarks'
+import Vault from './pages/Vault'
 import Settings from './pages/Settings'
 import Shortcuts from './pages/Shortcuts'
 
@@ -30,6 +31,7 @@ function App() {
                     <Route path="snippets" element={<Snippets />} />
                     <Route path="snippets/:id" element={<Snippets />} />
                     <Route path="bookmarks" element={<Bookmarks />} />
+                    <Route path="vault" element={<Vault />} />
                     <Route path="settings" element={<Settings />} />
                     <Route path="shortcuts" element={<Shortcuts />} />
                 </Route>

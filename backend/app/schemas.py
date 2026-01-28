@@ -1,10 +1,6 @@
-"""
-Pydantic schemas for request/response validation
-"""
-
 from datetime import datetime, date
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from app.models import TaskStatus, TaskPriority
 import enum
 
@@ -142,7 +138,6 @@ class NoteBase(BaseModel):
     position: int = 0
     section_id: Optional[int] = None
     is_pinned: bool = False
-    tags: Optional[str] = ""
 
 
 class NoteCreate(NoteBase):
@@ -157,7 +152,6 @@ class NoteUpdate(BaseModel):
     position: Optional[int] = None
     section_id: Optional[int] = None
     is_pinned: Optional[bool] = None
-    tags: Optional[str] = None
 
 
 class NoteResponse(NoteBase):
@@ -307,3 +301,64 @@ class SearchResponse(BaseModel):
 
 class LinkItems(BaseModel):
     item_ids: List[int]
+
+
+
+# ============ Link Schemas ============
+
+class LinkItems(BaseModel):
+    item_ids: List[int]
+
+
+# ============ Vault/Secret Schemas ============
+
+class SecretBase(BaseModel):
+    type: str  # 'database', 'sftp', 'website'
+    label: str
+    metadata: str = "{}"  # JSON string - maps to meta_json column
+    tags: Optional[str] = ""
+    username: Optional[str] = None
+    password: str
+    notes: Optional[str] = None
+
+
+class SecretCreate(SecretBase):
+    pass
+
+
+class SecretUpdate(BaseModel):
+    type: Optional[str] = None
+    label: Optional[str] = None
+    metadata: Optional[str] = None
+    tags: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class SecretResponse(BaseModel):
+    id: int
+    type: str
+    label: str
+    metadata: str
+    tags: Optional[str] = ""
+    username: Optional[str] = None
+    password: str
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+# PIN Management Schemas
+class PINSetup(BaseModel):
+    pin: str  # 4-digit PIN
+    tip: Optional[str] = None
+
+
+class PINVerify(BaseModel):
+    pin: str
+
+
+class PINResponse(BaseModel):
+    valid: bool
+    message: Optional[str] = None

@@ -6,7 +6,7 @@ from app.database import DATABASE_URL, get_db
 router = APIRouter()
 
 from sqlalchemy import select, func
-from app.models import Task, Note, Snippet, Bookmark
+from app.models import Task, Note, Snippet, Bookmark, DailyLog
 
 @router.get("/stats")
 async def get_system_stats(db: AsyncSession = Depends(get_db)):
@@ -72,6 +72,68 @@ async def get_system_stats(db: AsyncSession = Depends(get_db)):
             "bookmarks": bookmark_count
         }
     }
+
+@router.get("/activity")
+async def get_activity_data(db: AsyncSession = Depends(get_db)):
+    """Get activity data for heatmap (last 365 days)"""
+    # We aggregate counts from different tables
+    activity = {} # date_str -> count
+    
+    # 1. Tasks completed
+    task_results = await db.execute(
+        select(func.date(Task.completed_at), func.count())
+        .where(Task.completed_at.is_not(None))
+        .group_by(func.date(Task.completed_at))
+    )
+    for date_str, count in task_results:
+        if date_str:
+            activity[date_str] = activity.get(date_str, 0) + count
+            
+    # 2. Daily Logs
+    log_results = await db.execute(
+        select(DailyLog.date, func.count())
+        .group_by(DailyLog.date)
+    )
+    for d, count in log_results:
+        date_str = d.strftime('%Y-%m-%d')
+        activity[date_str] = activity.get(date_str, 0) + count
+        
+    # 3. Notes created
+    note_results = await db.execute(
+        select(func.date(Note.created_at), func.count())
+        .group_by(func.date(Note.created_at))
+    )
+    for date_str, count in note_results:
+        if date_str:
+            activity[date_str] = activity.get(date_str, 0) + count
+            
+    # 4. Snippets created
+    snippet_results = await db.execute(
+        select(func.date(Snippet.created_at), func.count())
+        .group_by(func.date(Snippet.created_at))
+    )
+    for date_str, count in snippet_results:
+        if date_str:
+            activity[date_str] = activity.get(date_str, 0) + count
+
+    # Convert to list of dicts with levels for frontend
+    max_count = max(activity.values()) if activity else 0
+    import math
+    
+    result = []
+    for d, c in activity.items():
+        level = 0
+        if c > 0:
+            if max_count > 0:
+                # Map to 1-4 level scale
+                level = math.ceil((c / max_count) * 4)
+                level = min(4, level) # Cap just in case
+            else:
+                level = 1
+        result.append({"date": d, "count": c, "level": level})
+        
+    return sorted(result, key=lambda x: x["date"])
+
 
 def format_size(bytes):
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:

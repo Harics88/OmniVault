@@ -23,7 +23,8 @@ import {
     Bold, Italic, Underline as UnderlineIcon, List, ListOrdered, Link as LinkIcon, Image as ImageIcon,
     Quote, Code, Undo, Redo, CheckSquare, Table as TableIcon,
     Columns, Rows, Trash2, Highlighter, AlignLeft, AlignCenter, AlignRight,
-    Minus, Search as SearchIcon, Palette, X, Replace, ChevronDown, Indent, Outdent
+    Minus, Search as SearchIcon, Palette, X, Replace, ChevronDown, Indent, Outdent,
+    Unlink
 } from 'lucide-react';
 import React, { useState, useEffect, useCallback } from 'react';
 import LinkModal from './LinkModal';
@@ -129,7 +130,9 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
             SlashCommands.configure({ suggestion }),
             Mentions.configure({ suggestion: mentionSuggestion }),
             Link.configure({
-                openOnClick: false, autolink: true,
+                openOnClick: false,
+                autolink: true,
+                linkOnPaste: false, // We handle paste manually
                 HTMLAttributes: { class: 'text-accent-blue underline cursor-pointer', target: '_blank', rel: 'noopener noreferrer' },
             }),
             Placeholder.configure({
@@ -189,16 +192,29 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
                 }
 
                 // Handle plain text URLs
-                if (text && /^https?:\/\//.test(normalizeUrl(text))) {
-                    const normalized = normalizeUrl(text);
+                const looksLikeUrl = (str: string) => {
+                    if (!str || str.includes(' ')) return false;
+                    // Strict URL check
+                    try {
+                        const normalizedStr = !/^https?:\/\//i.test(str) && !/^mailto:/i.test(str) ? `https://${str}` : str;
+                        const url = new URL(normalizedStr);
+                        // Require at least one dot in the hostname (e.g. example.com)
+                        return url.hostname.includes('.') && url.hostname.length > 3;
+                    } catch {
+                        return false;
+                    }
+                };
+
+                if (text && looksLikeUrl(text.trim())) {
+                    const normalized = normalizeUrl(text.trim());
                     if (view.state.selection.empty) {
                         // Extract a "title" from the URL if possible (domain name)
-                        let title = text;
+                        let title = text.trim();
                         try {
                             const urlObj = new URL(normalized);
                             title = urlObj.hostname.replace('www.', '');
                         } catch (e) {
-                            title = text;
+                            title = text.trim();
                         }
 
                         editor?.chain().focus().insertContent(`<a href="${normalized}">${title}</a> `).run();
@@ -343,6 +359,28 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
                 </div>
             </BubbleMenu>
 
+            {/* Text Selection Bubble Menu */}
+            <BubbleMenu
+                editor={editor}
+                tippyOptions={{ duration: 100 }}
+                shouldShow={({ from, to }) => {
+                    // Only show if editable, selection is not empty, and not inside a table or code block
+                    return isEditable && !editor.isActive('table') && !editor.isActive('codeBlock') && from !== to;
+                }}
+            >
+                <div className="flex items-center gap-0.5 p-1 bg-background-card border border-border rounded-lg shadow-elevated overflow-hidden">
+                    <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive('bold')} title="Bold"><Bold size={14} /></ToolbarButton>
+                    <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive('italic')} title="Italic"><Italic size={14} /></ToolbarButton>
+                    <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={editor.isActive('underline')} title="Underline"><UnderlineIcon size={14} /></ToolbarButton>
+                    <ToolbarButton onClick={() => editor.chain().focus().toggleCode().run()} isActive={editor.isActive('code')} title="Code"><Code size={14} /></ToolbarButton>
+                    <div className="w-px h-4 bg-border mx-1" />
+                    <ToolbarButton onClick={() => editor.chain().focus().toggleHighlight().run()} isActive={editor.isActive('highlight')} title="Highlight"><Highlighter size={14} /></ToolbarButton>
+                    <ToolbarButton onClick={setLink} isActive={editor.isActive('link')} title="Link"><LinkIcon size={14} /></ToolbarButton>
+                    <div className="w-px h-4 bg-border mx-1" />
+                    <ToolbarButton onClick={() => editor.chain().focus().unsetAllMarks().run()} title="Clear Formatting"><X size={14} /></ToolbarButton>
+                </div>
+            </BubbleMenu>
+
             {/* Toolbar */}
             {isEditable && (
                 <div className="flex items-center gap-1 p-2 border-b border-border bg-background-card flex-wrap sticky top-0 z-10">
@@ -474,6 +512,11 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
                     <div className="w-px h-5 bg-border mx-1" />
 
                     <ToolbarButton onClick={setLink} isActive={editor.isActive('link')} title="Link"><LinkIcon size={16} /></ToolbarButton>
+                    {editor.isActive('link') && (
+                        <ToolbarButton onClick={() => editor.chain().focus().unsetLink().run()} title="Remove Link">
+                            <Unlink size={16} className="text-accent-red" />
+                        </ToolbarButton>
+                    )}
                     <ToolbarButton onClick={addImage} title="Image"><ImageIcon size={16} /></ToolbarButton>
                     <ToolbarButton onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3 }).run()} title="Table"><TableIcon size={16} /></ToolbarButton>
 
@@ -510,6 +553,7 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
                 isOpen={showLinkModal}
                 onClose={() => setShowLinkModal(false)}
                 onSubmit={handleLinkSubmit}
+                onRemove={() => editor?.chain().focus().unsetLink().run()}
                 initialText={linkText}
                 initialUrl={linkUrl}
             />

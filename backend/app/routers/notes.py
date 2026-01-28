@@ -122,8 +122,7 @@ async def get_notes(
         query = query.where(
             or_(
                 Note.title.ilike(search_pattern),
-                Note.content.ilike(search_pattern),
-                Note.tags.ilike(search_pattern)
+                Note.content.ilike(search_pattern)
             )
         )
     
