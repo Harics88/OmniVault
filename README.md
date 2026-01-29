@@ -59,21 +59,25 @@ Omni Vault is now available in **two flavors** - choose the one that fits your w
 - Date navigation (previous/next days)
 
 ### ✅ **Tasks**
-- **Multiple view modes:** List, Board (Kanban), and Table
-- **Status tracking:** Not Started / In Progress / Done
-- **Priority levels:** Low, Medium, High
-- **Subtasks** with drag-and-drop reordering
-- Full-screen task detail popout
-- Date tracking: Due Date, Started At, Completed At
+- **Multiple view modes:** List, Board (Kanban), and Table.
+- **Status tracking:** Not Started / In Progress / Done.
+- **Priority levels:** Low, Medium, High (with visual color-coding).
+- **Progress Tracking**: Real-time progress bars for tasks and subtasks.
+- **Skeleton Loading**: Progressive content display for better perceived performance.
+- **Subtasks** with drag-and-drop reordering.
+- Full-screen task detail popout with editable fields and date tracking.
+- Date tracking: Due Date, Started At, Completed At.
 
 ### 📄 **Notes**
-- Hierarchical folder structure with drag-and-drop
-- Rich text editor with full formatting support
-- **Contextual Bubble Menu** for quick formatting on selection
-- **Soft delete** with Recycle Bin
-- Bulk operations (restore, delete, empty bin)
-- Full-text search
-- Breadcrumb navigation
+- Hierarchical folder structure with drag-and-drop.
+- Rich text editor with full formatting support.
+- **Contextual Bubble Menu** for quick formatting on selection.
+- **Real-time UX**: Progressive loading with skeletons and optimistic sidebar updates.
+- **Soft delete** with Recycle Bin.
+- Bulk operations (restore, delete, empty bin).
+- Full-text search with instant feedback.
+- Breadcrumb navigation for complex hierarchies.
+- **Helpful Empty States**: Guidance for new notebooks and empty folders.
 
 ### 🍅 **Focus Mode**
 - Integrated Pomodoro Timer
@@ -96,23 +100,38 @@ Omni Vault is now available in **two flavors** - choose the one that fits your w
 - External link support with automatic URL validation
 
 ### 🔐 **Secure Vault**
-- Encrypted storage for sensitive credentials
-- Dedicated templates for **Websites, Databases, and SFTP**
-- **4-digit PIN protection** with configurable auto-lock
-- PIN Hint/Tip system for secure recovery
-- Local-only storage ensuring data privacy
+- Encrypted storage for sensitive credentials.
+- Dedicated templates for **Websites, Databases, and SFTP**.
+- **Password Visibility Toggle**: Safe viewing in read-only mode without entering edit mode.
+- **4-digit PIN protection** with configurable auto-lock.
+- **Improved Feedback**: Snappy toast notifications for copy actions (password/connection strings).
+- **Fast Lock**: Instant clearing of sensitive data on manual lock.
+
+### 🎨 **UI/UX & Experience**
+- **Skeleton Screens**: Smooth, non-jarring loading states for Tasks and Notes.
+- **Responsive Guard**: Automatic warning if the window is too narrow for an optimal experience.
+- **Offline Banner**: Instant real-time feedback when the backend connection is lost.
+- **Snappy Tech**: Standardized 200ms transitions for all modal and state changes.
+- **Accessibility First**: Skip-to-content links, ARIA labels, and enhanced focus indicators for keyboard navigation.
+- **Interactive Help**: Instant shortcut reference overlay triggered by `?`.
 
 ---
 
-## 📸 Screenshots
+### 📸 Screenshots
 
-### Dashboard - Your Command Center
+### Dashboard
 ![Dashboard](screenshots/dashboard.png)
 
-### Tasks - Organized and Prioritized
+### Keyboard Shortcuts Overlay
+![Shortcuts](screenshots/shortcuts.png)
+
+### Progressive Loading (Skeletons)
+![Loading](screenshots/loading.png)
+
+### Tasks
 ![Tasks](screenshots/tasks.png)
 
-### Notes - Hierarchical Knowledge Base
+### Notes
 ![Notes](screenshots/notes.png)
 
 ---
@@ -167,15 +186,16 @@ If you want to build the standalone executable yourself:
 |----------|--------|-----------|
 | `Cmd/Ctrl + D` | Go to today's daily log | `g` `d` |
 | `Cmd/Ctrl + K` | Open Command Palette | |
+| `Cmd/Ctrl + B` | Toggle Sidebar | |
 | `/` | Quick Search | |
-| `?` | Show Shortcuts | |
+| `?` | **Show All Shortcuts Overlay** | |
 | `g` `h` | Go Home | |
 | `g` `t` | Go to Tasks | |
 | `g` `n` | Go to Notes | |
 | `g` `s` | Go to Snippets | |
 | `g` `b` | Go to Bookmarks | |
 | `g` `,` | Go to Settings | |
-| `Escape` | Close modals/panels | |
+| `Escape` | Close modals/panels/Shortcuts | |
 
 ---
 
