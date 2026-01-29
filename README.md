@@ -144,7 +144,7 @@ Omni Vault is now available in **two flavors** - choose the one that fits your w
 ![Recycle Bin](screenshots/recycle-bin.png)
 
 ### Keyboard Shortcuts
-![Shortcuts](screenshots/shortcuts_page.png)
+![Shortcuts](screenshots/shortcuts.png)
 
 ### Settings
 ![Settings](screenshots/settings.png)

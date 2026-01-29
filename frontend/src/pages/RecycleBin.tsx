@@ -111,16 +111,16 @@ export default function RecycleBin() {
     return (
         <div className="h-full flex flex-col animate-fade-in bg-background">
             {/* Header */}
-            <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border px-8 py-4">
+            <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-xl border-b border-border px-8 py-5">
                 <div className="flex items-center justify-between max-w-5xl mx-auto">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-accent-red/10 rounded-lg">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-gradient-to-br from-red-500/20 to-red-600/5 rounded-2xl border border-red-500/20 shadow-lg shadow-red-500/10">
                             <Trash2 size={24} className="text-accent-red" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold text-text-primary">Recycle Bin</h1>
-                            <p className="text-xs text-text-muted">
-                                {deletedNotes.length} {deletedNotes.length === 1 ? 'item' : 'items'}
+                            <h1 className="text-2xl font-black text-text-primary tracking-tight">Recycle Bin</h1>
+                            <p className="text-xs font-bold text-text-muted uppercase tracking-[0.1em] opacity-70">
+                                {deletedNotes.length} {deletedNotes.length === 1 ? 'item' : 'items'} pending permanent deletion
                             </p>
                         </div>
                     </div>
@@ -129,10 +129,10 @@ export default function RecycleBin() {
                         {deletedNotes.length > 0 && (
                             <button
                                 onClick={handleEmptyRecycleBin}
-                                className="flex items-center gap-2 px-4 py-2 bg-accent-red/10 text-accent-red hover:bg-accent-red text-sm font-semibold rounded-lg transition-all hover:text-white"
+                                className="group flex items-center gap-2 px-5 py-2.5 bg-accent-red/10 text-accent-red hover:bg-accent-red transition-all duration-300 rounded-xl border border-accent-red/20 hover:border-accent-red shadow-lg hover:shadow-accent-red/20 active:scale-95"
                             >
-                                <XCircle size={16} />
-                                Empty Bin
+                                <XCircle size={18} className="group-hover:rotate-90 transition-transform duration-500" />
+                                <span className="text-sm font-black tracking-wide group-hover:text-white">Empty Bin</span>
                             </button>
                         )}
                     </div>
@@ -176,12 +176,20 @@ export default function RecycleBin() {
             <div className="flex-1 overflow-auto p-8 custom-scrollbar">
                 <div className="max-w-5xl mx-auto">
                     {deletedNotes.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-24 text-text-muted opacity-50">
-                            <div className="w-20 h-20 bg-background-elevated rounded-full flex items-center justify-center mb-6">
-                                <Trash2 size={40} />
+                        <div className="flex flex-col items-center justify-center py-32 text-center animate-fade-in">
+                            <div className="relative mb-8">
+                                <div className="absolute inset-0 bg-accent-red/10 blur-3xl rounded-full scale-150" />
+                                <div className="relative w-24 h-24 bg-gradient-to-br from-background-elevated to-background border border-border/50 rounded-3xl flex items-center justify-center shadow-2xl">
+                                    <Trash2 size={40} className="text-text-muted opacity-20" />
+                                    <div className="absolute -bottom-2 -right-2 bg-accent-green/10 p-2 rounded-xl border border-accent-green/20">
+                                        <span className="text-sm">✨</span>
+                                    </div>
+                                </div>
                             </div>
-                            <h3 className="text-lg font-bold text-text-primary mb-1">Bin is empty</h3>
-                            <p className="text-sm">Items you delete will appear here</p>
+                            <h3 className="text-2xl font-black text-text-primary mb-2 tracking-tight">Your bin is pristine</h3>
+                            <p className="text-text-secondary max-w-xs mx-auto leading-relaxed">
+                                Items you delete from your workspace will appear here for 30 days before permanent removal.
+                            </p>
                         </div>
                     ) : (
                         <div className="bg-background-card rounded-xl border border-border/50 shadow-sm overflow-hidden">

@@ -199,10 +199,19 @@ const PINEntry: React.FC<PINEntryProps> = ({ mode, onSuccess, onCancel }) => {
     const currentPinDigits = mode === 'setup' && step === 'confirm' ? confirmPin : pin;
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4 border border-gray-700 shadow-2xl">
-                <div className="text-center mb-6">
-                    <div className="text-4xl mb-4">🔐</div>
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+            {/* Backdrop with extreme blur */}
+            <div className="absolute inset-0 bg-background/40 backdrop-blur-2xl animate-fade-in" />
+
+            <div className="relative bg-background-card/80 backdrop-blur-md border border-border/50 rounded-3xl p-10 max-w-sm w-full shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] animate-slide-up">
+                {/* Decorative glow */}
+                <div className="absolute -top-24 -left-24 w-48 h-48 bg-accent-blue/20 rounded-full blur-[80px] pointer-events-none" />
+                <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-purple-500/10 rounded-full blur-[80px] pointer-events-none" />
+
+                <div className="relative text-center mb-10">
+                    <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-accent-blue/10 to-purple-500/5 rounded-3xl border border-white/5 shadow-inner mb-6 animate-pulse-slow">
+                        <span className="text-4xl">🔐</span>
+                    </div>
                     <h2 className="text-2xl font-bold text-white mb-2">
                         {mode === 'setup'
                             ? step === 'enter'
@@ -265,13 +274,13 @@ const PINEntry: React.FC<PINEntryProps> = ({ mode, onSuccess, onCancel }) => {
                         )}
 
                         {/* Number Pad */}
-                        <div className="grid grid-cols-3 gap-3 mb-6">
+                        <div className="grid grid-cols-3 gap-4 mb-8">
                             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                                 <button
                                     key={num}
                                     onClick={() => handleNumberClick(num)}
                                     disabled={loading || currentPinDigits.length >= 4}
-                                    className="bg-gray-700/50 hover:bg-gray-600 text-white text-2xl font-semibold rounded-xl h-14 transition-all active:scale-95 disabled:opacity-30 border border-gray-600/30"
+                                    className="bg-background-elevated/50 hover:bg-accent-blue hover:text-white text-2xl font-black rounded-2xl h-16 transition-all duration-200 active:scale-90 disabled:opacity-20 border border-border/50 shadow-sm flex items-center justify-center transform hover:-translate-y-1"
                                 >
                                     {num}
                                 </button>
@@ -279,23 +288,23 @@ const PINEntry: React.FC<PINEntryProps> = ({ mode, onSuccess, onCancel }) => {
                             <button
                                 onClick={handleClear}
                                 disabled={loading}
-                                className="bg-gray-700/30 hover:bg-gray-600/50 text-gray-400 rounded-xl h-14 transition-all active:scale-95 text-xs font-bold uppercase tracking-wider border border-gray-600/20"
+                                className="bg-background-elevated/30 hover:bg-background-elevated text-text-muted hover:text-text-primary rounded-2xl h-16 transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest border border-border/20"
                             >
                                 Clear
                             </button>
                             <button
                                 onClick={() => handleNumberClick(0)}
                                 disabled={loading || currentPinDigits.length >= 4}
-                                className="bg-gray-700/50 hover:bg-gray-600 text-white text-2xl font-semibold rounded-xl h-14 transition-all active:scale-95 disabled:opacity-30 border border-gray-600/30"
+                                className="bg-background-elevated/50 hover:bg-accent-blue hover:text-white text-2xl font-black rounded-2xl h-16 transition-all duration-200 active:scale-90 disabled:opacity-20 border border-border/50 shadow-sm flex items-center justify-center transform hover:-translate-y-1"
                             >
                                 0
                             </button>
                             <button
                                 onClick={handleBackspace}
                                 disabled={loading || currentPinDigits.length === 0}
-                                className="bg-gray-700/30 hover:bg-gray-600/50 text-gray-400 rounded-xl h-14 transition-all active:scale-95 border border-gray-600/20"
+                                className="bg-background-elevated/30 hover:bg-background-elevated text-text-muted hover:text-text-primary rounded-2xl h-16 transition-all active:scale-95 border border-border/20 flex items-center justify-center"
                             >
-                                ⌫
+                                <span className="text-lg">⌫</span>
                             </button>
                         </div>
                     </>

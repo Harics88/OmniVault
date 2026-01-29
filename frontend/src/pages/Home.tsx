@@ -359,25 +359,30 @@ export default function Home() {
     return (
         <div className="p-8 max-w-6xl mx-auto animate-fade-in">
             {/* Header */}
-            <header className="mb-8 flex items-start justify-between">
-                <div>
-                    <div className="flex items-center gap-2 text-accent-blue mb-2">
-                        <Sparkles size={20} />
-                        <span className="text-sm font-medium">{format(today, 'EEEE, MMMM d, yyyy')}</span>
+            <header className="mb-10 relative">
+                <div className="absolute -top-20 -left-20 w-64 h-64 bg-accent-blue/10 rounded-full blur-[100px] pointer-events-none" />
+                <div className="absolute -top-10 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-[80px] pointer-events-none" />
+
+                <div className="relative">
+                    <div className="flex items-center gap-2 text-accent-blue mb-3 animate-slide-in-right">
+                        <div className="p-1.5 bg-accent-blue/10 rounded-lg">
+                            <Sparkles size={16} />
+                        </div>
+                        <span className="text-sm font-bold tracking-wider uppercase opacity-80">{format(today, 'EEEE, MMMM d, yyyy')}</span>
                     </div>
-                    <h1 className="text-3xl font-bold text-text-primary mb-2">
-                        {greeting}, Welcome Back
+                    <h1 className="text-4xl font-black text-text-primary mb-3 tracking-tight">
+                        {greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-blue to-purple-400">Welcome Back</span>
                     </h1>
-                    <p className="text-text-secondary">
-                        Here's what's happening with your workspace today.
+                    <p className="text-text-secondary text-lg font-medium opacity-80 max-w-2xl">
+                        Your personal command center is ready. Here's your workspace overview.
                     </p>
                 </div>
                 <button
                     onClick={() => setConfigMode(!configMode)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${configMode ? 'bg-accent-blue text-white border-accent-blue shadow-lg shadow-accent-blue/20' : 'bg-background-card text-text-muted border-border hover:bg-background-elevated'}`}
+                    className={`absolute top-0 right-0 flex items-center gap-2 px-5 py-2.5 rounded-2xl border transition-all duration-300 ${configMode ? 'bg-accent-blue text-white border-accent-blue shadow-lg shadow-accent-blue/30 scale-105' : 'bg-background-card/50 backdrop-blur-md text-text-muted border-border hover:bg-background-elevated hover:text-text-primary hover:border-accent-blue/50'}`}
                 >
                     <Layout size={18} />
-                    <span className="text-sm font-bold">Customize</span>
+                    <span className="text-sm font-black tracking-wide">Customize</span>
                 </button>
             </header>
 
