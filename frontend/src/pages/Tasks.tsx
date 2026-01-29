@@ -9,6 +9,7 @@ import TaskListView from '../components/TaskListView';
 import TaskTableView from '../components/TaskTableView';
 import type { Task, TaskStatus, CreateTask, UpdateTask, Subtask } from '../types';
 import { subDays } from 'date-fns';
+import Skeleton from '../components/Skeleton';
 
 interface StatusGroup {
     status: TaskStatus;
@@ -245,8 +246,22 @@ export default function Tasks() {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center h-full">
-                <Loader2 className="w-8 h-8 animate-spin text-accent-blue" />
+            <div className="h-full flex flex-col bg-background overflow-hidden p-6">
+                <div className="flex justify-between mb-8">
+                    <div className="space-y-2">
+                        <Skeleton width={150} height={32} />
+                        <Skeleton width={250} height={16} />
+                    </div>
+                    <div className="flex gap-4">
+                        <Skeleton width={200} height={40} />
+                        <Skeleton width={120} height={40} />
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    {[1, 2, 3, 4, 5].map(i => (
+                        <Skeleton key={i} height={80} variant="rect" className="w-full" />
+                    ))}
+                </div>
             </div>
         );
     }
@@ -397,8 +412,12 @@ export default function Tasks() {
                                                     />
                                                 ))}
                                                 {group.tasks.length === 0 && (
-                                                    <div className="h-32 flex items-center justify-center text-text-muted text-xs italic border-2 border-dashed border-border/50 rounded-lg">
-                                                        Empty
+                                                    <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                                                        <div className="w-12 h-12 bg-background-elevated rounded-full flex items-center justify-center mb-3 opacity-20 border border-border">
+                                                            <Icon size={20} className={group.color} />
+                                                        </div>
+                                                        <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">No {group.label} tasks</p>
+                                                        <p className="text-[10px] text-text-muted/60 max-w-[150px]">Items in this stage will appear here.</p>
                                                     </div>
                                                 )}
                                             </div>

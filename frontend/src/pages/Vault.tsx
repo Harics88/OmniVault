@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import PINEntry from '../components/PINEntry';
 import { Secret, SecretType, CreateSecret, DatabaseMetadata, SFTPMetadata, WebsiteMetadata } from '../types';
 
@@ -16,6 +17,8 @@ const Vault: React.FC = () => {
     const [isModalReadOnly, setIsModalReadOnly] = useState(true);
     const [editingSecret, setEditingSecret] = useState<Secret | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isTransitioning, setIsTransitioning] = useState(false);
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
 
     // Check if PIN is set up
     useEffect(() => {
@@ -59,7 +62,11 @@ const Vault: React.FC = () => {
     };
 
     const handlePinSuccess = () => {
-        setIsUnlocked(true);
+        setIsTransitioning(true);
+        setTimeout(() => {
+            setIsUnlocked(true);
+            setIsTransitioning(false);
+        }, 300);
         if (!isPinSetup) {
             setIsPinSetup(true);
         }
@@ -67,7 +74,16 @@ const Vault: React.FC = () => {
 
 
     const handleLock = () => {
-        setIsUnlocked(false);
+        setIsTransitioning(true);
+        setTimeout(() => {
+            setIsUnlocked(false);
+            setIsTransitioning(false);
+        }, 300);
+    };
+
+    const showToast = (message: string) => {
+        setToastMessage(message);
+        setTimeout(() => setToastMessage(null), 4000);
     };
 
     const handleDeleteSecret = async (id: number) => {
@@ -89,10 +105,20 @@ const Vault: React.FC = () => {
     const handleCopyPassword = async (secret: Secret) => {
         try {
             await navigator.clipboard.writeText(secret.password);
-            // Show toast notification (you can add a toast library)
-            alert('Password copied to clipboard!');
+            showToast('🔐 Password copied! Auto-clearing in 30s...');
+
+            // Auto-clear clipboard after 30 seconds
+            setTimeout(async () => {
+                try {
+                    await navigator.clipboard.writeText('');
+                    showToast('🧹 Clipboard cleared for security');
+                } catch {
+                    // Clipboard clear failed, but that's okay
+                }
+            }, 30000);
         } catch (error) {
             console.error('Failed to copy password:', error);
+            showToast('❌ Failed to copy password');
         }
     };
 
@@ -102,10 +128,21 @@ const Vault: React.FC = () => {
             if (response.ok) {
                 const data = await response.json();
                 await navigator.clipboard.writeText(data.connection_string);
-                alert('Connection string copied to clipboard!');
+                showToast('🔗 Connection string copied! Auto-clearing in 30s...');
+
+                // Auto-clear clipboard after 30 seconds
+                setTimeout(async () => {
+                    try {
+                        await navigator.clipboard.writeText('');
+                        showToast('🧹 Clipboard cleared for security');
+                    } catch {
+                        // Clipboard clear failed, but that's okay
+                    }
+                }, 30000);
             }
         } catch (error) {
             console.error('Failed to copy connection string:', error);
+            showToast('❌ Failed to copy connection string');
         }
     };
 
@@ -153,16 +190,27 @@ const Vault: React.FC = () => {
 
     if (!isUnlocked) {
         return (
-            <PINEntry
-                mode={isPinSetup ? 'verify' : 'setup'}
-                onSuccess={handlePinSuccess}
-            />
+            <div className={`transition-opacity duration-200 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+                <PINEntry
+                    mode={isPinSetup ? 'verify' : 'setup'}
+                    onSuccess={handlePinSuccess}
+                />
+            </div>
         );
     }
 
     // Main vault interface
     return (
-        <div className="p-6">
+        <div className={`p-6 transition-opacity duration-200 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+            {/* Toast Notification */}
+            {toastMessage && (
+                <div className="fixed bottom-6 right-6 z-[100] animate-slide-in-right">
+                    <div className="bg-gray-800 border border-gray-700 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border-l-4 border-l-blue-500">
+                        <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                        <span className="text-sm font-medium">{toastMessage}</span>
+                    </div>
+                </div>
+            )}
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
@@ -833,11 +881,10 @@ const SecretFormModal: React.FC<SecretFormModalProps> = ({ secret, onClose, onSa
                             />
                             <button
                                 type="button"
-                                disabled={isReadOnly}
                                 onClick={() => setShowPassword(!showPassword)}
-                                className={`absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                             >
-                                {showPassword ? '🙈' : '👁️'}
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>
                         </div>
                     </div>

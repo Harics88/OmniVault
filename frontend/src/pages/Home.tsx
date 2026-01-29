@@ -536,13 +536,13 @@ function StatCard({
     color: string;
 }) {
     return (
-        <div className="card p-4">
+        <div className="card p-4 border border-border/50 shadow-lg shadow-black/10 hover:shadow-xl hover:shadow-black/20 hover:border-border transition-all duration-300 group">
             <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg bg-background ${color}`}>
+                <div className={`p-2.5 rounded-xl bg-gradient-to-br from-background to-background-elevated ${color} shadow-inner group-hover:scale-110 transition-transform duration-300`}>
                     <Icon size={20} />
                 </div>
                 <div>
-                    <p className="text-2xl font-bold text-text-primary">{value}</p>
+                    <p className="text-2xl font-bold text-text-primary group-hover:text-white transition-colors">{value}</p>
                     <p className="text-sm text-text-muted">{label}</p>
                 </div>
             </div>

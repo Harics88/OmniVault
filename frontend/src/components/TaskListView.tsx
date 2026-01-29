@@ -1,4 +1,4 @@
-import { ListFilter } from 'lucide-react';
+import { ListFilter, Plus } from 'lucide-react';
 import type { Task, TaskStatus } from '../types';
 import TaskRow from './TaskRow';
 
@@ -21,6 +21,7 @@ export default function TaskListView({
     onStatusChange,
     onDelete,
     onEditClick,
+    onCreateTask,
 }: TaskListViewProps) {
     // If partitioned tasks are provided, use them. Otherwise, fallback to flat 'tasks' prop for backward compatibility.
     const hasPartitionedData = activeTasks !== undefined || recentHistory !== undefined;
@@ -88,9 +89,21 @@ export default function TaskListView({
                 )}
 
                 {active.length === 0 && history.length === 0 && (
-                    <div className="p-8 text-center text-text-muted">
-                        <ListFilter size={32} className="mx-auto mb-2 opacity-30" />
-                        <p>No tasks found for this view</p>
+                    <div className="p-16 text-center">
+                        <div className="w-16 h-16 bg-background-elevated rounded-full flex items-center justify-center mx-auto mb-4 border border-border/50">
+                            <ListFilter size={32} className="text-text-muted opacity-30" />
+                        </div>
+                        <h3 className="text-lg font-bold text-text-primary mb-1">Create your first task to get started</h3>
+                        <p className="text-sm text-text-muted mb-6">Stay organized and track your progress effortlessly.</p>
+                        {onCreateTask && (
+                            <button
+                                onClick={onCreateTask}
+                                className="btn btn-primary px-6"
+                            >
+                                <Plus size={18} />
+                                Create Task
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

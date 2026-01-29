@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { format, isPast, isToday } from 'date-fns';
-import { Circle, Clock, Check, Trash2, Edit2, Calendar, Triangle } from 'lucide-react';
+import { Circle, Clock, Check, Trash2, Edit2, Calendar, Triangle, CheckCircle } from 'lucide-react';
 import type { Task, TaskStatus } from '../types';
 
 interface TaskRowProps {
@@ -26,6 +26,7 @@ const priorityConfig: Record<string, { color: string, fill: string, icon: any, c
 };
 
 export default function TaskRow({ task, onClick, onStatusChange, onDelete, onEditClick, isMuted }: TaskRowProps) {
+    const rowRef = useRef<HTMLDivElement>(null);
     const statusKey = (task.status || 'not_started').toUpperCase();
     const config = statusConfig[statusKey] || statusConfig.NOT_STARTED;
 
@@ -51,10 +52,38 @@ export default function TaskRow({ task, onClick, onStatusChange, onDelete, onEdi
         onStatusChange(task.id, nextStatus);
     };
 
+    const handleQuickComplete = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (statusKey !== 'DONE') {
+            onStatusChange(task.id, 'DONE' as TaskStatus);
+        }
+    };
+
     const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (confirm('Are you sure you want to delete this task?')) {
             onDelete(task.id);
+        }
+    };
+
+    // Keyboard navigation
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick(task);
+        } else if (e.key === 'e' || e.key === 'E') {
+            e.preventDefault();
+            onEditClick(task);
+        } else if (e.key === 'c' || e.key === 'C') {
+            e.preventDefault();
+            if (statusKey !== 'DONE') {
+                onStatusChange(task.id, 'DONE' as TaskStatus);
+            }
+        } else if (e.key === 'Delete') {
+            e.preventDefault();
+            if (confirm('Are you sure you want to delete this task?')) {
+                onDelete(task.id);
+            }
         }
     };
 
@@ -76,8 +105,11 @@ export default function TaskRow({ task, onClick, onStatusChange, onDelete, onEdi
 
     return (
         <div
+            ref={rowRef}
+            tabIndex={0}
             onClick={() => onClick(task)}
-            className={`group relative flex items-center gap-2 p-4 bg-background-card hover:bg-background-hover border-b border-border last:border-0 transition-all cursor-pointer ${isMuted ? 'opacity-50' : ''}`}
+            onKeyDown={handleKeyDown}
+            className={`group relative flex items-center gap-2 p-4 bg-background-card hover:bg-background-hover border-b border-border last:border-0 transition-all cursor-pointer ${isMuted ? 'opacity-50' : ''} focus:outline-none focus:ring-2 focus:ring-accent-blue/50 focus:bg-background-hover`}
         >
             {/* Title Section */}
             <div className="flex-1 min-w-[400px] max-w-[400px]">
@@ -134,19 +166,28 @@ export default function TaskRow({ task, onClick, onStatusChange, onDelete, onEdi
                 </div>
             </div>
 
-            {/* Actions */}
-            <div className="w-16 flex-shrink-0 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Actions - Now includes Quick Complete */}
+            <div className="w-20 flex-shrink-0 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {statusKey !== 'DONE' && (
+                    <button
+                        onClick={handleQuickComplete}
+                        className="p-1.5 hover:bg-emerald-500/10 hover:text-emerald-400 rounded-lg text-text-muted transition-colors"
+                        title="Mark Complete (C)"
+                    >
+                        <CheckCircle size={16} />
+                    </button>
+                )}
                 <button
                     onClick={(e) => { e.stopPropagation(); onEditClick(task); }}
                     className="p-1.5 hover:bg-blue-500/10 hover:text-blue-400 rounded-lg text-text-muted transition-colors"
-                    title="Edit Task"
+                    title="Edit Task (E)"
                 >
                     <Edit2 size={16} />
                 </button>
                 <button
                     onClick={handleDelete}
                     className="p-1.5 hover:bg-red-500/10 hover:text-rose-500 rounded-lg text-text-muted transition-colors"
-                    title="Delete Task"
+                    title="Delete Task (Del)"
                 >
                     <Trash2 size={16} />
                 </button>

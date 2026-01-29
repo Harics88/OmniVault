@@ -146,7 +146,7 @@ export default function TaskTableView({
                     className="flex items-center gap-4 px-6 py-3 bg-background-elevated/40 hover:bg-background-elevated/60 transition-all cursor-pointer border-y border-border/20 sticky top-[48px] z-10 backdrop-blur-md rounded-t-xl"
                     onClick={() => toggleSection(status)}
                 >
-                    <div style={{ width: colWidths.title }} className="shrink-0 flex items-center gap-3">
+                    <div style={{ width: colWidths.title }} className="shrink-0 flex items-center gap-3 sticky left-0 bg-background-elevated/40 backdrop-blur-md z-10 pr-4">
                         <div className={`p-1 rounded-lg ${isArchived ? 'bg-background-elevated' : config.bg} transition-colors`}>
                             {isCollapsed ? <ChevronRight size={14} className="text-text-muted shrink-0" /> : <ChevronDown size={14} className="text-text-muted shrink-0" />}
                         </div>
@@ -177,7 +177,7 @@ export default function TaskTableView({
                                     onClick={() => onTaskClick(task)}
                                     className={`flex items-center gap-4 px-6 py-3 transition-all group cursor-pointer hover:bg-background-elevated/40 relative active:scale-[0.998]`}
                                 >
-                                    <div style={{ width: colWidths.title }} className="shrink-0 overflow-hidden">
+                                    <div style={{ width: colWidths.title }} className="shrink-0 overflow-hidden sticky left-0 bg-background-card z-10 group-hover:bg-background-elevated/40 transition-colors pr-4">
                                         <div className="flex items-center gap-3 pl-2">
                                             <span
                                                 className={`text-sm font-medium transition-all truncate ${task.status === 'done' ? 'text-text-muted/60 line-through' : 'text-text-primary group-hover:text-accent-blue'}`}
@@ -262,7 +262,7 @@ export default function TaskTableView({
                     <div className="flex items-center gap-4 px-6 py-4 bg-background-card/80 border-b border-border/50 text-[10px] font-black text-text-muted uppercase tracking-[0.25em] sticky top-0 z-20 shrink-0 backdrop-blur-xl">
 
                         {/* Title Column */}
-                        <div style={{ width: colWidths.title }} className="shrink-0 flex items-center justify-between group/header">
+                        <div style={{ width: colWidths.title }} className="shrink-0 flex items-center justify-between group/header sticky left-0 bg-background-card/80 backdrop-blur-xl z-30 pr-4">
                             <span className="truncate">Title / Objective</span>
                             <div
                                 className="w-1 h-4 bg-border/40 hover:bg-accent-blue/60 cursor-col-resize rounded-full transition-colors opacity-0 group-hover/header:opacity-100"

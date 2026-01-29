@@ -11,6 +11,7 @@ import type { Note, NoteSection, NoteTreeItem, NoteBreadcrumb, CreateNote, Updat
 import ConfirmModal from '../components/ConfirmModal';
 import RichTextEditor from '../components/RichTextEditor';
 import Breadcrumb from '../components/Breadcrumb';
+import Skeleton from '../components/Skeleton';
 
 // Folder colors - 10 options
 const FOLDER_COLORS = [
@@ -493,8 +494,10 @@ export default function Notes() {
                         {filteredFolderNotes.length > 0 ? (
                             filteredFolderNotes.map((note) => renderNoteItem(note, 0))
                         ) : (
-                            <div className="px-3 py-2 text-xs text-text-muted italic">
-                                Empty folder
+                            <div className="px-3 py-6 text-center">
+                                <FileText size={24} className="mx-auto mb-2 text-text-muted opacity-20" />
+                                <p className="text-[10px] text-text-muted font-medium uppercase tracking-wider">Empty folder</p>
+                                <p className="text-[9px] text-text-muted/60 mt-1">Add a note or subfolder to get started</p>
                             </div>
                         )}
                     </div>
@@ -548,8 +551,16 @@ export default function Notes() {
                 {/* Folders & Notes */}
                 <div className="flex-1 overflow-y-auto p-2">
                     {isLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                            <Loader2 className="animate-spin text-text-muted" size={24} />
+                        <div className="p-2 space-y-4">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="space-y-2">
+                                    <Skeleton width="60%" height={24} variant="rect" />
+                                    <div className="ml-4 space-y-2 border-l border-border/50 pl-2">
+                                        <Skeleton width="80%" height={20} />
+                                        <Skeleton width="70%" height={20} />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     ) : (
                         <>
@@ -559,20 +570,44 @@ export default function Notes() {
                             {/* Unfiled Notes */}
                             {(notesByFolder['unfiled']?.length > 0 || folders.length === 0) && (
                                 <div className="mt-2">
-                                    <div className="px-3 py-1 text-xs font-medium text-text-muted uppercase tracking-wider">
-                                        {folders.length > 0 ? 'Unfiled' : 'All Notes'}
-                                    </div>
-                                    {(searchQuery ? filterTree(notesByFolder['unfiled'] || [], searchQuery) : notesByFolder['unfiled'] || []).map(
-                                        (note) => renderNoteItem(note, 0)
+                                    {folders.length > 0 && (
+                                        <div className="px-3 py-1 text-[10px] font-bold text-text-muted uppercase tracking-wider opacity-60">
+                                            Unfiled
+                                        </div>
+                                    )}
+                                    {(searchQuery ? filterTree(notesByFolder['unfiled'] || [], searchQuery) : notesByFolder['unfiled'] || []).length > 0 ? (
+                                        (searchQuery ? filterTree(notesByFolder['unfiled'] || [], searchQuery) : notesByFolder['unfiled'] || []).map(
+                                            (note) => renderNoteItem(note, 0)
+                                        )
+                                    ) : (
+                                        folders.length === 0 && !searchQuery && (
+                                            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                                                <div className="w-12 h-12 bg-background-hover rounded-full flex items-center justify-center mb-3">
+                                                    <FileText size={24} className="text-text-muted opacity-40" />
+                                                </div>
+                                                <h3 className="text-sm font-bold text-text-primary mb-1">Start writing your first note</h3>
+                                                <p className="text-xs text-text-muted">Stay organized by capturing your thoughts and ideas.</p>
+                                                <button
+                                                    onClick={() => handleCreateNote()}
+                                                    className="btn btn-primary btn-sm mt-4 px-4"
+                                                >
+                                                    <Plus size={14} />
+                                                    Create Note
+                                                </button>
+                                            </div>
+                                        )
                                     )}
                                 </div>
                             )}
 
-                            {/* Empty state */}
-                            {notesTree.length === 0 && (
-                                <div className="flex flex-col items-center justify-center py-8 text-text-muted">
-                                    <FileText size={32} className="mb-2 opacity-50" />
-                                    <p className="text-sm">No notes yet</p>
+                            {/* Search-specific Empty state */}
+                            {searchQuery && folders.every(f => !filterTree(notesByFolder[f.id] || [], searchQuery).length) && (!notesByFolder['unfiled'] || !filterTree(notesByFolder['unfiled'], searchQuery).length) && (
+                                <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                                    <div className="w-12 h-12 bg-background-hover rounded-full flex items-center justify-center mb-3">
+                                        <Search size={24} className="text-text-muted opacity-40" />
+                                    </div>
+                                    <h3 className="text-sm font-bold text-text-primary mb-1">No notes found</h3>
+                                    <p className="text-xs text-text-muted">Try different keywords or check your spelling.</p>
                                 </div>
                             )}
                         </>
