@@ -122,17 +122,32 @@ Omni Vault is now available in **two flavors** - choose the one that fits your w
 ### Dashboard
 ![Dashboard](screenshots/dashboard.png)
 
-### Keyboard Shortcuts Overlay
-![Shortcuts](screenshots/shortcuts.png)
-
-### Progressive Loading (Skeletons)
-![Loading](screenshots/loading.png)
-
 ### Tasks
 ![Tasks](screenshots/tasks.png)
 
 ### Notes
 ![Notes](screenshots/notes.png)
+
+### Daily Log
+![Daily Log](screenshots/daily-log.png)
+
+### Bookmarks
+![Bookmarks](screenshots/bookmarks.png)
+
+### Snippets
+![Snippets](screenshots/snippets.png)
+
+### Vault (Secure PIN Access)
+![Vault](screenshots/vault.png)
+
+### Recycle Bin
+![Recycle Bin](screenshots/recycle-bin.png)
+
+### Keyboard Shortcuts
+![Shortcuts](screenshots/shortcuts_page.png)
+
+### Settings
+![Settings](screenshots/settings.png)
 
 ---
 
