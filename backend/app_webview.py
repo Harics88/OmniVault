@@ -32,6 +32,13 @@ if getattr(sys, 'frozen', False):
                 os.add_dll_directory(runtime_dir)
             except:
                 pass
+    
+    # Force pythonnet to find the core python DLL in the bundle
+    # Required for pythonnet 3.0+ in PyInstaller bundled environments
+    import glob
+    python_dlls = glob.glob(os.path.join(sys._MEIPASS, 'python3*.dll'))
+    if python_dlls:
+        os.environ['PYTHONNET_PYDLL'] = python_dlls[0]
 
 # Now safe to import other modules
 import threading

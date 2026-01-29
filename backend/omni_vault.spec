@@ -48,12 +48,16 @@ jaraco_datas, jaraco_binaries, jaraco_hiddenimports = collect_all('jaraco')
 # Collect webview data (for EdgeChromium backend)
 webview_datas, webview_binaries, webview_hiddenimports = collect_all('webview')
 
+# Collect pythonnet and clr_loader (required for EdgeChromium via pythonnet)
+pythonnet_datas, pythonnet_binaries, pythonnet_hiddenimports = collect_all('pythonnet')
+clr_loader_datas, clr_loader_binaries, clr_loader_hiddenimports = collect_all('clr_loader')
+
 a = Analysis(
     ['app_webview.py'],
     pathex=[str(backend_dir)],
-    binaries=jaraco_binaries + webview_binaries,
-    datas=datas + jaraco_datas + webview_datas,
-    hiddenimports=hiddenimports + jaraco_hiddenimports + webview_hiddenimports + ['pkg_resources'],
+    binaries=jaraco_binaries + webview_binaries + pythonnet_binaries + clr_loader_binaries,
+    datas=datas + jaraco_datas + webview_datas + pythonnet_datas + clr_loader_datas,
+    hiddenimports=hiddenimports + jaraco_hiddenimports + webview_hiddenimports + pythonnet_hiddenimports + clr_loader_hiddenimports + ['pkg_resources', 'clr'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
