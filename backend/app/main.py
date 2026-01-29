@@ -85,7 +85,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="MyTasker API",
     description="Local-first productivity API for data engineers",
-    version="1.0.0",
+    version="2.5.0",
     lifespan=lifespan
 )
 
@@ -194,7 +194,7 @@ async def health_check():
     health_status = {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
-        "version": "1.0.0",
+        "version": "2.5.0",
         "checks": {}
     }
     

@@ -201,7 +201,7 @@ export default function Sidebar({ onSearchClick }: SidebarProps) {
             {!isCollapsed && (
                 /* Version */
                 <div className="p-4 pt-0 text-center">
-                    <span className="text-xs text-text-muted">v1.0.0</span>
+                    <span className="text-xs text-text-muted">v2.5.0</span>
                 </div>
             )}
 

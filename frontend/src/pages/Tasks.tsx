@@ -10,6 +10,7 @@ import TaskTableView from '../components/TaskTableView';
 import type { Task, TaskStatus, CreateTask, UpdateTask, Subtask } from '../types';
 import { subDays } from 'date-fns';
 import Skeleton from '../components/Skeleton';
+import ConfirmModal from '../components/ConfirmModal';
 
 interface StatusGroup {
     status: TaskStatus;
@@ -63,6 +64,8 @@ export default function Tasks() {
     const [openInEditMode, setOpenInEditMode] = useState(false);
     const [enablePersonal, setEnablePersonal] = useState(() => localStorage.getItem('enablePersonalTasks') === 'true');
     const [personalFilter, setPersonalFilter] = useState<'all' | 'work' | 'personal'>('work');
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
 
     // Re-check settings on storage change (e.g. from Settings tab)
     useEffect(() => {
@@ -127,6 +130,8 @@ export default function Tasks() {
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
             queryClient.invalidateQueries({ queryKey: ['system'] });
             setSelectedTask(null);
+            setTaskToDelete(null);
+            setDeleteConfirmOpen(false);
         },
     });
 
@@ -210,6 +215,11 @@ export default function Tasks() {
         navigate(`/tasks/${task.id}`);
     };
 
+    const handleDeleteTask = (id: number) => {
+        setTaskToDelete(id);
+        setDeleteConfirmOpen(true);
+    };
+
     const handleEditClick = (task: Task) => {
         // Open side panel in edit mode
         setOpenInEditMode(true);
@@ -275,7 +285,7 @@ export default function Tasks() {
                         <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
                             <CheckSquare size={24} className="text-accent-blue" />
                             Tasks
-                            <span className="text-[10px] text-text-muted opacity-0" id="version-tag">v2-partitioned</span>
+                            <span className="text-[10px] text-text-muted opacity-0" id="version-tag">v2.5.0</span>
                         </h1>
 
                         <div className="flex items-center gap-1 bg-background-card p-1 rounded-lg border border-border ml-6">
@@ -373,7 +383,7 @@ export default function Tasks() {
                                     recentHistory={partitions.recentHistory}
                                     onTaskClick={handleTaskClick}
                                     onStatusChange={handleStatusChange}
-                                    onDelete={(id) => deleteMutation.mutate(id)}
+                                    onDelete={handleDeleteTask}
                                     onEditClick={handleEditClick}
                                     onCreateTask={() => setIsCreating(true)}
                                 />
@@ -435,7 +445,7 @@ export default function Tasks() {
                                     showArchived={showArchived}
                                     onTaskClick={handleTaskClick}
                                     onStatusChange={handleStatusChange}
-                                    onDelete={(id) => deleteMutation.mutate(id)}
+                                    onDelete={handleDeleteTask}
                                 />
                             </div>
                         )}
@@ -454,13 +464,23 @@ export default function Tasks() {
                             setOpenInEditMode(false);
                         }}
                         onUpdate={onUpdateTask}
-                        onDelete={(id) => deleteMutation.mutate(id)}
+                        onDelete={handleDeleteTask}
                         onAddSubtask={(taskId, title) => addSubtaskMutation.mutate({ taskId, title })}
                         onUpdateSubtask={(taskId, subtaskId, updates) => updateSubtaskMutation.mutate({ taskId, subtaskId, updates })}
                         onDeleteSubtask={(taskId, subtaskId) => deleteSubtaskMutation.mutate({ taskId, subtaskId })}
                         onReorderSubtasks={(taskId, subtaskIds) => reorderSubtasksMutation.mutate({ taskId, subtaskIds })}
                     />
                 )}
+
+                {/* Delete Confirmation Modal */}
+                <ConfirmModal
+                    isOpen={deleteConfirmOpen}
+                    onClose={() => setDeleteConfirmOpen(false)}
+                    onConfirm={() => taskToDelete && deleteMutation.mutate(taskToDelete)}
+                    title="Delete Task"
+                    message="Are you sure you want to delete this task? This action will remove all subtasks and cannot be undone."
+                    confirmText="Delete Task"
+                />
             </div>
         </div>
     );

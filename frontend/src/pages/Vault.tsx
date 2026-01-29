@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import PINEntry from '../components/PINEntry';
+import ConfirmModal from '../components/ConfirmModal';
 import { Secret, SecretType, CreateSecret, DatabaseMetadata, SFTPMetadata, WebsiteMetadata } from '../types';
 
 // Use relative URLs for API calls (works in all environments)
@@ -19,6 +20,8 @@ const Vault: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [secretToDelete, setSecretToDelete] = useState<number | null>(null);
 
     // Check if PIN is set up
     useEffect(() => {
@@ -86,8 +89,14 @@ const Vault: React.FC = () => {
         setTimeout(() => setToastMessage(null), 4000);
     };
 
-    const handleDeleteSecret = async (id: number) => {
-        if (!confirm('Delete this secret?')) return;
+    const handleDeleteSecret = (id: number) => {
+        setSecretToDelete(id);
+        setDeleteConfirmOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!secretToDelete) return;
+        const id = secretToDelete;
 
         try {
             const response = await fetch(`${API_BASE}/vault/secrets/${id}`, {
@@ -96,9 +105,13 @@ const Vault: React.FC = () => {
 
             if (response.ok) {
                 setSecrets(secrets.filter((s) => s.id !== id));
+                showToast('🗑️ Secret deleted successfully');
             }
         } catch (error) {
             console.error('Failed to delete secret:', error);
+        } finally {
+            setSecretToDelete(null);
+            setDeleteConfirmOpen(false);
         }
     };
 
@@ -386,6 +399,16 @@ const Vault: React.FC = () => {
                 </div>
             )}
 
+            {/* Confirmation Modal */}
+            <ConfirmModal
+                isOpen={deleteConfirmOpen}
+                onClose={() => setDeleteConfirmOpen(false)}
+                onConfirm={confirmDelete}
+                title="Delete Secret"
+                message="Are you sure you want to permanently delete this secret? This action cannot be undone."
+                confirmText="Delete Secret"
+            />
+
             {/* Secret Form Modal */}
             {showForm && (
                 <SecretFormModal
@@ -395,10 +418,15 @@ const Vault: React.FC = () => {
                         setShowForm(false);
                         setEditingSecret(null);
                     }}
-                    onSave={() => {
+                    onSave={(isEdit) => {
                         setShowForm(false);
                         setEditingSecret(null);
                         loadSecrets();
+                        if (isEdit) {
+                            showToast('✅ Modified successfully');
+                        } else {
+                            showToast('✨ Secret created successfully');
+                        }
                     }}
                 />
             )}
@@ -566,7 +594,7 @@ const SecretCard: React.FC<SecretCardProps> = ({
 interface SecretFormModalProps {
     secret: Secret | null;
     onClose: () => void;
-    onSave: () => void;
+    onSave: (isEdit: boolean) => void;
     initialReadOnly?: boolean;
 }
 
@@ -579,6 +607,7 @@ const SecretFormModal: React.FC<SecretFormModalProps> = ({ secret, onClose, onSa
     const [tags, setTags] = useState<string>(secret?.tags || '');
     const [showPassword, setShowPassword] = useState(false);
     const [isReadOnly, setIsReadOnly] = useState(initialReadOnly && !!secret);
+    const [isConfirmingSave, setIsConfirmingSave] = useState(false);
 
     // Type-specific fields
     const [dbHost, setDbHost] = useState('');
@@ -627,6 +656,17 @@ const SecretFormModal: React.FC<SecretFormModalProps> = ({ secret, onClose, onSa
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        // If it's an edit, show confirmation first
+        if (secret && !isConfirmingSave) {
+            setIsConfirmingSave(true);
+            return;
+        }
+
+        performSave();
+    };
+
+    const performSave = async () => {
+
         let metadata = {};
         if (type === 'database') {
             metadata = {
@@ -668,7 +708,7 @@ const SecretFormModal: React.FC<SecretFormModalProps> = ({ secret, onClose, onSa
             });
 
             if (response.ok) {
-                onSave();
+                onSave(!!secret);
             } else {
                 const error = await response.json();
                 alert(`Failed to save secret: ${error.detail}`);
@@ -900,6 +940,22 @@ const SecretFormModal: React.FC<SecretFormModalProps> = ({ secret, onClose, onSa
                             className={`w-full bg-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'opacity-70 cursor-default' : ''}`}
                         />
                     </div>
+
+                    {/* Save Confirmation Sub-Modal */}
+                    {isConfirmingSave && (
+                        <ConfirmModal
+                            isOpen={true}
+                            onClose={() => setIsConfirmingSave(false)}
+                            onConfirm={() => {
+                                setIsConfirmingSave(false);
+                                performSave();
+                            }}
+                            title="Save Changes"
+                            message="Are you sure you want to save the modifications to this secret?"
+                            confirmText="Yes, Save"
+                            cancelText="Cancel"
+                        />
+                    )}
 
                     {/* Actions */}
                     <div className="flex gap-3 pt-4">
