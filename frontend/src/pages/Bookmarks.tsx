@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Bookmark, Search, Loader2, X, FolderPlus, Globe, FileText, Palette, Check } from 'lucide-react';
 import { bookmarksApi } from '../lib/api';
@@ -8,6 +9,8 @@ import ConfirmModal from '../components/ConfirmModal';
 
 export default function Bookmarks() {
     const queryClient = useQueryClient();
+    const location = useLocation();
+    const navigate = useNavigate();
     const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [isCreatingBookmark, setIsCreatingBookmark] = useState(false);
@@ -25,6 +28,15 @@ export default function Bookmarks() {
         }, 300);
         return () => clearTimeout(timer);
     }, [searchInput]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get('new') === 'true') {
+            setSelectedCategoryId(null);
+            setIsCreatingBookmark(true);
+            navigate('/bookmarks', { replace: true });
+        }
+    }, [location.search, navigate]);
 
     // Queries
     const { data: categories = [], isLoading: categoriesLoading } = useQuery({
@@ -287,6 +299,14 @@ function CategoryModal({
         '#EC4899', '#6366F1', '#14B8A6', '#F97316', '#6B7280'
     ];
 
+    useEffect(() => {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleEscape);
+        return () => window.removeEventListener('keydown', handleEscape);
+    }, [onClose]);
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
             <div className="bg-background-card border border-border rounded-xl shadow-elevated w-full max-w-md animate-scale-in">
@@ -369,6 +389,14 @@ function BookmarkModal({
     const [description, setDescription] = useState(bookmark?.description || '');
     const [categoryId, setCategoryId] = useState<number | undefined>(bookmark?.category_id || initialCategoryId || undefined);
     const [isFile, setIsFile] = useState(bookmark?.is_file || false);
+
+    useEffect(() => {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleEscape);
+        return () => window.removeEventListener('keydown', handleEscape);
+    }, [onClose]);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">

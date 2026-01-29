@@ -4,10 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import {
     Calendar, CheckSquare, FileText, Code, Bookmark, Settings,
     Sun, Plus, Search, Home, Trash2, Download, Upload,
-    Tag, HelpCircle, User
+    HelpCircle, User
 } from 'lucide-react';
 import { searchApi } from '../lib/api';
 import type { SearchResult } from '../types';
+import { useToast } from './Toast';
 
 export default function CommandPalette() {
     const [open, setOpen] = useState(false);
@@ -15,6 +16,7 @@ export default function CommandPalette() {
     const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const navigate = useNavigate();
+    const { showToast } = useToast();
 
     // Determine if we're in command mode (starts with >) or search mode
     const isCommandMode = search.startsWith('>');
@@ -88,12 +90,15 @@ export default function CommandPalette() {
         const next = current === 'dark' ? 'light' : 'dark';
         localStorage.setItem('theme', next);
         document.documentElement.classList.toggle('light', next === 'light');
+        showToast(`🎨 Theme switched to ${next === 'dark' ? 'Dark' : 'Light'} mode`);
         window.dispatchEvent(new Event('storage'));
     };
 
     const togglePersonalTasks = () => {
         const current = localStorage.getItem('enablePersonalTasks') === 'true';
-        localStorage.setItem('enablePersonalTasks', String(!current));
+        const next = !current;
+        localStorage.setItem('enablePersonalTasks', String(next));
+        showToast(next ? '👤 Personal Tasks mode enabled' : '💼 Work Tasks mode enabled');
         window.dispatchEvent(new Event('storage'));
     };
 
@@ -155,7 +160,15 @@ export default function CommandPalette() {
                 className="w-full max-w-2xl bg-background-card border border-border rounded-xl shadow-2xl overflow-hidden animate-slide-up"
                 onClick={(e) => e.stopPropagation()}
             >
-                <Command className="w-full" shouldFilter={!isCommandMode}>
+                <Command
+                    className="w-full"
+                    filter={(value: string, search: string) => {
+                        const query = search.startsWith('>') ? search.slice(1).toLowerCase().trim() : search.toLowerCase().trim();
+                        if (!query) return 1;
+                        if (value.toLowerCase().includes(query)) return 1;
+                        return 0;
+                    }}
+                >
                     <div className="flex items-center border-b border-border px-3">
                         <Search className="w-5 h-5 text-text-muted mr-2" />
                         <Command.Input

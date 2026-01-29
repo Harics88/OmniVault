@@ -11,32 +11,35 @@ import Bookmarks from './pages/Bookmarks'
 import Vault from './pages/Vault'
 import Settings from './pages/Settings'
 import Shortcuts from './pages/Shortcuts'
+import { ToastProvider } from './components/Toast'
 
 function App() {
     return (
-        <BrowserRouter>
-            <Routes>
-                {/* Standalone popout routes (no Layout) */}
-                <Route path="/tasks/:id" element={<TaskPopout />} />
+        <ToastProvider>
+            <BrowserRouter>
+                <Routes>
+                    {/* Standalone popout routes (no Layout) */}
+                    <Route path="/tasks/:id" element={<TaskPopout />} />
 
-                {/* Main app routes (with Layout) */}
-                <Route path="/" element={<Layout />}>
-                    <Route index element={<Home />} />
-                    <Route path="daily-log" element={<DailyLog />} />
-                    <Route path="daily-log/:date" element={<DailyLog />} />
-                    <Route path="tasks" element={<Tasks />} />
-                    <Route path="notes" element={<Notes />} />
-                    <Route path="notes/:id" element={<Notes />} />
-                    <Route path="recycle-bin" element={<RecycleBin />} />
-                    <Route path="snippets" element={<Snippets />} />
-                    <Route path="snippets/:id" element={<Snippets />} />
-                    <Route path="bookmarks" element={<Bookmarks />} />
-                    <Route path="vault" element={<Vault />} />
-                    <Route path="settings" element={<Settings />} />
-                    <Route path="shortcuts" element={<Shortcuts />} />
-                </Route>
-            </Routes>
-        </BrowserRouter>
+                    {/* Main app routes (with Layout) */}
+                    <Route path="/" element={<Layout />}>
+                        <Route index element={<Home />} />
+                        <Route path="daily-log" element={<DailyLog />} />
+                        <Route path="daily-log/:date" element={<DailyLog />} />
+                        <Route path="tasks" element={<Tasks />} />
+                        <Route path="notes" element={<Notes />} />
+                        <Route path="notes/:id" element={<Notes />} />
+                        <Route path="recycle-bin" element={<RecycleBin />} />
+                        <Route path="snippets" element={<Snippets />} />
+                        <Route path="snippets/:id" element={<Snippets />} />
+                        <Route path="bookmarks" element={<Bookmarks />} />
+                        <Route path="vault" element={<Vault />} />
+                        <Route path="settings" element={<Settings />} />
+                        <Route path="shortcuts" element={<Shortcuts />} />
+                    </Route>
+                </Routes>
+            </BrowserRouter>
+        </ToastProvider>
     )
 }
 

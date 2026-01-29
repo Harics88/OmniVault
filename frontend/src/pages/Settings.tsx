@@ -4,6 +4,8 @@ import axios from 'axios';
 import { loadWidgetConfig, saveWidgetConfig, WidgetConfig } from '../utils/widgetConfig';
 import { Eye, EyeOff, Layout as LayoutIcon } from 'lucide-react';
 import PINEntry from '../components/PINEntry';
+import ConfirmModal from '../components/ConfirmModal';
+import { useToast } from '../components/Toast';
 
 export default function Settings() {
     const [enablePersonal, setEnablePersonal] = useState(() => {
@@ -14,7 +16,10 @@ export default function Settings() {
     const [widgets, setWidgets] = useState<WidgetConfig[]>(loadWidgetConfig());
     const [vaultPinEnabled, setVaultPinEnabled] = useState(true);
     const [pinPromptMode, setPinPromptMode] = useState<'verify' | 'setup' | null>(null);
+    const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+    const [pendingFile, setPendingFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const { showToast } = useToast();
 
     const toggleWidget = (id: string) => {
         const updated = widgets.map(w =>
@@ -22,6 +27,8 @@ export default function Settings() {
         );
         setWidgets(updated);
         saveWidgetConfig(updated);
+        const widget = updated.find(w => w.id === id);
+        showToast(`${widget?.enabled ? '👁️' : '🙈'} ${widget?.title} ${widget?.enabled ? 'enabled' : 'disabled'}`);
     };
 
     useEffect(() => {
@@ -69,9 +76,13 @@ export default function Settings() {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        if (!confirm("WARNING: This will replace all your current data with the backup. This action cannot be undone. Are you sure?")) {
-            return;
-        }
+        setPendingFile(file);
+        setShowRestoreConfirm(true);
+    };
+
+    const confirmRestore = async () => {
+        if (!pendingFile) return;
+        const file = pendingFile;
 
         setIsImporting(true);
         const formData = new FormData();
@@ -88,6 +99,8 @@ export default function Settings() {
             alert('Import failed. Please check console for details.');
         } finally {
             setIsImporting(false);
+            setPendingFile(null);
+            setShowRestoreConfirm(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
@@ -124,6 +137,7 @@ export default function Settings() {
                                 onChange={(e) => {
                                     setEnablePersonal(e.target.checked);
                                     localStorage.setItem('enablePersonalTasks', String(e.target.checked));
+                                    showToast(e.target.checked ? '👤 Personal Tasks mode enabled' : '💼 Work Tasks mode enabled');
                                     // Trigger storage event for other components to react immediately if needed
                                     window.dispatchEvent(new Event('storage'));
                                 }}
@@ -265,22 +279,24 @@ export default function Settings() {
                             mode={pinPromptMode}
                             onSuccess={async () => {
                                 if (pinPromptMode === 'verify') {
-                                    setVaultPinEnabled(false);
-                                    setPinPromptMode(null);
                                     try {
-                                        await axios.post(`/api/vault/pin/toggle?enabled=false`);
+                                        await axios.post('/api/vault/pin/toggle?enabled=false');
+                                        setVaultPinEnabled(false);
+                                        setPinPromptMode(null);
+                                        showToast('🔓 Vault protection disabled');
                                     } catch (error) {
                                         console.error('Failed to disable vault PIN:', error);
-                                        setVaultPinEnabled(true); // Rollback
+                                        setVaultPinEnabled(true);
                                     }
                                 } else if (pinPromptMode === 'setup') {
-                                    setVaultPinEnabled(true);
-                                    setPinPromptMode(null);
                                     try {
-                                        await axios.post(`/api/vault/pin/toggle?enabled=true`);
+                                        await axios.post('/api/vault/pin/toggle?enabled=true');
+                                        setVaultPinEnabled(true);
+                                        setPinPromptMode(null);
+                                        showToast('🔒 Vault protection enabled');
                                     } catch (error) {
                                         console.error('Failed to enable vault PIN:', error);
-                                        setVaultPinEnabled(false); // Rollback
+                                        setVaultPinEnabled(false);
                                     }
                                 }
                             }}
@@ -289,6 +305,20 @@ export default function Settings() {
                     </div>
                 </div>
             )}
+
+            {/* Restore Confirmation */}
+            <ConfirmModal
+                isOpen={showRestoreConfirm}
+                onClose={() => {
+                    setShowRestoreConfirm(false);
+                    setPendingFile(null);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                }}
+                onConfirm={confirmRestore}
+                title="Restore Data"
+                message="WARNING: This will replace all your current data with the backup. This action cannot be undone. Are you sure?"
+                confirmText="Restore All Data"
+            />
 
             {/* Version Info */}
             <div className="mt-8 pt-6 border-t border-gray-700/50 text-center">

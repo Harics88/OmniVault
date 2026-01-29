@@ -1,5 +1,5 @@
 import { useState, useEffect, ChangeEvent } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import {
@@ -52,6 +52,7 @@ const EMOJI_OPTIONS = [
 export default function Notes() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const queryClient = useQueryClient();
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedFolders, setExpandedFolders] = useState<Set<number>>(new Set());
@@ -61,6 +62,8 @@ export default function Notes() {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [showFolderModal, setShowFolderModal] = useState(false);
     const [editingFolder, setEditingFolder] = useState<NoteSection | null>(null);
+    const [folderToDelete, setFolderToDelete] = useState<NoteSection | null>(null);
+    const [showFolderDeleteConfirm, setShowFolderDeleteConfirm] = useState(false);
 
     // Fetch notes tree
     const { data: notesTree = [], isLoading, refetch: refetchTree } = useQuery({
@@ -68,6 +71,14 @@ export default function Notes() {
         queryFn: () => notesApi.getTree(),
         staleTime: 0, // Always considered stale for fresh data
     });
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get('new') === 'true') {
+            handleCreateNote();
+            navigate('/notes', { replace: true });
+        }
+    }, [location.search, navigate]);
 
     // Fetch single note if ID provided
     const { data: selectedNote } = useQuery({
@@ -466,9 +477,8 @@ export default function Notes() {
                             className="p-1 hover:bg-red-500/10 rounded text-text-muted hover:text-red-500"
                             onClick={(e: any) => {
                                 e.stopPropagation();
-                                if (window.confirm(`Delete folder "${folder.name}"? This will move its notes to "Unfiled".`)) {
-                                    deleteFolderMutation.mutate(folder.id);
-                                }
+                                setFolderToDelete(folder);
+                                setShowFolderDeleteConfirm(true);
                             }}
                             title="Delete folder"
                         >
@@ -714,6 +724,24 @@ export default function Notes() {
                 onConfirm={confirmDelete}
                 title="Delete Note"
                 message={getDeleteMessage()}
+            />
+
+            {/* Folder Delete Confirmation */}
+            <ConfirmModal
+                isOpen={showFolderDeleteConfirm}
+                onClose={() => {
+                    setShowFolderDeleteConfirm(false);
+                    setFolderToDelete(null);
+                }}
+                onConfirm={() => {
+                    if (folderToDelete) {
+                        deleteFolderMutation.mutate(folderToDelete.id);
+                    }
+                    setShowFolderDeleteConfirm(false);
+                    setFolderToDelete(null);
+                }}
+                title="Delete Folder"
+                message={`Are you sure you want to delete the folder "${folderToDelete?.name}"? This will move its notes to "Unfiled".`}
             />
 
             {/* Folder Modal */}

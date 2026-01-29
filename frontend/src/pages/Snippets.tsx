@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Plus, Code, Search, Loader2, Trash2, Edit2, X, Pin, Database, Terminal, ChevronUp, ChevronDown } from 'lucide-react';
@@ -48,6 +48,7 @@ const LANGUAGES = Object.keys(LANGUAGE_CONFIG);
 export default function Snippets() {
     const { id: urlId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const queryClient = useQueryClient();
     const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -87,6 +88,15 @@ export default function Snippets() {
         }, 300);
         return () => clearTimeout(timer);
     }, [searchInput]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get('new') === 'true') {
+            setSearchInput('');
+            handleCreate();
+            navigate('/snippets', { replace: true });
+        }
+    }, [location.search, navigate]);
 
     const { data: snippets = [], isLoading } = useQuery({
         queryKey: ['snippets', languageFilter, searchQuery],
@@ -372,6 +382,19 @@ function SnippetModal({
         language: snippet?.language || 'python',
         description: snippet?.description || '',
     });
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, onClose]);
 
     if (!isOpen) return null;
 

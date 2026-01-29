@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, CheckSquare, Loader2, Circle, Clock, Check, Search, LayoutGrid, List, Table2 } from 'lucide-react';
 import { tasksApi } from '../lib/api';
@@ -51,6 +51,7 @@ const statusGroups: StatusGroup[] = [
 export default function Tasks() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
+    const location = useLocation();
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -86,6 +87,15 @@ export default function Tasks() {
         }, 300);
         return () => clearTimeout(timer);
     }, [searchInput]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get('new') === 'true') {
+            setIsCreating(true);
+            // Clear the param
+            navigate('/tasks', { replace: true });
+        }
+    }, [location.search, navigate]);
 
     const { data: tasks = [], isLoading } = useQuery({
         queryKey: ['tasks', searchQuery, enablePersonal, personalFilter],
