@@ -11,6 +11,8 @@ interface TaskListViewProps {
     onDelete: (taskId: number) => void;
     onEditClick: (task: Task) => void;
     onCreateTask?: () => void;
+    selectedTaskIds?: Set<number>;
+    onSelectTask?: (taskId: number) => void;
 }
 
 export default function TaskListView({
@@ -22,6 +24,8 @@ export default function TaskListView({
     onDelete,
     onEditClick,
     onCreateTask,
+    selectedTaskIds = new Set(),
+    onSelectTask,
 }: TaskListViewProps) {
     // If partitioned tasks are provided, use them. Otherwise, fallback to flat 'tasks' prop for backward compatibility.
     const hasPartitionedData = activeTasks !== undefined || recentHistory !== undefined;
@@ -65,6 +69,8 @@ export default function TaskListView({
                                 onStatusChange={onStatusChange}
                                 onDelete={onDelete}
                                 onEditClick={onEditClick}
+                                isSelected={selectedTaskIds.has(task.id)}
+                                onSelect={onSelectTask}
                             />
                         ))}
                     </>
@@ -83,6 +89,8 @@ export default function TaskListView({
                                 onDelete={onDelete}
                                 onEditClick={onEditClick}
                                 isMuted={true}
+                                isSelected={selectedTaskIds.has(task.id)}
+                                onSelect={onSelectTask}
                             />
                         ))}
                     </>

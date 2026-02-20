@@ -5,10 +5,14 @@ import { Trash2, RotateCcw, Loader2, CheckSquare, Square, XCircle } from 'lucide
 import { notesApi } from '../lib/api';
 import type { Note } from '../types';
 import ConfirmModal from '../components/ConfirmModal';
+import { useToast } from '../components/Toast';
+
 
 export default function RecycleBin() {
     const queryClient = useQueryClient();
+    const { showToast } = useToast();
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [confirmAction, setConfirmAction] = useState<'single' | 'bulk' | 'empty'>('single');
     const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
@@ -28,8 +32,11 @@ export default function RecycleBin() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['deleted-notes'] });
             queryClient.invalidateQueries({ queryKey: ['notes-tree'] });
+            showToast('Note restored ✓');
         },
+        onError: () => showToast('Failed to restore note'),
     });
+
 
     const restoreBulkMutation = useMutation({
         mutationFn: (ids: number[]) => notesApi.restoreBulk(ids),
@@ -37,8 +44,11 @@ export default function RecycleBin() {
             queryClient.invalidateQueries({ queryKey: ['deleted-notes'] });
             queryClient.invalidateQueries({ queryKey: ['notes-tree'] });
             setSelectedIds(new Set());
+            showToast('Notes restored ✓');
         },
+        onError: () => showToast('Failed to restore notes'),
     });
+
 
     const permanentDeleteMutation = useMutation({
         mutationFn: (id: number) => notesApi.permanentDelete(id),
@@ -46,8 +56,11 @@ export default function RecycleBin() {
             queryClient.invalidateQueries({ queryKey: ['deleted-notes'] });
             setShowDeleteConfirm(false);
             setNoteToDelete(null);
+            showToast('Note permanently deleted');
         },
+        onError: () => showToast('Failed to delete note'),
     });
+
 
     const deleteBulkMutation = useMutation({
         mutationFn: (ids: number[]) => notesApi.deleteBulk(ids),
@@ -55,8 +68,11 @@ export default function RecycleBin() {
             queryClient.invalidateQueries({ queryKey: ['deleted-notes'] });
             setShowDeleteConfirm(false);
             setSelectedIds(new Set());
+            showToast('Items permanently deleted');
         },
+        onError: () => showToast('Failed to delete items'),
     });
+
 
     const emptyMutation = useMutation({
         mutationFn: () => notesApi.emptyRecycleBin(),
@@ -64,8 +80,11 @@ export default function RecycleBin() {
             queryClient.invalidateQueries({ queryKey: ['deleted-notes'] });
             setShowDeleteConfirm(false);
             setSelectedIds(new Set());
+            showToast('Recycle bin emptied');
         },
+        onError: () => showToast('Failed to empty recycle bin'),
     });
+
 
     // Handlers
     const toggleSelect = (id: number) => {

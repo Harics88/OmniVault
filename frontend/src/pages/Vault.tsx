@@ -10,6 +10,7 @@ const API_BASE = '/api';
 const Vault: React.FC = () => {
     const [isUnlocked, setIsUnlocked] = useState(false);
     const [isPinSetup, setIsPinSetup] = useState(false);
+    const [vaultPin, setVaultPin] = useState<string | null>(null);
     const [secrets, setSecrets] = useState<Secret[]>([]);
     const [filter, setFilter] = useState<SecretType | 'all'>('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -30,10 +31,10 @@ const Vault: React.FC = () => {
 
     // Load secrets when unlocked
     useEffect(() => {
-        if (isUnlocked) {
-            loadSecrets();
+        if (isUnlocked && vaultPin) {
+            loadSecrets(vaultPin);
         }
-    }, [isUnlocked]);
+    }, [isUnlocked, vaultPin]);
 
     const checkPinStatus = async () => {
         try {
@@ -52,9 +53,12 @@ const Vault: React.FC = () => {
         }
     };
 
-    const loadSecrets = async () => {
+    const loadSecrets = async (pin?: string) => {
+        const activePin = pin || vaultPin;
         try {
-            const response = await fetch(`${API_BASE}/vault/secrets`);
+            const response = await fetch(`${API_BASE}/vault/secrets`, {
+                headers: activePin ? { 'X-Vault-PIN': activePin } : {}
+            });
             if (response.ok) {
                 const data = await response.json();
                 setSecrets(data);
@@ -64,7 +68,8 @@ const Vault: React.FC = () => {
         }
     };
 
-    const handlePinSuccess = () => {
+    const handlePinSuccess = (pin: string) => {
+        setVaultPin(pin);
         setIsTransitioning(true);
         setTimeout(() => {
             setIsUnlocked(true);
@@ -77,6 +82,7 @@ const Vault: React.FC = () => {
 
 
     const handleLock = () => {
+        setVaultPin(null);
         setIsTransitioning(true);
         setTimeout(() => {
             setIsUnlocked(false);
@@ -101,6 +107,7 @@ const Vault: React.FC = () => {
         try {
             const response = await fetch(`${API_BASE}/vault/secrets/${id}`, {
                 method: 'DELETE',
+                headers: vaultPin ? { 'X-Vault-PIN': vaultPin } : {}
             });
 
             if (response.ok) {
@@ -137,7 +144,9 @@ const Vault: React.FC = () => {
 
     const handleCopyConnectionString = async (secret: Secret) => {
         try {
-            const response = await fetch(`${API_BASE}/vault/secrets/${secret.id}/connection-string`);
+            const response = await fetch(`${API_BASE}/vault/secrets/${secret.id}/connection-string`, {
+                headers: vaultPin ? { 'X-Vault-PIN': vaultPin } : {}
+            });
             if (response.ok) {
                 const data = await response.json();
                 await navigator.clipboard.writeText(data.connection_string);
@@ -414,6 +423,7 @@ const Vault: React.FC = () => {
                 <SecretFormModal
                     secret={editingSecret}
                     initialReadOnly={isModalReadOnly}
+                    vaultPin={vaultPin}
                     onClose={() => {
                         setShowForm(false);
                         setEditingSecret(null);
@@ -596,9 +606,10 @@ interface SecretFormModalProps {
     onClose: () => void;
     onSave: (isEdit: boolean) => void;
     initialReadOnly?: boolean;
+    vaultPin: string | null;
 }
 
-const SecretFormModal: React.FC<SecretFormModalProps> = ({ secret, onClose, onSave, initialReadOnly = false }) => {
+const SecretFormModal: React.FC<SecretFormModalProps> = ({ secret, onClose, onSave, initialReadOnly = false, vaultPin }) => {
     const [type, setType] = useState<SecretType>(secret?.type || 'database');
     const [label, setLabel] = useState(secret?.label || '');
     const [username, setUsername] = useState(secret?.username || '');
@@ -703,7 +714,10 @@ const SecretFormModal: React.FC<SecretFormModalProps> = ({ secret, onClose, onSa
 
             const response = await fetch(url, {
                 method,
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(vaultPin ? { 'X-Vault-PIN': vaultPin } : {})
+                },
                 body: JSON.stringify(secretData),
             });
 

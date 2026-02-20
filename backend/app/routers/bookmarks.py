@@ -7,6 +7,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, or_
+from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models import Bookmark, BookmarkCategory
@@ -96,7 +97,7 @@ async def get_bookmarks(
     db: AsyncSession = Depends(get_db)
 ):
     """Get all bookmarks with optional search and category filter"""
-    query = select(Bookmark).order_by(Bookmark.order, desc(Bookmark.updated_at))
+    query = select(Bookmark).options(selectinload(Bookmark.entities)).order_by(Bookmark.order, desc(Bookmark.updated_at))
     
     if category_id:
         query = query.where(Bookmark.category_id == category_id)
@@ -123,6 +124,7 @@ async def get_recent_bookmarks(
     """Get recent bookmarks for home screen"""
     result = await db.execute(
         select(Bookmark)
+        .options(selectinload(Bookmark.entities))
         .order_by(desc(Bookmark.updated_at))
         .limit(limit)
     )
@@ -136,7 +138,7 @@ async def get_bookmark(
 ):
     """Get a specific bookmark by ID"""
     result = await db.execute(
-        select(Bookmark).where(Bookmark.id == bookmark_id)
+        select(Bookmark).options(selectinload(Bookmark.entities)).where(Bookmark.id == bookmark_id)
     )
     bookmark = result.scalar_one_or_none()
     
@@ -155,8 +157,12 @@ async def create_bookmark(
     bookmark = Bookmark(**bookmark_data.model_dump())
     db.add(bookmark)
     await db.commit()
-    await db.refresh(bookmark)
-    return bookmark
+    
+    # Reload with entities to satisfy ResponseModel
+    result = await db.execute(
+        select(Bookmark).options(selectinload(Bookmark.entities)).where(Bookmark.id == bookmark.id)
+    )
+    return result.scalar_one()
 
 
 @router.put("/{bookmark_id}", response_model=BookmarkResponse)
@@ -178,10 +184,13 @@ async def update_bookmark(
     for field, value in update_data.items():
         setattr(bookmark, field, value)
     
-    bookmark.updated_at = datetime.utcnow()
     await db.commit()
-    await db.refresh(bookmark)
-    return bookmark
+    
+    # Reload with entities to satisfy ResponseModel
+    result = await db.execute(
+        select(Bookmark).options(selectinload(Bookmark.entities)).where(Bookmark.id == bookmark.id)
+    )
+    return result.scalar_one()
 
 
 @router.delete("/{bookmark_id}")

@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
 import { useState, useEffect } from 'react';
 import {
     Calendar,
@@ -12,7 +11,8 @@ import {
     Sparkles,
     Layout,
     Eye,
-    EyeOff
+    EyeOff,
+    GripVertical
 } from 'lucide-react';
 import { dailyLogsApi, tasksApi, notesApi, snippetsApi, bookmarksApi, systemApi } from '../lib/api';
 import TaskCard from '../components/TaskCard';
@@ -20,7 +20,7 @@ import ActivityHeatmap from '../components/ActivityHeatmap';
 import { DragDropContext, Draggable, DropResult } from 'react-beautiful-dnd';
 import { StrictModeDroppable } from '../components/StrictModeDroppable';
 import { loadWidgetConfig, saveWidgetConfig, WidgetConfig } from '../utils/widgetConfig';
-import { GripVertical } from 'lucide-react';
+import { formatDisplayDate, formatISO } from '../utils/date';
 
 export default function Home() {
     const today = new Date();
@@ -55,7 +55,7 @@ export default function Home() {
         switch (span) {
             case 'full': return 'col-span-full';
             case 'two-thirds': return 'lg:col-span-2 col-span-full';
-            case 'half': return 'lg:col-span-1.5 col-span-full'; // Custom handling might be needed
+            case 'half': return 'lg:col-span-1 col-span-full';
             case 'third': return 'lg:col-span-1 col-span-full';
             default: return 'col-span-full';
         }
@@ -63,8 +63,8 @@ export default function Home() {
 
     // Fetch data
     const { data: todayLog } = useQuery({
-        queryKey: ['daily-log', format(today, 'yyyy-MM-dd')],
-        queryFn: () => dailyLogsApi.getByDate(format(today, 'yyyy-MM-dd')),
+        queryKey: ['daily-log', formatISO(today)],
+        queryFn: () => dailyLogsApi.getByDate(formatISO(today)),
     });
 
     const { data: tasks = [] } = useQuery({
@@ -98,12 +98,6 @@ export default function Home() {
         if (!url) return '#';
         if (url.startsWith('http://') || url.startsWith('https://')) return url;
         return `https://${url}`;
-    };
-
-    const formatSafeDate = (dateStr: string) => {
-        if (!dateStr) return '--';
-        const date = new Date(dateStr.endsWith('Z') ? dateStr : dateStr + 'Z');
-        return format(date, 'MMM d, h:mm a');
     };
 
     const renderWidget = (id: string) => {
@@ -160,7 +154,7 @@ export default function Home() {
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-40 text-text-muted">
                                     <Calendar size={32} className="mb-3 opacity-50" />
-                                    <p className="mb-1">No entries found for {format(today, 'MMM d')}</p>
+                                    <p className="mb-1">No entries found for {formatDisplayDate(today, 'MMM d')}</p>
                                     <p className="text-xs text-text-muted mb-3">Start documenting your day</p>
                                     <Link
                                         to="/daily-log"
@@ -238,7 +232,7 @@ export default function Home() {
                                             {note.content ? note.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 100) : 'No content'}
                                         </p>
                                         <p className="text-[10px] text-text-muted mt-auto pt-1 border-t border-border/10">
-                                            Last modified {formatSafeDate(note.updated_at)}
+                                            Last modified {formatDisplayDate(note.updated_at, 'MMM d, h:mm a')}
                                         </p>
                                     </Link>
                                 ))
@@ -283,7 +277,7 @@ export default function Home() {
                                             <span className="badge badge-blue">{snippet.language}</span>
                                         </div>
                                         <p className="text-xs text-text-muted mt-1">
-                                            {formatSafeDate(snippet.updated_at)}
+                                            {formatDisplayDate(snippet.updated_at, 'MMM d, yyyy')}
                                         </p>
                                     </Link>
                                 ))
@@ -368,7 +362,7 @@ export default function Home() {
                         <div className="p-1.5 bg-accent-blue/10 rounded-lg">
                             <Sparkles size={16} />
                         </div>
-                        <span className="text-sm font-bold tracking-wider uppercase opacity-80">{format(today, 'EEEE, MMMM d, yyyy')}</span>
+                        <span className="text-sm font-bold tracking-wider uppercase opacity-80">{formatDisplayDate(today, 'EEEE, MMMM d, yyyy')}</span>
                     </div>
                     <h1 className="text-4xl font-black text-text-primary mb-3 tracking-tight">
                         {greeting}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-blue to-purple-400">Welcome Back</span>

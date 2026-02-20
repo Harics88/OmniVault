@@ -11,10 +11,13 @@ import {
     Keyboard,
     Trash2,
     HardDrive,
+    Server,
     ChevronLeft,
-    ChevronRight
-} from 'lucide-react';
-import { useState, useEffect } from 'react';
+    ChevronRight,
+    Activity,
+    Cloud,
+    CloudOff
+} from 'lucide-react'; import { useState, useEffect } from 'react';
 import axios from 'axios';
 
 interface SidebarProps {
@@ -22,13 +25,15 @@ interface SidebarProps {
 }
 
 const navItems = [
-    { to: '/', icon: Home, label: 'Home', shortcut: '⌘⇧H', color: 'text-indigo-500' },
-    { to: '/tasks', icon: CheckSquare, label: 'Tasks', shortcut: '⌘⇧T', color: 'text-emerald-500' },
-    { to: '/daily-log', icon: Calendar, label: 'Daily Log', shortcut: '⌘D', color: 'text-amber-500' },
-    { to: '/notes', icon: FileText, label: 'Notes', shortcut: '⌘⇧N', color: 'text-purple-500' },
-    { to: '/snippets', icon: Code, label: 'Snippets', shortcut: '⌘⇧S', color: 'text-sky-500' },
-    { to: '/bookmarks', icon: Bookmark, label: 'Bookmarks', shortcut: '⌘⇧B', color: 'text-rose-500' },
-    { to: '/vault', icon: HardDrive, label: 'Vault', shortcut: '⌘⇧V', color: 'text-cyan-500' },
+    { to: '/', icon: Home, label: 'Home', shortcut: 'g h', color: 'text-indigo-500' },
+    { to: '/timeline', icon: Activity, label: 'Timeline', shortcut: 'g l', color: 'text-sky-500' },
+    { to: '/tasks', icon: CheckSquare, label: 'Tasks', shortcut: 'g t', color: 'text-emerald-500' },
+    { to: '/daily-log', icon: Calendar, label: 'Daily Log', shortcut: 'g d', color: 'text-amber-500' },
+    { to: '/notes', icon: FileText, label: 'Notes', shortcut: 'g n', color: 'text-purple-500' },
+    { to: '/snippets', icon: Code, label: 'Snippets', shortcut: 'g s', color: 'text-sky-500' },
+    { to: '/bookmarks', icon: Bookmark, label: 'Bookmarks', shortcut: 'g b', color: 'text-rose-500' },
+    { to: '/registry', icon: Server, label: 'Registry', shortcut: 'g r', color: 'text-amber-500' },
+    { to: '/vault', icon: HardDrive, label: 'Vault', shortcut: 'g v', color: 'text-cyan-500' },
 ];
 
 export default function Sidebar({ onSearchClick }: SidebarProps) {
@@ -37,11 +42,23 @@ export default function Sidebar({ onSearchClick }: SidebarProps) {
     const [isCollapsed, setIsCollapsed] = useState(() => {
         return localStorage.getItem('sidebarCollapsed') === 'true';
     });
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+    useEffect(() => {
+        const handleOnline = () => setIsOnline(true);
+        const handleOffline = () => setIsOnline(false);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
 
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const response = await axios.get('http://localhost:8000/api/system/stats');
+                const response = await axios.get('/api/system/stats');
                 setDbSize(response.data.database_size_human);
             } catch (error) {
                 console.error('Failed to fetch system stats:', error);
@@ -51,12 +68,19 @@ export default function Sidebar({ onSearchClick }: SidebarProps) {
         fetchStats();
     }, []);
 
-    // Keyboard shortcut to toggle sidebar (Ctrl+B)
+    // Keyboard shortcut to toggle sidebar (Ctrl+B/Cmd+B) - only if not in an input
     useEffect(() => {
         const handleKeyboard = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-                e.preventDefault();
-                toggleSidebar();
+                const target = e.target as HTMLElement;
+                const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
+                    target.isContentEditable ||
+                    target.closest('.ProseMirror');
+
+                if (!isInput) {
+                    e.preventDefault();
+                    toggleSidebar();
+                }
             }
         };
 
@@ -83,9 +107,18 @@ export default function Sidebar({ onSearchClick }: SidebarProps) {
                         className="w-8 h-8 rounded-lg shadow-sm flex-shrink-0"
                     />
                     {!isCollapsed && (
-                        <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-500 whitespace-nowrap">
-                            Omni Vault
-                        </span>
+                        <div className="flex-1 flex items-center justify-between min-w-0">
+                            <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-500 whitespace-nowrap">
+                                Omni Vault
+                            </span>
+                            <div className="flex-shrink-0 ml-2 cursor-help">
+                                {isOnline ? (
+                                    <div title="Online"><Cloud size={14} className="text-accent-green opacity-50" /></div>
+                                ) : (
+                                    <div title="Offline"><CloudOff size={14} className="text-accent-red" /></div>
+                                )}
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>

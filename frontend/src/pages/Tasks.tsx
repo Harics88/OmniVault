@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, CheckSquare, Loader2, Circle, Clock, Check, Search, LayoutGrid, List, Table2 } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+
+import { Plus, CheckSquare, Loader2, Circle, Clock, Check, Search, LayoutGrid, List, Table2, Trash2 } from 'lucide-react';
 import { tasksApi } from '../lib/api';
 import TaskCard from '../components/TaskCard';
 import TaskPanel from '../components/TaskPanel';
@@ -11,6 +12,8 @@ import type { Task, TaskStatus, CreateTask, UpdateTask, Subtask } from '../types
 import { subDays } from 'date-fns';
 import Skeleton from '../components/Skeleton';
 import ConfirmModal from '../components/ConfirmModal';
+import { useToast } from '../components/Toast';
+import { parseServerDate } from '../utils/date';
 
 interface StatusGroup {
     status: TaskStatus;
@@ -53,6 +56,7 @@ export default function Tasks() {
     const navigate = useNavigate();
     const location = useLocation();
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const { showToast } = useToast();
     const [isCreating, setIsCreating] = useState(false);
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [searchInput, setSearchInput] = useState('');
@@ -107,7 +111,9 @@ export default function Tasks() {
             }
             return tasksApi.getAll(undefined, searchQuery || undefined, isPersonal);
         },
+        placeholderData: keepPreviousData,
     });
+
 
     const createMutation = useMutation({
         mutationFn: (task: CreateTask) => {
@@ -120,19 +126,55 @@ export default function Tasks() {
             queryClient.invalidateQueries({ queryKey: ['system'] });
             setNewTaskTitle('');
             setIsCreating(false);
+            showToast('Task created ✓');
         },
     });
+
 
     const updateMutation = useMutation({
         mutationFn: ({ id, updates }: { id: number; updates: UpdateTask }) =>
             tasksApi.update(id, updates),
-        onSuccess: (updatedTask: Task) => {
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
-            if (selectedTask?.id === updatedTask.id) {
-                setSelectedTask(updatedTask);
+        onMutate: async ({ id, updates }) => {
+            // Cancel outgoing refetches to prevent overwrites
+            await queryClient.cancelQueries({ queryKey: ['tasks'] });
+            await queryClient.cancelQueries({ queryKey: ['task', id] });
+
+            // Snapshot previous values
+            const previousTasks = queryClient.getQueryData(['tasks']);
+            const previousTask = queryClient.getQueryData(['task', id]);
+
+            // 1. Update the list view cache
+            queryClient.setQueryData(['tasks'], (old: any) => {
+                if (!old) return [];
+                return old.map((t: Task) => t.id === id ? { ...t, ...updates } : t);
+            });
+
+            // 2. Update the specific task cache (if open in popout)
+            if (previousTask) {
+                queryClient.setQueryData(['task', id], (old: any) => ({ ...old, ...updates }));
             }
+
+            // 3. Update local selectedTask state for panel reflection
+            if (selectedTask?.id === id) {
+                setSelectedTask(prev => prev ? { ...prev, ...updates } : null);
+            }
+
+            return { previousTasks, previousTask };
+        },
+        onError: (_err, { id }, context) => {
+            // Rollback on error
+            if (context?.previousTasks) queryClient.setQueryData(['tasks'], context.previousTasks);
+            if (context?.previousTask) queryClient.setQueryData(['task', id], context.previousTask);
+            showToast('Failed to update task');
+        },
+        onSettled: (_updatedTask, err, { id }) => {
+            // Background sync
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['task', id] });
+            if (!err) showToast('Task saved ✓');
         },
     });
+
 
     const deleteMutation = useMutation({
         mutationFn: (id: number) => tasksApi.delete(id),
@@ -142,8 +184,10 @@ export default function Tasks() {
             setSelectedTask(null);
             setTaskToDelete(null);
             setDeleteConfirmOpen(false);
+            showToast('Task deleted');
         },
     });
+
 
     // Subtask Mutations
     const addSubtaskMutation = useMutation({
@@ -153,28 +197,48 @@ export default function Tasks() {
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
             queryClient.invalidateQueries({ queryKey: ['task', variables.taskId] });
             // Update selected task if it's the one being modified
-            if (selectedTask?.id === variables.taskId) {
-                setSelectedTask({
-                    ...selectedTask,
-                    subtasks: [...(selectedTask.subtasks || []), data]
-                });
+            if (variables.taskId === variables.taskId) {
+                setSelectedTask(prev => prev?.id === variables.taskId ? {
+                    ...prev,
+                    subtasks: [...(prev.subtasks || []), data]
+                } : prev);
             }
+
+
         }
     });
 
     const updateSubtaskMutation = useMutation({
         mutationFn: ({ taskId, subtaskId, updates }: { taskId: number; subtaskId: number; updates: { completed?: boolean; title?: string } }) =>
             tasksApi.updateSubtask(taskId, subtaskId, updates),
-        onSuccess: (data: Subtask, variables: { taskId: number; subtaskId: number; updates: { completed?: boolean; title?: string } }) => {
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
-            queryClient.invalidateQueries({ queryKey: ['task', variables.taskId] });
-            // Update selected task if it's the one being modified to reflect changes immediately in panel
-            if (selectedTask?.id === variables.taskId) {
-                const updatedSubtasks = selectedTask.subtasks?.map((st: Subtask) =>
-                    st.id === variables.subtaskId ? { ...st, ...data } : st
-                );
-                setSelectedTask({ ...selectedTask, subtasks: updatedSubtasks });
+        onMutate: async ({ taskId, subtaskId, updates }) => {
+            await queryClient.cancelQueries({ queryKey: ['task', taskId] });
+            const previousTask = queryClient.getQueryData(['task', taskId]);
+
+            if (taskId === taskId) {
+                setSelectedTask(prev => {
+                    if (prev?.id !== taskId) return prev;
+                    const updatedSubtasks = prev.subtasks?.map((st: Subtask) =>
+                        st.id === subtaskId ? { ...st, ...updates } : st
+                    );
+                    return { ...prev, subtasks: updatedSubtasks };
+                });
             }
+
+
+            return { previousTask };
+        },
+        onError: (_err, { taskId }, context) => {
+            if (context?.previousTask) {
+                if (selectedTask?.id === taskId) {
+                    setSelectedTask(context.previousTask as Task);
+                }
+            }
+            showToast('Failed to update subtask');
+        },
+        onSettled: (_data, _err, { taskId }) => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['task', taskId] });
         }
     });
 
@@ -185,12 +249,14 @@ export default function Tasks() {
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
             queryClient.invalidateQueries({ queryKey: ['task', variables.taskId] });
             // Update selected task if it's the one being modified
-            if (selectedTask?.id === variables.taskId) {
-                setSelectedTask({
-                    ...selectedTask,
-                    subtasks: selectedTask.subtasks?.filter(s => s.id !== variables.subtaskId) || []
-                });
+            if (variables.taskId === variables.taskId) {
+                setSelectedTask(prev => prev?.id === variables.taskId ? {
+                    ...prev,
+                    subtasks: prev.subtasks?.filter(s => s.id !== variables.subtaskId) || []
+                } : prev);
             }
+
+
         }
     });
 
@@ -200,11 +266,16 @@ export default function Tasks() {
         onSuccess: (_data: any, variables: { taskId: number; subtaskIds: number[] }) => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
             queryClient.invalidateQueries({ queryKey: ['task', variables.taskId] }); // Added for sync with Full View
-            if (selectedTask?.id === variables.taskId) {
-                const subtasksMap = new Map((selectedTask.subtasks || []).map((s: Subtask) => [s.id, s]));
-                const newSubtasks = variables.subtaskIds.map((id: number) => subtasksMap.get(id)).filter(Boolean) as Subtask[];
-                setSelectedTask({ ...selectedTask, subtasks: newSubtasks });
+            if (variables.taskId === variables.taskId) {
+                setSelectedTask(prev => {
+                    if (prev?.id !== variables.taskId) return prev;
+                    const subtasksMap = new Map((prev.subtasks || []).map((s: Subtask) => [s.id, s]));
+                    const newSubtasks = variables.subtaskIds.map((id: number) => subtasksMap.get(id)).filter(Boolean) as Subtask[];
+                    return { ...prev, subtasks: newSubtasks };
+                });
             }
+
+
         }
     });
 
@@ -217,9 +288,10 @@ export default function Tasks() {
         updateMutation.mutate({ id: taskId, updates: { status } });
     };
 
-    const onUpdateTask = (taskId: number, updates: Partial<Task>) => {
-        updateMutation.mutate({ id: taskId, updates });
+    const onUpdateTask = async (id: number, updates: Partial<Task>) => {
+        return await updateMutation.mutateAsync({ id, updates });
     };
+
     const handleTaskClick = (task: Task) => {
         // Open in full screen (popout view)
         navigate(`/tasks/${task.id}`);
@@ -236,6 +308,58 @@ export default function Tasks() {
         setSelectedTask(task);
     };
 
+    const [selectedTaskIds, setSelectedTaskIds] = useState<Set<number>>(new Set());
+
+    const handleToggleSelectTask = (taskId: number) => {
+        setSelectedTaskIds(prev => {
+            const next = new Set(prev);
+            if (next.has(taskId)) next.delete(taskId);
+            else next.add(taskId);
+            return next;
+        });
+    };
+
+
+    const handleClearSelection = () => {
+        setSelectedTaskIds(new Set());
+    };
+
+    const bulkUpdateMutation = useMutation({
+        mutationFn: (updates: { ids: number[], data: UpdateTask }) =>
+            Promise.all(updates.ids.map(id => tasksApi.update(id, updates.data))),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            showToast(`Updated ${selectedTaskIds.size} tasks`);
+            handleClearSelection();
+        }
+    });
+
+    const bulkDeleteMutation = useMutation({
+        mutationFn: (ids: number[]) => Promise.all(ids.map(id => tasksApi.delete(id))),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            showToast(`Deleted ${selectedTaskIds.size} tasks`);
+            handleClearSelection();
+        }
+    });
+
+    // Column-specific inline add state
+    const [inlineAddStatus, setInlineAddStatus] = useState<TaskStatus | null>(null);
+    const [inlineAddTitle, setInlineAddTitle] = useState('');
+
+    const handleCreateTaskAtStatus = (status: TaskStatus) => {
+        if (!inlineAddTitle.trim()) return;
+        createMutation.mutate({
+            title: inlineAddTitle.trim(),
+            status: status
+        }, {
+            onSuccess: () => {
+                setInlineAddTitle('');
+                setInlineAddStatus(null);
+            }
+        });
+    };
+
     // Partition Logic (Case Insensitive)
     const partitions = useMemo(() => {
         const threshold = subDays(new Date(), 14);
@@ -245,7 +369,7 @@ export default function Tasks() {
         const recentHistory = tasks.filter((t: Task) =>
             (t.status || '').toLowerCase() === 'done' &&
             t.completed_at &&
-            new Date(t.completed_at) >= threshold
+            parseServerDate(t.completed_at) >= threshold
         );
         return { active, recentHistory };
     }, [tasks]);
@@ -257,7 +381,7 @@ export default function Tasks() {
             let filtered = tasks.filter(task => (task.status || '').toLowerCase() === group.status.toLowerCase());
             if (group.status.toLowerCase() === 'done') {
                 filtered = filtered.filter(task =>
-                    task.completed_at && new Date(task.completed_at) >= threshold
+                    task.completed_at && parseServerDate(task.completed_at) >= threshold
                 );
             }
             return { ...group, tasks: filtered };
@@ -396,6 +520,8 @@ export default function Tasks() {
                                     onDelete={handleDeleteTask}
                                     onEditClick={handleEditClick}
                                     onCreateTask={() => setIsCreating(true)}
+                                    selectedTaskIds={selectedTaskIds}
+                                    onSelectTask={handleToggleSelectTask}
                                 />
                             </div>
                         )}
@@ -429,6 +555,8 @@ export default function Tasks() {
                                                         onStatusChange={handleStatusChange}
                                                         isCompact={true}
                                                         disableStatusClick={true}
+                                                        isSelected={selectedTaskIds.has(task.id)}
+                                                        onSelect={handleToggleSelectTask}
                                                     />
                                                 ))}
                                                 {group.tasks.length === 0 && (
@@ -439,6 +567,47 @@ export default function Tasks() {
                                                         <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">No {group.label} tasks</p>
                                                         <p className="text-[10px] text-text-muted/60 max-w-[150px]">Items in this stage will appear here.</p>
                                                     </div>
+                                                )}
+
+                                                {/* Inline Add */}
+                                                {inlineAddStatus === group.status ? (
+                                                    <div className="animate-slide-up bg-background-card border border-accent-blue/30 rounded-lg p-2 shadow-sm">
+                                                        <input
+                                                            autoFocus
+                                                            type="text"
+                                                            value={inlineAddTitle}
+                                                            onChange={(e) => setInlineAddTitle(e.target.value)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') handleCreateTaskAtStatus(group.status);
+                                                                if (e.key === 'Escape') { setInlineAddStatus(null); setInlineAddTitle(''); }
+                                                            }}
+                                                            placeholder="Task title..."
+                                                            className="w-full bg-transparent border-none focus:outline-none text-sm p-1 placeholder:text-text-muted"
+                                                        />
+                                                        <div className="flex items-center justify-end gap-1 mt-2">
+                                                            <button
+                                                                onClick={() => { setInlineAddStatus(null); setInlineAddTitle(''); }}
+                                                                className="p-1 text-[10px] font-bold text-text-muted hover:text-text-primary uppercase tracking-wider"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleCreateTaskAtStatus(group.status)}
+                                                                disabled={!inlineAddTitle.trim() || createMutation.isPending}
+                                                                className="px-2 py-1 bg-accent-blue text-white rounded text-[10px] font-bold uppercase tracking-wider disabled:opacity-50"
+                                                            >
+                                                                Add
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => setInlineAddStatus(group.status)}
+                                                        className="w-full py-2 flex items-center justify-center gap-2 rounded-lg border border-dashed border-border text-text-muted hover:text-text-primary hover:border-border-hover hover:bg-background-hover transition-all group/add"
+                                                    >
+                                                        <Plus size={14} className="group-hover/add:scale-110 transition-transform" />
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest">Add Task</span>
+                                                    </button>
                                                 )}
                                             </div>
                                         </div>
@@ -475,11 +644,58 @@ export default function Tasks() {
                         }}
                         onUpdate={onUpdateTask}
                         onDelete={handleDeleteTask}
-                        onAddSubtask={(taskId, title) => addSubtaskMutation.mutate({ taskId, title })}
-                        onUpdateSubtask={(taskId, subtaskId, updates) => updateSubtaskMutation.mutate({ taskId, subtaskId, updates })}
-                        onDeleteSubtask={(taskId, subtaskId) => deleteSubtaskMutation.mutate({ taskId, subtaskId })}
-                        onReorderSubtasks={(taskId, subtaskIds) => reorderSubtasksMutation.mutate({ taskId, subtaskIds })}
+                        onAddSubtask={(taskId, title) => addSubtaskMutation.mutateAsync({ taskId, title })}
+                        onUpdateSubtask={(taskId, subtaskId, updates) => updateSubtaskMutation.mutateAsync({ taskId, subtaskId, updates })}
+                        onDeleteSubtask={(taskId, subtaskId) => deleteSubtaskMutation.mutateAsync({ taskId, subtaskId })}
+                        onReorderSubtasks={(taskId, subtaskIds) => reorderSubtasksMutation.mutateAsync({ taskId, subtaskIds })}
                     />
+                )}
+
+                {/* Bulk Action Toolbar */}
+                {selectedTaskIds.size > 0 && (
+                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
+                        <div className="bg-background-card border border-border shadow-elevated rounded-2xl px-6 py-3 flex items-center gap-6 backdrop-blur-md">
+                            <div className="flex items-center gap-3 pr-6 border-r border-border">
+                                <span className="w-6 h-6 rounded-full bg-accent-blue text-white text-[10px] font-bold flex items-center justify-center">
+                                    {selectedTaskIds.size}
+                                </span>
+                                <span className="text-sm font-medium text-text-primary">Tasks Selected</span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => bulkUpdateMutation.mutate({ ids: Array.from(selectedTaskIds), data: { status: 'done' as any } })}
+                                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-accent-green hover:bg-accent-green/10 rounded-lg transition-colors"
+                                >
+                                    <Check size={14} />
+                                    Mark Done
+                                </button>
+                                <button
+                                    onClick={() => bulkUpdateMutation.mutate({ ids: Array.from(selectedTaskIds), data: { status: 'in_progress' as any } })}
+                                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-accent-amber hover:bg-accent-amber/10 rounded-lg transition-colors"
+                                >
+                                    <Clock size={14} />
+                                    In Progress
+                                </button>
+                                <button
+                                    onClick={() => bulkDeleteMutation.mutate(Array.from(selectedTaskIds))}
+                                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-accent-red hover:bg-accent-red/10 rounded-lg transition-colors"
+                                >
+                                    <Trash2 size={14} className="Lucide" />
+                                    Delete
+                                </button>
+                            </div>
+
+                            <div className="pl-6 border-l border-border">
+                                <button
+                                    onClick={handleClearSelection}
+                                    className="text-xs font-bold text-text-muted hover:text-text-primary uppercase tracking-wider"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {/* Delete Confirmation Modal */}

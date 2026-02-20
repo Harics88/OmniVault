@@ -29,12 +29,16 @@ export interface UseTaskEditorReturn {
     completedAtRef: React.RefObject<HTMLInputElement>;
     /** Enter edit mode */
     startEditing: () => void;
-    /** Cancel editing and revert changes */
-    cancelEditing: () => void;
-    /** Save changes to the task */
-    save: () => void;
+    /** Cancel editing and revert changes, optionally overriding the restored subtasks */
+    cancelEditing: (subtasksOverride?: Task['subtasks']) => void;
+
+    /** Save changes to the task - returns the onSave promise or void */
+    save: () => Promise<void> | void;
     /** Mark save as complete (call when task prop updates) */
     finishSaving: () => void;
+    /** Directly set the edited task state */
+    setEditedTask: React.Dispatch<React.SetStateAction<Task>>;
+
     /** Handler for status change */
     handleStatusChange: (status: TaskStatus) => void;
     /** Handler for priority change */
@@ -118,10 +122,11 @@ export function useTaskEditor({
     /**
      * Cancel editing and revert changes
      */
-    const cancelEditing = useCallback(() => {
-        setEditedTask(task);
+    const cancelEditing = useCallback((subtasksOverride?: Task['subtasks']) => {
+        setEditedTask({ ...task, subtasks: subtasksOverride !== undefined ? subtasksOverride : task.subtasks });
         setIsEditing(false);
     }, [task]);
+
 
     /**
      * Mark save as complete - call when task prop updates after save
@@ -148,11 +153,12 @@ export function useTaskEditor({
 
         if (Object.keys(updates).length > 0) {
             setIsSaving(true);
-            onSave(task.id, updates);
+            return onSave(task.id, updates);
         } else {
             setIsEditing(false);
         }
     }, [editedTask, task, onSave]);
+
 
     /**
      * Handler for status change
@@ -250,7 +256,9 @@ export function useTaskEditor({
         handleCompletedAtChange,
         syncSubtasks,
         resetToTask,
+        setEditedTask,
     };
 }
+
 
 export default useTaskEditor;

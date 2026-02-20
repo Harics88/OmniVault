@@ -1,8 +1,9 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { X, Check, Circle, Clock, Calendar, Plus, Edit2, Maximize2, Minimize2, Triangle, GripVertical } from 'lucide-react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+
+import { X, Check, Circle, Clock, Calendar, Plus, Edit2, Maximize2, Minimize2, Triangle, GripVertical, Play, Pause, RotateCcw } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import type { Task, TaskStatus, TaskPriority, Subtask } from '../types';
-import { format } from 'date-fns';
+import { formatDisplayDate } from '../utils/date';
 import RichTextEditor from './RichTextEditor';
 import ConfirmModal from './ConfirmModal';
 import { useTaskEditor } from '../hooks/useTaskEditor';
@@ -10,12 +11,13 @@ import { useTaskEditor } from '../hooks/useTaskEditor';
 interface TaskPanelProps {
     task: Task;
     onClose: () => void;
-    onUpdate: (taskId: number, updates: Partial<Task>) => void;
+    onUpdate: (taskId: number, updates: Partial<Task>) => any;
+
     onDelete: (taskId: number) => void;
-    onAddSubtask: (taskId: number, title: string) => void;
-    onUpdateSubtask: (taskId: number, subtaskId: number, updates: { completed?: boolean; title?: string }) => void;
-    onDeleteSubtask: (taskId: number, subtaskId: number) => void;
-    onReorderSubtasks: (taskId: number, subtaskIds: number[]) => void;
+    onAddSubtask: (taskId: number, title: string) => any;
+    onUpdateSubtask: (taskId: number, subtaskId: number, updates: { completed?: boolean; title?: string }) => any;
+    onDeleteSubtask: (taskId: number, subtaskId: number) => any;
+    onReorderSubtasks: (taskId: number, subtaskIds: number[]) => any;
     width: number;
     initialEditMode?: boolean;
     onWidthChange: (width: number) => void;
@@ -47,9 +49,14 @@ export default function TaskPanel({
     onWidthChange
 }: TaskPanelProps) {
     const [newSubtask, setNewSubtask] = useState('');
+    const [pendingSubtasks, setPendingSubtasks] = useState<string[]>([]);
+    // Snapshot of subtasks at the moment editing started — used for cancel reset
+    const subtasksSnapshot = useRef<typeof task.subtasks>(task.subtasks);
     const [isResizing, setIsResizing] = useState(false);
+
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
+
 
     // Use the shared task editor hook
     const {
@@ -59,7 +66,7 @@ export default function TaskPanel({
         dueDateRef,
         startedAtRef,
         completedAtRef,
-        startEditing,
+        startEditing: startEditingHook,
         cancelEditing,
         save,
         finishSaving,
@@ -73,28 +80,73 @@ export default function TaskPanel({
         handleCompletedAtChange,
         syncSubtasks,
         resetToTask,
+        setEditedTask,
     } = useTaskEditor({
+
+
         task,
         onSave: onUpdate,
         initialEditMode,
     });
 
+    // Wrap startEditing to snapshot subtasks first
+    const startEditing = useCallback(() => {
+        subtasksSnapshot.current = task.subtasks;
+        setPendingSubtasks([]);
+        startEditingHook();
+    }, [task.subtasks, startEditingHook]);
+
     // Sync editedTask with task prop changes
     useEffect(() => {
         if (isSaving) {
-            // Once the task prop updates (e.g. updated_at changes), we can stop saving and exit edit mode
             finishSaving();
             return;
         }
-
         if (task.id !== editedTask.id) {
             resetToTask(task);
+            setPendingSubtasks([]);
             setIsExpanded(false);
-        } else if (isEditing) {
-            // Update subtasks from task while editing to keep them live
-            syncSubtasks(task.subtasks);
+        } else if (!isEditing) {
+            // Keep edited state in sync with server data when not editing
+            // so that background refetches or optimistic toggles are reflected
+            setEditedTask(task);
         }
-    }, [task, isSaving, isEditing, editedTask.id, finishSaving, resetToTask, syncSubtasks]);
+        // Note: we do NOT sync subtasks here during editing.
+
+        // Pending new subtasks are managed exclusively in handleAddSubtask/handleSave/handleCancel
+        // to avoid stale-closure issues.
+    }, [task, isSaving, isEditing, editedTask.id, finishSaving, resetToTask, setEditedTask]);
+
+    // Keep snapshot in sync with server data when NOT editing
+    useEffect(() => {
+        if (!isEditing) {
+            subtasksSnapshot.current = task.subtasks;
+        }
+    }, [task.subtasks, isEditing]);
+
+
+
+
+    // Timer state
+    const [timerActive, setTimerActive] = useState(false);
+    const [timerSeconds, setTimerSeconds] = useState(0);
+    const [timerType] = useState<'stopwatch' | 'pomodoro'>('stopwatch');
+
+    useEffect(() => {
+        let interval: any;
+        if (timerActive) {
+            interval = setInterval(() => {
+                setTimerSeconds(s => timerType === 'stopwatch' ? s + 1 : Math.max(0, s - 1));
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [timerActive, timerType]);
+
+    const formatTimer = (totalSeconds: number) => {
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
@@ -118,11 +170,81 @@ export default function TaskPanel({
     }, [onWidthChange]);
 
     const handleAddSubtask = () => {
-        if (newSubtask.trim()) {
-            onAddSubtask(task.id, newSubtask.trim());
-            setNewSubtask('');
+        if (!newSubtask.trim()) return;
+        const title = newSubtask.trim();
+        // Buffer in local state — only persist on Save
+        const newPending = [...pendingSubtasks, title];
+        setPendingSubtasks(newPending);
+        // Append a temporary subtask (negative ID) so it appears in the list immediately
+        const tempSubtask = {
+            id: -(newPending.length),
+            task_id: task.id,
+            title,
+            completed: false,
+            order: (editedTask.subtasks?.length ?? 0),
+            created_at: '',
+        };
+        syncSubtasks([...(editedTask.subtasks ?? []), tempSubtask]);
+        setNewSubtask('');
+    };
+
+    const handleSave = async () => {
+        const originalSubtasks = subtasksSnapshot.current || [];
+        const currentSubtasks = editedTask.subtasks || [];
+        const mutations: Promise<any>[] = [];
+
+        // 1. Handle Deletions: present in snapshot but not in editedTask
+        originalSubtasks.forEach(original => {
+            if (!currentSubtasks.find(s => s.id === original.id)) {
+                mutations.push(onDeleteSubtask(task.id, original.id));
+            }
+        });
+
+        // 2. Handle Updates: title or completed state changed
+        currentSubtasks.forEach(current => {
+            if (current.id > 0) {
+                const original = originalSubtasks.find(s => s.id === current.id);
+                if (original && (original.title !== current.title || original.completed !== current.completed)) {
+                    mutations.push(onUpdateSubtask(task.id, current.id, { title: current.title, completed: current.completed }));
+                }
+            }
+        });
+
+        // 3. Handle Additions: use the buffered pendingSubtasks
+        pendingSubtasks.forEach(title => mutations.push(onAddSubtask(task.id, title)));
+        setPendingSubtasks([]);
+
+        // 4. Handle Reorder: only if sequence changed and no additions (IDs unknown)
+        const originalIds = originalSubtasks.map(s => s.id);
+        const currentIds = currentSubtasks.filter(s => s.id > 0).map(s => s.id);
+        if (currentIds.length > 0 &&
+            currentIds.length === originalIds.length &&
+            JSON.stringify(currentIds) !== JSON.stringify(originalIds)) {
+            mutations.push(onReorderSubtasks(task.id, currentIds));
+        }
+
+        try {
+            // Await all subtask changes before the main task update
+            // to avoid race conditions during background refetches
+            await Promise.all(mutations);
+            await save();
+        } catch (err) {
+            console.error('Failed to sync subtasks:', err);
+            // Still try to save main task if subtasks failed?
+            await save();
         }
     };
+
+
+
+    const handleCancel = () => {
+        // Pass the snapshot to cancelEditing atomically — one setEditedTask call,
+        // no race condition with React's update batching.
+        setPendingSubtasks([]);
+        cancelEditing(subtasksSnapshot.current);
+    };
+
+
 
     const handleDragEnd = (result: DropResult) => {
         if (!result.destination || !editedTask.subtasks) return;
@@ -136,8 +258,11 @@ export default function TaskPanel({
         syncSubtasks(items);
 
         const subtaskIds = items.map(item => item.id);
-        onReorderSubtasks(task.id, subtaskIds);
+        if (!isEditing) {
+            onReorderSubtasks(task.id, subtaskIds);
+        }
     };
+
 
     return (
         <>
@@ -156,6 +281,26 @@ export default function TaskPanel({
                 <div className="flex items-center justify-between p-4 border-b border-border">
                     <h2 className="font-semibold text-text-primary">Task Details</h2>
                     <div className="flex items-center gap-2">
+                        {/* Mini Timer */}
+                        <div className="flex items-center gap-2 bg-background-elevated px-3 py-1.5 rounded-xl border border-border mr-2">
+                            <div className={`w-2 h-2 rounded-full ${timerActive ? 'bg-accent-red animate-pulse' : 'bg-text-muted opacity-30'}`} />
+                            <span className="text-xs font-mono font-bold w-12 text-center">{formatTimer(timerSeconds)}</span>
+                            <div className="flex items-center gap-1 border-l border-border pl-2 ml-1">
+                                <button
+                                    onClick={() => setTimerActive(!timerActive)}
+                                    className={`p-1 rounded hover:bg-background-hover transition-colors ${timerActive ? 'text-accent-amber' : 'text-accent-green'}`}
+                                >
+                                    {timerActive ? <Pause size={14} /> : <Play size={14} />}
+                                </button>
+                                <button
+                                    onClick={() => { setTimerActive(false); setTimerSeconds(0); }}
+                                    className="p-1 rounded hover:bg-background-hover text-text-muted transition-colors"
+                                >
+                                    <RotateCcw size={14} />
+                                </button>
+                            </div>
+                        </div>
+
                         {isEditing && (
                             <div className="flex items-center gap-2 mr-2">
                                 <label className="text-sm text-text-muted cursor-pointer select-none" htmlFor="personal-check">Personal</label>
@@ -245,7 +390,7 @@ export default function TaskPanel({
                                 {isEditing ? (
                                     <div className="relative min-h-[1.5rem] flex items-center cursor-pointer" onClick={() => dueDateRef.current?.showPicker()}>
                                         <span className="text-text-primary pointer-events-none">
-                                            {editedTask.due_date ? format(new Date(editedTask.due_date), 'MMM d, yyyy') : 'Set due date'}
+                                            {editedTask.due_date ? formatDisplayDate(editedTask.due_date, 'MMM d, yyyy h:mm a') : 'Set due date'}
                                         </span>
                                         <input
                                             ref={dueDateRef}
@@ -257,7 +402,7 @@ export default function TaskPanel({
                                     </div>
                                 ) : (
                                     <span className="font-medium">
-                                        {task.due_date ? format(new Date(task.due_date), 'MMM d, yyyy') : 'Not set'}
+                                        {task.due_date ? formatDisplayDate(task.due_date, 'MMM d, yyyy h:mm a') : 'Not set'}
                                     </span>
                                 )}
                             </div>
@@ -273,7 +418,7 @@ export default function TaskPanel({
                                     {isEditing ? (
                                         <div className="relative min-h-[1.5rem] flex items-center cursor-pointer" onClick={() => startedAtRef.current?.showPicker()}>
                                             <span className="text-text-primary pointer-events-none">
-                                                {editedTask.started_at ? format(new Date(editedTask.started_at), 'MMM d, yyyy') : 'Not started'}
+                                                {editedTask.started_at ? formatDisplayDate(editedTask.started_at, 'MMM d, yyyy h:mm a') : 'Not started'}
                                             </span>
                                             <input
                                                 ref={startedAtRef}
@@ -285,7 +430,7 @@ export default function TaskPanel({
                                         </div>
                                     ) : (
                                         <span className="font-medium">
-                                            {task.started_at ? format(new Date(task.started_at), 'MMM d, yyyy') : 'Not started'}
+                                            {task.started_at ? formatDisplayDate(task.started_at, 'MMM d, yyyy h:mm a') : 'Not started'}
                                         </span>
                                     )}
                                 </div>
@@ -299,7 +444,7 @@ export default function TaskPanel({
                                     {isEditing ? (
                                         <div className="relative min-h-[1.5rem] flex items-center cursor-pointer" onClick={() => completedAtRef.current?.showPicker()}>
                                             <span className="text-text-primary pointer-events-none">
-                                                {editedTask.completed_at ? format(new Date(editedTask.completed_at), 'MMM d, yyyy') : 'Not completed'}
+                                                {editedTask.completed_at ? formatDisplayDate(editedTask.completed_at, 'MMM d, yyyy h:mm a') : 'Not completed'}
                                             </span>
                                             <input
                                                 ref={completedAtRef}
@@ -311,7 +456,7 @@ export default function TaskPanel({
                                         </div>
                                     ) : (
                                         <span className="font-medium">
-                                            {task.completed_at ? format(new Date(task.completed_at), 'MMM d, yyyy') : 'Not completed'}
+                                            {task.completed_at ? formatDisplayDate(task.completed_at, 'MMM d, yyyy h:mm a') : 'Not completed'}
                                         </span>
                                     )}
                                 </div>
@@ -346,18 +491,35 @@ export default function TaskPanel({
                                                             subtask={subtask}
                                                             onToggle={() => {
                                                                 const newCompleted = !subtask.completed;
-                                                                onUpdateSubtask(task.id, subtask.id, { completed: newCompleted });
+                                                                if (!isEditing) {
+                                                                    onUpdateSubtask(task.id, subtask.id, { completed: newCompleted });
+                                                                }
                                                                 // Optimistic update for toggling
                                                                 syncSubtasks(editedTask.subtasks?.map(s => s.id === subtask.id ? { ...s, completed: newCompleted } : s));
                                                             }}
-                                                            onDelete={() => onDeleteSubtask(task.id, subtask.id)}
-                                                            onUpdateTitle={(title) => onUpdateSubtask(task.id, subtask.id, { title })}
+                                                            onDelete={() => {
+                                                                if (!isEditing) {
+                                                                    onDeleteSubtask(task.id, subtask.id);
+                                                                } else {
+                                                                    // Locally remove from editedTask
+                                                                    syncSubtasks(editedTask.subtasks?.filter(s => s.id !== subtask.id) || []);
+                                                                }
+                                                            }}
+                                                            onUpdateTitle={(title) => {
+                                                                if (!isEditing) {
+                                                                    onUpdateSubtask(task.id, subtask.id, { title });
+                                                                } else {
+                                                                    // Locally update in editedTask
+                                                                    syncSubtasks(editedTask.subtasks?.map(s => s.id === subtask.id ? { ...s, title } : s) || []);
+                                                                }
+                                                            }}
                                                             isEditing={isEditing}
                                                             dragHandleProps={provided.dragHandleProps}
                                                             innerRef={provided.innerRef}
                                                             draggableProps={provided.draggableProps}
                                                             isDragging={snapshot.isDragging}
                                                         />
+
                                                     )}
                                                 </Draggable>
                                             ))}
@@ -386,9 +548,10 @@ export default function TaskPanel({
                 <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border bg-background-card flex gap-3">
                     {isEditing ? (
                         <>
-                            <button onClick={save} className="flex-1 bg-accent-green text-white py-2 rounded-lg hover:bg-accent-green/90">Save</button>
-                            <button onClick={cancelEditing} className="flex-1 bg-background-elevated py-2 rounded-lg hover:bg-background-hover border border-border">Cancel</button>
+                            <button onClick={handleSave} className="flex-1 bg-accent-green text-white py-2 rounded-lg hover:bg-accent-green/90">Save</button>
+                            <button onClick={handleCancel} className="flex-1 bg-background-elevated py-2 rounded-lg hover:bg-background-hover border border-border">Cancel</button>
                         </>
+
                     ) : (
                         <>
                             <button onClick={startEditing} className="flex-1 bg-background-elevated py-2 rounded-lg hover:bg-background-hover border border-border">Edit</button>

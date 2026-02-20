@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Circle, Clock, Check, Triangle, Trash2, CheckSquare, Calendar, Search } from 'lucide-react';
-import { format, isPast, subDays } from 'date-fns';
+import { formatDisplayDate, parseServerDate } from '../utils/date';
+import { subDays } from 'date-fns';
 import type { Task, TaskStatus } from '../types';
 
 interface TaskTableViewProps {
@@ -10,6 +11,8 @@ interface TaskTableViewProps {
     onDelete: (taskId: number) => void;
     searchQuery: string;
     showArchived: boolean;
+    selectedTaskIds?: Set<number>;
+    onSelectTask?: (taskId: number) => void;
 }
 
 const statusConfig = {
@@ -30,7 +33,9 @@ export default function TaskTableView({
     onStatusChange,
     onDelete,
     searchQuery,
-    showArchived
+    showArchived,
+    selectedTaskIds = new Set(),
+    onSelectTask
 }: TaskTableViewProps) {
     const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({ archived: true });
 
@@ -89,8 +94,7 @@ export default function TaskTableView({
 
             const isOldCompleted = (task.status || '').toLowerCase() === 'done' &&
                 task.completed_at &&
-                isPast(new Date(task.completed_at)) &&
-                new Date(task.completed_at) < subDays(new Date(), 14);
+                parseServerDate(task.completed_at) < subDays(new Date(), 14);
 
             if (!showArchived && isOldCompleted) return false;
             return matchesSearch;
@@ -107,7 +111,7 @@ export default function TaskTableView({
             const s = (task.status || 'not_started').toLowerCase();
             const isArchived = s === 'done' &&
                 task.completed_at &&
-                new Date(task.completed_at) < subDays(new Date(), 14);
+                parseServerDate(task.completed_at) < subDays(new Date(), 14);
 
             if (isArchived) {
                 groups.archived.push(task);
@@ -120,8 +124,8 @@ export default function TaskTableView({
 
         Object.keys(groups).forEach(key => {
             groups[key].sort((a, b) => {
-                const dateA = a.due_date ? new Date(a.due_date).getTime() : Infinity;
-                const dateB = b.due_date ? new Date(b.due_date).getTime() : Infinity;
+                const dateA = a.due_date ? parseServerDate(a.due_date).getTime() : Infinity;
+                const dateB = b.due_date ? parseServerDate(b.due_date).getTime() : Infinity;
                 return dateA - dateB;
             });
         });
@@ -147,6 +151,24 @@ export default function TaskTableView({
                     onClick={() => toggleSection(status)}
                 >
                     <div style={{ width: colWidths.title }} className="shrink-0 flex items-center gap-3 sticky left-0 bg-background-elevated/40 backdrop-blur-md z-10 pr-4">
+                        <div
+                            className={`w-4 h-4 rounded border transition-all flex items-center justify-center shrink-0 ${sectionTasks.length > 0 && sectionTasks.every(t => selectedTaskIds.has(t.id)) ? 'bg-accent-blue border-accent-blue' : 'border-border'}`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onSelectTask) {
+                                    const allSelected = sectionTasks.every(t => selectedTaskIds.has(t.id));
+                                    sectionTasks.forEach(t => {
+                                        if (allSelected) {
+                                            if (selectedTaskIds.has(t.id)) onSelectTask(t.id);
+                                        } else {
+                                            if (!selectedTaskIds.has(t.id)) onSelectTask(t.id);
+                                        }
+                                    });
+                                }
+                            }}
+                        >
+                            {sectionTasks.length > 0 && sectionTasks.every(t => selectedTaskIds.has(t.id)) && <Check size={12} className="text-white" strokeWidth={4} />}
+                        </div>
                         <div className={`p-1 rounded-lg ${isArchived ? 'bg-background-elevated' : config.bg} transition-colors`}>
                             {isCollapsed ? <ChevronRight size={14} className="text-text-muted shrink-0" /> : <ChevronDown size={14} className="text-text-muted shrink-0" />}
                         </div>
@@ -175,10 +197,19 @@ export default function TaskTableView({
                                 <div
                                     key={task.id}
                                     onClick={() => onTaskClick(task)}
-                                    className={`flex items-center gap-4 px-6 py-3 transition-all group cursor-pointer hover:bg-background-elevated/40 relative active:scale-[0.998]`}
+                                    className={`flex items-center gap-4 px-6 py-3 transition-all group cursor-pointer hover:bg-background-elevated/40 relative active:scale-[0.998] ${selectedTaskIds.has(task.id) ? 'bg-accent-blue/5' : ''}`}
                                 >
                                     <div style={{ width: colWidths.title }} className="shrink-0 overflow-hidden sticky left-0 bg-background-card z-10 group-hover:bg-background-elevated/40 transition-colors pr-4">
                                         <div className="flex items-center gap-3 pl-2">
+                                            <div
+                                                className={`w-4 h-4 rounded border transition-all flex items-center justify-center shrink-0 ${selectedTaskIds.has(task.id) ? 'bg-accent-blue border-accent-blue' : 'border-border opacity-30 group-hover:opacity-100'}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (onSelectTask) onSelectTask(task.id);
+                                                }}
+                                            >
+                                                {selectedTaskIds.has(task.id) && <Check size={12} className="text-white" strokeWidth={4} />}
+                                            </div>
                                             <span
                                                 className={`text-sm font-medium transition-all truncate ${task.status === 'done' ? 'text-text-muted/60 line-through' : 'text-text-primary group-hover:text-accent-blue'}`}
                                             >
@@ -206,17 +237,17 @@ export default function TaskTableView({
                                     {/* Dates */}
                                     <div style={{ width: colWidths.dueDate }} className="flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors px-2 truncate">
                                         <Calendar size={12} className="opacity-40 shrink-0" />
-                                        {task.due_date ? format(new Date(task.due_date), 'MMM d, yyyy') : <span className="opacity-20 italic">No due date</span>}
+                                        {task.due_date ? formatDisplayDate(task.due_date, 'MMM d, yyyy h:mm a') : <span className="opacity-20 italic">No due date</span>}
                                     </div>
 
                                     <div style={{ width: colWidths.commenced }} className="flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors px-2 truncate">
                                         <Clock size={12} className="opacity-40 shrink-0" />
-                                        {task.started_at ? format(new Date(task.started_at), 'MMM d, yyyy') : <span className="opacity-20 italic">Not started</span>}
+                                        {task.started_at ? formatDisplayDate(task.started_at, 'MMM d, yyyy h:mm a') : <span className="opacity-20 italic">Not started</span>}
                                     </div>
 
                                     <div style={{ width: colWidths.concluded }} className="flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors px-2 truncate">
                                         <Check size={12} className="opacity-40 shrink-0" />
-                                        {task.completed_at ? format(new Date(task.completed_at), 'MMM d, yyyy') : <span className="opacity-20 italic">Unfinished</span>}
+                                        {task.completed_at ? formatDisplayDate(task.completed_at, 'MMM d, yyyy h:mm a') : <span className="opacity-20 italic">Unfinished</span>}
                                     </div>
 
                                     {/* Status Pill */}

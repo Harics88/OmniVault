@@ -18,7 +18,7 @@ import Color from '@tiptap/extension-color';
 import TextAlign from '@tiptap/extension-text-align';
 import Focus from '@tiptap/extension-focus';
 import BubbleMenuExtension from '@tiptap/extension-bubble-menu';
-import { Extension } from '@tiptap/core';
+import { Extension, wrappingInputRule } from '@tiptap/core';
 import { common, createLowlight } from 'lowlight';
 import {
     Bold, Italic, Underline as UnderlineIcon, List, ListOrdered, Link as LinkIcon, Image as ImageIcon,
@@ -142,6 +142,27 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Add a
             Image.configure({ HTMLAttributes: { class: 'rounded-lg max-w-full my-2 shadow-sm' } }),
             BubbleMenuExtension.configure({
                 pluginKey: 'bubbleMenuPlugin',
+            }),
+            Extension.create({
+                name: 'taskListInputRules',
+                addInputRules() {
+                    return [
+                        wrappingInputRule({
+                            find: /^^\s*(\[ \])\s$/,
+                            type: this.editor.schema.nodes.taskItem,
+                            getAttributes: () => ({
+                                checked: false,
+                            }),
+                        }),
+                        wrappingInputRule({
+                            find: /^^\s*(\[x\])\s$/,
+                            type: this.editor.schema.nodes.taskItem,
+                            getAttributes: () => ({
+                                checked: true,
+                            }),
+                        }),
+                    ];
+                },
             }),
         ],
         onUpdate: ({ editor }) => {

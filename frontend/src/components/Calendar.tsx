@@ -10,9 +10,11 @@ import {
     isSameDay,
     addMonths,
     subMonths,
+    addYears,
+    subYears,
     isToday
 } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 interface CalendarProps {
     selectedDate: Date;
@@ -26,30 +28,47 @@ export default function Calendar({ selectedDate, onSelectDate, onClose, datesWit
 
     const renderHeader = () => {
         return (
-            <div className="flex items-center justify-between p-4 border-b border-border">
-                <h2 className="text-lg font-semibold text-text-primary">
-                    {format(currentMonth, 'MMMM yyyy')}
-                </h2>
-                <div className="flex gap-1">
+            <div className="flex items-center justify-between p-3 border-b border-border">
+                {/* Year navigation row */}
+                <div className="flex items-center gap-1">
                     <button
                         type="button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setCurrentMonth(subMonths(currentMonth, 1));
-                        }}
+                        onClick={(e) => { e.stopPropagation(); setCurrentMonth(subYears(currentMonth, 1)); }}
                         className="p-1 hover:bg-background-hover rounded text-text-muted hover:text-text-primary transition-colors"
+                        title="Previous year"
                     >
-                        <ChevronLeft size={20} />
+                        <ChevronsLeft size={16} />
                     </button>
                     <button
                         type="button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setCurrentMonth(addMonths(currentMonth, 1));
-                        }}
+                        onClick={(e) => { e.stopPropagation(); setCurrentMonth(subMonths(currentMonth, 1)); }}
                         className="p-1 hover:bg-background-hover rounded text-text-muted hover:text-text-primary transition-colors"
+                        title="Previous month"
                     >
-                        <ChevronRight size={20} />
+                        <ChevronLeft size={16} />
+                    </button>
+                </div>
+
+                <h2 className="text-sm font-semibold text-text-primary select-none">
+                    {format(currentMonth, 'MMMM yyyy')}
+                </h2>
+
+                <div className="flex items-center gap-1">
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setCurrentMonth(addMonths(currentMonth, 1)); }}
+                        className="p-1 hover:bg-background-hover rounded text-text-muted hover:text-text-primary transition-colors"
+                        title="Next month"
+                    >
+                        <ChevronRight size={16} />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setCurrentMonth(addYears(currentMonth, 1)); }}
+                        className="p-1 hover:bg-background-hover rounded text-text-muted hover:text-text-primary transition-colors"
+                        title="Next year"
+                    >
+                        <ChevronsRight size={16} />
                     </button>
                 </div>
             </div>
@@ -59,9 +78,9 @@ export default function Calendar({ selectedDate, onSelectDate, onClose, datesWit
     const renderDays = () => {
         const days = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
         return (
-            <div className="grid grid-cols-7 mb-2 px-2">
+            <div className="grid grid-cols-7 mb-1 px-2">
                 {days.map(day => (
-                    <div key={day} className="text-center text-xs font-medium text-text-muted py-2">
+                    <div key={day} className="text-center text-[10px] font-medium text-text-muted py-1.5">
                         {day}
                     </div>
                 ))}
@@ -75,11 +94,10 @@ export default function Calendar({ selectedDate, onSelectDate, onClose, datesWit
         const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
         const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
-        const dateFormat = "d";
         const allDays = eachDayOfInterval({ start: startDate, end: endDate });
 
         return (
-            <div className="grid grid-cols-7 gap-1 px-2 pb-2">
+            <div className="grid grid-cols-7 gap-0.5 px-2 pb-2">
                 {allDays.map((dayItem) => {
                     const isSelected = isSameDay(dayItem, selectedDate);
                     const isCurrentMonth = isSameMonth(dayItem, monthStart);
@@ -97,18 +115,18 @@ export default function Calendar({ selectedDate, onSelectDate, onClose, datesWit
                                 onClose?.();
                             }}
                             className={`
-                                h-9 w-9 flex items-center justify-center rounded-lg text-sm transition-all relative
+                                h-8 w-8 flex items-center justify-center rounded-lg text-xs transition-all relative
                                 ${!isCurrentMonth ? 'text-text-muted/30' : 'text-text-primary'}
                                 ${isSelected ? 'bg-accent-blue text-white shadow-lg shadow-accent-blue/20 scale-105 font-medium' : 'hover:bg-background-hover'}
                                 ${isTodayDate && !isSelected ? 'text-accent-blue font-bold ring-1 ring-accent-blue/50' : ''}
                             `}
                         >
-                            {format(dayItem, dateFormat)}
+                            {format(dayItem, 'd')}
                             {hasLog && (
-                                <div className={`absolute bottom-1 w-1 h-1 rounded-full ${isSelected ? 'bg-text-primary' : 'bg-accent-green'}`}></div>
+                                <div className={`absolute bottom-0.5 w-1 h-1 rounded-full ${isSelected ? 'bg-text-primary' : 'bg-accent-green'}`}></div>
                             )}
                             {isTodayDate && !isSelected && !hasLog && (
-                                <div className="absolute bottom-1 w-1 h-1 bg-accent-blue rounded-full"></div>
+                                <div className="absolute bottom-0.5 w-1 h-1 bg-accent-blue rounded-full"></div>
                             )}
                         </button>
                     );
@@ -118,17 +136,17 @@ export default function Calendar({ selectedDate, onSelectDate, onClose, datesWit
     };
 
     return (
-        <div className="bg-background-card border border-border rounded-xl shadow-xl w-80 animate-fade-in overflow-hidden z-50">
+        <div className="bg-background-card border border-border rounded-xl shadow-xl w-72 animate-fade-in overflow-hidden z-50">
             {renderHeader()}
             {renderDays()}
             {renderCells()}
-            <div className="p-3 border-t border-border bg-background/50">
+            <div className="p-2 border-t border-border bg-background/50">
                 <button
                     onClick={() => {
                         onSelectDate(new Date());
                         onClose?.();
                     }}
-                    className="w-full py-2 text-sm text-accent-blue hover:bg-accent-blue/10 rounded-lg transition-colors font-medium"
+                    className="w-full py-1.5 text-xs text-accent-blue hover:bg-accent-blue/10 rounded-lg transition-colors font-medium"
                 >
                     Jump to Today
                 </button>

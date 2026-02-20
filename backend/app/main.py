@@ -20,7 +20,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy import text
 
 from app.database import engine, Base, get_db
-from app.routers import daily_logs, tasks, notes, snippets, bookmarks, search, sections, system, data, vault
+from app.routers import daily_logs, tasks, notes, snippets, bookmarks, search, sections, system, data, vault, entities, log_entries
 
 # Determine frontend static files location
 if getattr(sys, 'frozen', False):
@@ -55,19 +55,34 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
-            # Migration check: Add is_personal column if missing
+            # Migration check: Add missing columns to tasks table
             try:
-                # Check if is_personal column exists
                 result = await conn.execute(text("PRAGMA table_info(tasks)"))
-                columns = [row[1] for row in result.fetchall()]
+                task_columns = [row[1] for row in result.fetchall()]
 
-                if "is_personal" not in columns:
+                if "is_personal" not in task_columns:
                     logger.info("Adding missing 'is_personal' column to tasks table...")
                     await conn.execute(text("ALTER TABLE tasks ADD COLUMN is_personal BOOLEAN DEFAULT 0"))
                     logger.info("'is_personal' column added successfully")
+
+                if "deleted_at" not in task_columns:
+                    logger.info("Adding missing 'deleted_at' column to tasks table...")
+                    await conn.execute(text("ALTER TABLE tasks ADD COLUMN deleted_at DATETIME DEFAULT NULL"))
+                    logger.info("'deleted_at' column added to tasks successfully")
             except Exception as migration_error:
-                logger.error(f"Migration failed: {migration_error}")
-                # Continue anyway, as the column might exist or this is a fresh install
+                logger.error(f"Tasks migration failed: {migration_error}")
+
+            # Migration check: Add deleted_at to notes, snippets, bookmarks, entities
+            for table_name in ("notes", "snippets", "bookmarks", "entities"):
+                try:
+                    result = await conn.execute(text(f"PRAGMA table_info({table_name})"))
+                    existing_cols = [row[1] for row in result.fetchall()]
+                    if "deleted_at" not in existing_cols:
+                        logger.info(f"Adding missing 'deleted_at' column to {table_name} table...")
+                        await conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN deleted_at DATETIME DEFAULT NULL"))
+                        logger.info(f"'deleted_at' column added to {table_name} successfully")
+                except Exception as migration_error:
+                    logger.error(f"{table_name} migration failed: {migration_error}")
 
         logger.info("Database tables created successfully")
     except Exception as e:
@@ -186,6 +201,8 @@ app.include_router(search.router, prefix="/api/search", tags=["Search"])
 app.include_router(system.router, prefix="/api/system", tags=["System"])
 app.include_router(data.router, prefix="/api/data", tags=["Data"])
 app.include_router(vault.router, prefix="/api/vault", tags=["Vault"])
+app.include_router(entities.router, prefix="/api/entities", tags=["Entities"])
+app.include_router(log_entries.router, prefix="/api/log-entries", tags=["Log Entries"])
 
 
 @app.get("/api/health")

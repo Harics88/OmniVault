@@ -10,7 +10,7 @@ from sqlalchemy import select, desc
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models import DailyLog
+from app.models import DailyLog, LogEntry
 from app.schemas import DailyLogCreate, DailyLogUpdate, DailyLogResponse
 
 router = APIRouter()
@@ -20,15 +20,24 @@ router = APIRouter()
 async def get_daily_logs(
     search: Optional[str] = None,
     skip: int = Query(0, ge=0),
-    limit: int = Query(30, ge=1, le=100),
+    limit: int = Query(30, ge=1, le=1000),
     db: AsyncSession = Depends(get_db)
 ):
     """Get all daily logs, ordered by date descending, optionally filtered by search query"""
-    query = select(DailyLog).order_by(desc(DailyLog.date))
+    from sqlalchemy import or_
+    query = (
+        select(DailyLog)
+        .options(selectinload(DailyLog.log_entries).selectinload(LogEntry.entities))
+        .order_by(desc(DailyLog.date))
+    )
     
     if search:
         search_pattern = f"%{search}%"
-        query = query.where(DailyLog.content.ilike(search_pattern))
+        # Search in the main daily notebook content OR in individual entries
+        query = query.where(or_(
+            DailyLog.content.ilike(search_pattern),
+            DailyLog.log_entries.any(LogEntry.content.ilike(search_pattern))
+        ))
     
     result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
@@ -37,10 +46,14 @@ async def get_daily_logs(
 
 @router.get("/dates", response_model=List[date])
 async def get_log_dates(db: AsyncSession = Depends(get_db)):
-    """Get all dates that have daily logs with non-empty content"""
+    """Get all dates that have daily logs (with content OR log entries)"""
+    from sqlalchemy import or_
     result = await db.execute(
         select(DailyLog.date)
-        .where(DailyLog.content != "")
+        .where(or_(
+            DailyLog.content != "",
+            DailyLog.log_entries.any()
+        ))
         .where(DailyLog.content != "<p></p>")
         .where(DailyLog.content.isnot(None))
         .order_by(desc(DailyLog.date))
@@ -53,7 +66,9 @@ async def get_today_log(db: AsyncSession = Depends(get_db)):
     """Get or create today's log"""
     today = date.today()
     result = await db.execute(
-        select(DailyLog).where(DailyLog.date == today)
+        select(DailyLog)
+        .where(DailyLog.date == today)
+        .options(selectinload(DailyLog.log_entries).selectinload(LogEntry.entities))
     )
     log = result.scalar_one_or_none()
     
@@ -73,7 +88,9 @@ async def get_log_by_date(
 ):
     """Get log for a specific date"""
     result = await db.execute(
-        select(DailyLog).where(DailyLog.date == log_date)
+        select(DailyLog)
+        .where(DailyLog.date == log_date)
+        .options(selectinload(DailyLog.log_entries).selectinload(LogEntry.entities))
     )
     log = result.scalar_one_or_none()
     

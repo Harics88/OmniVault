@@ -10,6 +10,8 @@ interface TaskRowProps {
     onDelete: (taskId: number) => void;
     onEditClick: (task: Task) => void;
     isMuted?: boolean;
+    isSelected?: boolean;
+    onSelect?: (taskId: number) => void;
 }
 
 const statusConfig: Record<string, any> = {
@@ -25,7 +27,7 @@ const priorityConfig: Record<string, { color: string, fill: string, icon: any, c
     HIGH: { color: 'text-orange-400', fill: 'currentColor', icon: Triangle },
 };
 
-export default function TaskRow({ task, onClick, onStatusChange, onDelete, onEditClick, isMuted }: TaskRowProps) {
+export default function TaskRow({ task, onClick, onStatusChange, onDelete, onEditClick, isMuted, isSelected, onSelect }: TaskRowProps) {
     const rowRef = useRef<HTMLDivElement>(null);
     const statusKey = (task.status || 'not_started').toUpperCase();
     const config = statusConfig[statusKey] || statusConfig.NOT_STARTED;
@@ -99,8 +101,18 @@ export default function TaskRow({ task, onClick, onStatusChange, onDelete, onEdi
             tabIndex={0}
             onClick={() => onClick(task)}
             onKeyDown={handleKeyDown}
-            className={`group relative flex items-center gap-2 p-4 bg-background-card hover:bg-background-hover border-b border-border last:border-0 transition-all cursor-pointer ${isMuted ? 'opacity-50' : ''} focus:outline-none focus:ring-2 focus:ring-accent-blue/50 focus:bg-background-hover`}
+            className={`group relative flex items-center gap-2 p-4 bg-background-card hover:bg-background-hover border-b border-border last:border-0 transition-all cursor-pointer ${isMuted ? 'opacity-50' : ''} ${isSelected ? 'bg-accent-blue/10' : ''} focus:outline-none focus:ring-2 focus:ring-accent-blue/50 focus:bg-background-hover`}
         >
+            {/* Selection Checkbox */}
+            <div
+                className={`w-4 h-4 rounded border transition-all flex items-center justify-center shrink-0 z-20 ${isSelected ? 'bg-accent-blue border-accent-blue' : 'border-border group-hover:border-text-muted opacity-30 group-hover:opacity-100'}`}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    if (onSelect) onSelect(task.id);
+                }}
+            >
+                {isSelected && <Check size={12} className="text-white" strokeWidth={4} />}
+            </div>
             {/* Title Section */}
             <div className="flex-1 min-w-[400px] max-w-[400px]">
                 <h4 className={`m-0 font-medium truncate ${statusKey === 'DONE' ? 'text-text-muted line-through' : 'text-text-primary'}`} title={task.title.length > 50 ? task.title : undefined}>

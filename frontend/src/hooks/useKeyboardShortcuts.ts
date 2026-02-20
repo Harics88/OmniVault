@@ -1,13 +1,28 @@
-import { useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useCallback, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
+/**
+ * Global keyboard shortcuts hook for MyTasker.
+ * Handles navigation chords (g + h, g + t, etc.) and global modifiers.
+ */
 export function useKeyboardShortcuts() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [lastKey, setLastKey] = useState<{ key: string, time: number } | null>(null);
 
     const handleKeyDown = useCallback((event: KeyboardEvent) => {
-        // Ignore if input/textarea is focused
-        if (['INPUT', 'TEXTAREA', 'SELECT'].includes((event.target as HTMLElement).tagName) || (event.target as HTMLElement).isContentEditable) {
+        // 1. Ignore if user is typing in an input, textarea, or contentEditable
+        const target = event.target as HTMLElement;
+        const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
+            target.isContentEditable ||
+            target.closest('.ProseMirror'); // Tiptap editor
+
+        if (isInput) {
+            // Only allow Cmd/Ctrl + Enter inside editors for task creation
+            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                window.dispatchEvent(new CustomEvent('create-task-from-line'));
+                return;
+            }
             return;
         }
 
@@ -15,107 +30,79 @@ export function useKeyboardShortcuts() {
         const modKey = isMac ? event.metaKey : event.ctrlKey;
         const now = Date.now();
 
-        // Single Key Shortcuts (when no modifier)
+        // 2. Single Key Shortcuts (No modifiers)
         if (!modKey && !event.shiftKey && !event.altKey) {
-            // '/' for Search
+            // '/' or 'k' for Command Palette (Legacy support, CommandPalette.tsx also handles this)
             if (event.key === '/') {
-                event.preventDefault();
-                window.dispatchEvent(new CustomEvent('open-search'));
+                // CommandPalette handles its own toggle, we just prevent default if needed
                 return;
             }
 
-            // 'c' for Create (Generic)
-            if (event.key === 'c') {
-                // If on tasks page, might trigger new task.
-                // For now, let's make it smart based on route, or open command palette
-                // window.dispatchEvent(new CustomEvent('open-command-palette'));
-                return;
-            }
-
-            // '?' for Help
+            // '?' for Help / Shortcuts
             if (event.key === '?') {
-                 navigate('/shortcuts');
-                 return;
+                navigate('/shortcuts');
+                return;
             }
 
-            // G-Chord Navigation (g then ...)
+            // G-Chord Navigation (Gmail/GitHub style: g then h, t, n, etc.)
             if (event.key === 'g') {
                 setLastKey({ key: 'g', time: now });
                 return;
             }
 
-            // Check for chords
+            // Handle chords
             if (lastKey && lastKey.key === 'g' && (now - lastKey.time) < 1000) {
-                setLastKey(null); // Reset
+                setLastKey(null);
                 switch (event.key) {
                     case 'h': navigate('/'); return;
+                    case 'd': navigate('/daily-log'); return;
                     case 't': navigate('/tasks'); return;
                     case 'n': navigate('/notes'); return;
                     case 's': navigate('/snippets'); return;
                     case 'b': navigate('/bookmarks'); return;
-                    case 'd': navigate('/daily-log'); return;
+                    case 'v': navigate('/vault'); return;
+                    case 'r': navigate('/recycle-bin'); return;
+                    case ',': navigate('/settings'); return;
                 }
             }
         }
 
-        // Original Modifier Shortcuts (Keep for backward compat)
+        // 3. Modifier Shortcuts
 
-        // Cmd/Ctrl + D - Go to today's daily log
-        if (modKey && event.key === 'd') {
+        // Ctrl/Cmd + K - Command Palette (Primary)
+        if (modKey && event.key === 'k') {
+            // Handled by CommandPalette.tsx
+            return;
+        }
+
+        // Alt + D - Quick jump to today (Alternative to Ctrl+D which conflicts with browser bookmark)
+        if (event.altKey && event.key === 'd') {
             event.preventDefault();
             navigate('/daily-log');
+            return;
         }
 
-        // Cmd/Ctrl + K - Open search (implemented via SearchModal)
-        if (modKey && event.key === 'k') {
+        // Alt + N - Quick create new note (Alternative to Ctrl+N which opens new window)
+        if (event.altKey && event.key === 'n') {
             event.preventDefault();
-            // Dispatch custom event for search modal
-            window.dispatchEvent(new CustomEvent('open-search'));
+            navigate('/notes?new=true');
+            return;
         }
 
-        // Cmd/Ctrl + Shift + C - Create new snippet
-        if (modKey && event.shiftKey && event.key === 'C') {
-            event.preventDefault();
-            window.dispatchEvent(new CustomEvent('create-snippet'));
-        }
-
-        // Cmd/Ctrl + Enter - Create task from current line (in daily log)
-        if (modKey && event.key === 'Enter') {
-            // This will be handled by the DailyLog component
-            window.dispatchEvent(new CustomEvent('create-task-from-line'));
-        }
-
-        // Escape - Close modals/panels
+        // Escape - Global close / back
         if (event.key === 'Escape') {
+            // TaskPopout handle this internally, but we can trigger global clear
             window.dispatchEvent(new CustomEvent('close-modal'));
         }
 
-        // Navigation shortcuts (Legacy)
-        if (modKey && event.shiftKey) {
-            switch (event.key) {
-                case 'H':
-                    event.preventDefault();
-                    navigate('/');
-                    break;
-                case 'T':
-                    event.preventDefault();
-                    navigate('/tasks');
-                    break;
-                case 'N':
-                    event.preventDefault();
-                    navigate('/notes');
-                    break;
-                case 'S':
-                    event.preventDefault();
-                    navigate('/snippets');
-                    break;
-                case 'B':
-                    event.preventDefault();
-                    navigate('/bookmarks');
-                    break;
-            }
-        }
     }, [navigate, lastKey]);
+
+    // Reset lastKey if too much time passes
+    useEffect(() => {
+        if (!lastKey) return;
+        const timer = setTimeout(() => setLastKey(null), 1000);
+        return () => clearTimeout(timer);
+    }, [lastKey]);
 
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown);
@@ -123,24 +110,28 @@ export function useKeyboardShortcuts() {
     }, [handleKeyDown]);
 }
 
-// Hook for auto-save functionality
+/**
+ * Hook for auto-save functionality
+ */
 export function useAutoSave(
     content: string,
     saveFunction: (content: string) => Promise<void>,
     delay = 1000
 ) {
     useEffect(() => {
+        if (!content) return;
+
         const timer = setTimeout(() => {
-            if (content) {
-                saveFunction(content);
-            }
+            saveFunction(content);
         }, delay);
 
         return () => clearTimeout(timer);
     }, [content, saveFunction, delay]);
 }
 
-// Hook for debouncing
+/**
+ * Simple debounce hook
+ */
 export function useDebounce<T>(value: T, delay: number): T {
     const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
@@ -149,12 +140,8 @@ export function useDebounce<T>(value: T, delay: number): T {
             setDebouncedValue(value);
         }, delay);
 
-        return () => {
-            clearTimeout(handler);
-        };
+        return () => clearTimeout(handler);
     }, [value, delay]);
 
     return debouncedValue;
 }
-
-import { useState } from 'react';

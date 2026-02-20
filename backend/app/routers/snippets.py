@@ -7,6 +7,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, or_
+from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models import Snippet
@@ -37,7 +38,7 @@ async def get_snippets(
     db: AsyncSession = Depends(get_db)
 ):
     """Get all snippets with optional filtering"""
-    query = select(Snippet).order_by(desc(Snippet.is_pinned), desc(Snippet.updated_at))
+    query = select(Snippet).options(selectinload(Snippet.entities)).order_by(desc(Snippet.is_pinned), desc(Snippet.updated_at))
     
     if language:
         query = query.where(Snippet.language == language.lower())
@@ -64,6 +65,7 @@ async def get_recent_snippets(
     """Get recent snippets for home screen"""
     result = await db.execute(
         select(Snippet)
+        .options(selectinload(Snippet.entities))
         .order_by(desc(Snippet.updated_at))
         .limit(limit)
     )
@@ -77,7 +79,7 @@ async def get_snippet(
 ):
     """Get a specific snippet by ID"""
     result = await db.execute(
-        select(Snippet).where(Snippet.id == snippet_id)
+        select(Snippet).options(selectinload(Snippet.entities)).where(Snippet.id == snippet_id)
     )
     snippet = result.scalar_one_or_none()
     
@@ -99,8 +101,12 @@ async def create_snippet(
     snippet = Snippet(**data)
     db.add(snippet)
     await db.commit()
-    await db.refresh(snippet)
-    return snippet
+    
+    # Reload with entities to satisfy ResponseModel
+    result = await db.execute(
+        select(Snippet).options(selectinload(Snippet.entities)).where(Snippet.id == snippet.id)
+    )
+    return result.scalar_one()
 
 
 @router.put("/{snippet_id}", response_model=SnippetResponse)
@@ -125,10 +131,13 @@ async def update_snippet(
     for field, value in update_data.items():
         setattr(snippet, field, value)
     
-    snippet.updated_at = datetime.utcnow()
     await db.commit()
-    await db.refresh(snippet)
-    return snippet
+    
+    # Reload with entities to satisfy ResponseModel
+    result = await db.execute(
+        select(Snippet).options(selectinload(Snippet.entities)).where(Snippet.id == snippet.id)
+    )
+    return result.scalar_one()
 
 
 @router.delete("/{snippet_id}")

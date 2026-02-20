@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+
 import { Plus, Bookmark, Search, Loader2, X, FolderPlus, Globe, FileText, Palette, Check } from 'lucide-react';
 import { bookmarksApi } from '../lib/api';
 import type { Bookmark as BookmarkType, BookmarkCategory, CreateBookmark, UpdateBookmark, CreateBookmarkCategory, UpdateBookmarkCategory } from '../types';
+import { useToast } from '../components/Toast';
+
 import BookmarkCategoryCard from '../components/BookmarkCategoryCard';
 import ConfirmModal from '../components/ConfirmModal';
 
 export default function Bookmarks() {
     const queryClient = useQueryClient();
+    const { showToast } = useToast();
     const location = useLocation();
     const navigate = useNavigate();
     const [searchInput, setSearchInput] = useState('');
@@ -47,28 +51,39 @@ export default function Bookmarks() {
     const { data: bookmarks = [], isLoading: bookmarksLoading } = useQuery({
         queryKey: ['bookmarks', searchQuery],
         queryFn: () => bookmarksApi.getAll({ search: searchQuery }),
+        placeholderData: keepPreviousData,
     });
+
 
     // Mutations - Categories
     const createCategoryMutation = useMutation({
-        mutationFn: (category: CreateBookmarkCategory) => bookmarksApi.createCategory(category),
+        mutationFn: (cat: CreateBookmarkCategory) => bookmarksApi.createCategory(cat),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['bookmark-categories'] });
             setIsCreatingCategory(false);
+            showToast('Category created ✓');
         },
+        onError: () => showToast('Failed to create category'),
     });
 
     const updateCategoryMutation = useMutation({
-        mutationFn: ({ id, category }: { id: number; category: UpdateBookmarkCategory }) => bookmarksApi.updateCategory(id, category),
+        mutationFn: ({ id, category: data }: { id: number; category: UpdateBookmarkCategory }) => bookmarksApi.updateCategory(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['bookmark-categories'] });
             setEditingCategory(null);
+            showToast('Category updated ✓');
         },
+        onError: () => showToast('Failed to update category'),
     });
 
     const deleteCategoryMutation = useMutation({
         mutationFn: (id: number) => bookmarksApi.deleteCategory(id),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookmark-categories'] }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['bookmark-categories'] });
+            queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+            showToast('Category deleted');
+        },
+        onError: () => showToast('Failed to delete category'),
     });
 
     // Mutations - Bookmarks
@@ -79,14 +94,34 @@ export default function Bookmarks() {
             queryClient.invalidateQueries({ queryKey: ['system'] });
             setIsCreatingBookmark(false);
             setSelectedCategoryId(null);
+            showToast('Bookmark added ✓');
         },
+        onError: () => showToast('Failed to add bookmark'),
     });
 
     const updateBookmarkMutation = useMutation({
-        mutationFn: ({ id, bookmark }: { id: number; bookmark: UpdateBookmark }) => bookmarksApi.update(id, bookmark),
-        onSuccess: () => {
+        mutationFn: ({ id, bookmark: data }: { id: number; bookmark: UpdateBookmark }) => bookmarksApi.update(id, data),
+        onMutate: async ({ id, bookmark }) => {
+            await queryClient.cancelQueries({ queryKey: ['bookmarks'] });
+            const previousBookmarks = queryClient.getQueryData(['bookmarks']);
+
+            queryClient.setQueryData(['bookmarks'], (old: any) => {
+                if (!old) return [];
+                return old.map((b: any) => b.id === id ? { ...b, ...bookmark } : b);
+            });
+
+            return { previousBookmarks };
+        },
+        onError: (_err, _variables, context) => {
+            if (context?.previousBookmarks) {
+                queryClient.setQueryData(['bookmarks'], context.previousBookmarks);
+            }
+            showToast('Failed to update bookmark');
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
             setEditingBookmark(null);
+            showToast('Bookmark saved ✓');
         },
     });
 
@@ -95,8 +130,11 @@ export default function Bookmarks() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
             queryClient.invalidateQueries({ queryKey: ['system'] });
+            showToast('Bookmark deleted');
         },
+        onError: () => showToast('Failed to delete bookmark'),
     });
+
 
     const openBookmarkMutation = useMutation({
         mutationFn: (id: number) => bookmarksApi.open(id),

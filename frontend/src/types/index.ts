@@ -3,10 +3,36 @@
 export type TaskStatus = 'not_started' | 'in_progress' | 'done';
 export type TaskPriority = 'low' | 'medium' | 'high';
 
+export type EntityType = 'server' | 'database' | 'project' | 'client' | 'service' | 'environment';
+export type LogEntryType = 'work' | 'meeting' | 'note' | 'issue' | 'task_completion' | 'communication' | 'learning' | 'idea';
+
+export interface Entity {
+    id: number;
+    type: EntityType;
+    name: string;
+    aliases: string;
+    status: string;
+    meta_json: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface LogEntry {
+    id: number;
+    log_date: string;
+    type: LogEntryType;
+    content: string;
+    timestamp: string;
+    entities: Entity[];
+    created_at: string;
+    updated_at: string;
+}
+
 export interface DailyLog {
     id: number;
     date: string;
     content: string;
+    log_entries: LogEntry[];
     created_at: string;
     updated_at: string;
 }
@@ -32,32 +58,9 @@ export interface Task {
     is_personal: boolean;
     order: number;
     subtasks: Subtask[];
+    entities: Entity[];
     created_at: string;
     updated_at: string;
-}
-
-// ... (skipping unchanged parts)
-
-export interface CreateTask {
-    title: string;
-    description?: string;
-    status?: TaskStatus;
-    priority?: TaskPriority;
-    due_date?: string | null;
-    is_personal?: boolean;
-    subtasks?: CreateSubtask[];
-}
-
-export interface UpdateTask {
-    title?: string;
-    description?: string;
-    status?: TaskStatus;
-    priority?: TaskPriority;
-    due_date?: string | null;
-    started_at?: string | null;
-    completed_at?: string | null;
-    is_personal?: boolean;
-    order?: number;
 }
 
 export interface NoteSection {
@@ -80,6 +83,7 @@ export interface Note {
     is_pinned: boolean;
     tags: string;
     section: NoteSection | null;
+    entities: Entity[];
     deleted_at?: string | null;
     created_at: string;
     updated_at: string;
@@ -112,6 +116,7 @@ export interface Snippet {
     language: string;
     is_pinned: boolean;
     description: string;
+    entities: Entity[];
     created_at: string;
     updated_at: string;
 }
@@ -133,18 +138,21 @@ export interface Bookmark {
     icon: string | null;
     is_file: boolean;
     order: number;
+    entities: Entity[];
     created_at: string;
     updated_at: string;
 }
 
 export interface SearchResult {
-    type: 'task' | 'note' | 'snippet' | 'bookmark' | 'daily_log';
+    type: 'task' | 'note' | 'snippet' | 'bookmark' | 'daily_log' | 'entity';
     id: number;
     title: string;
     preview: string;
     updated_at: string;
     metadata?: {
         date?: string;
+        type?: string;
+        status?: string;
     };
 }
 
@@ -154,6 +162,7 @@ export interface LinkableItems {
     snippets: { id: number; title: string; language: string }[];
     bookmarks: { id: number; title: string; url: string }[];
     daily_logs: { id: number; title: string; date: string }[];
+    entities: { id: number; title: string; type: string }[];
 }
 
 // Subtask types
@@ -274,6 +283,37 @@ export interface UpdateBookmark {
     order?: number;
 }
 
+export interface CreateEntity {
+    type: EntityType;
+    name: string;
+    aliases?: string;
+    status?: string;
+    meta_json?: string;
+}
+
+export interface UpdateEntity {
+    type?: EntityType;
+    name?: string;
+    aliases?: string;
+    status?: string;
+    meta_json?: string;
+}
+
+export interface CreateLogEntry {
+    log_date: string;
+    type: LogEntryType;
+    content: string;
+    timestamp?: string;
+    entity_ids?: number[];
+}
+
+export interface UpdateLogEntry {
+    type?: LogEntryType;
+    content?: string;
+    timestamp?: string;
+    entity_ids?: number[];
+}
+
 // Vault/Secret types
 export type SecretType = 'database' | 'sftp' | 'website';
 
@@ -336,4 +376,3 @@ export interface ConnectionString {
     database: string;
     db_type: string;
 }
-

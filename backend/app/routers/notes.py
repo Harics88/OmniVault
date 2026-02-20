@@ -102,7 +102,7 @@ async def get_notes(
 ):
     """Get all notes with optional search, parent, section, and pin filters (excluding deleted)"""
     try:
-        query = select(Note).options(selectinload(Note.section)).where(
+        query = select(Note).options(selectinload(Note.section), selectinload(Note.entities)).where(
             Note.deleted_at.is_(None)
         ).order_by(
             desc(Note.is_pinned),  # Pinned first
@@ -111,7 +111,7 @@ async def get_notes(
         )
     except Exception:
         # Fallback if deleted_at column doesn't exist
-        query = select(Note).options(selectinload(Note.section)).order_by(
+        query = select(Note).options(selectinload(Note.section), selectinload(Note.entities)).order_by(
             desc(Note.is_pinned),
             asc(Note.position),
             desc(Note.updated_at)
@@ -153,6 +153,7 @@ async def get_recent_notes(
     try:
         result = await db.execute(
             select(Note)
+            .options(selectinload(Note.section), selectinload(Note.entities))
             .where(Note.deleted_at.is_(None))
             .order_by(desc(Note.updated_at))
             .limit(limit)
@@ -161,6 +162,7 @@ async def get_recent_notes(
         # Fallback if deleted_at column doesn't exist
         result = await db.execute(
             select(Note)
+            .options(selectinload(Note.section), selectinload(Note.entities))
             .order_by(desc(Note.updated_at))
             .limit(limit)
         )
@@ -174,7 +176,7 @@ async def get_note(
 ):
     """Get a specific note by ID"""
     result = await db.execute(
-        select(Note).options(selectinload(Note.section)).where(Note.id == note_id)
+        select(Note).options(selectinload(Note.section), selectinload(Note.entities)).where(Note.id == note_id)
     )
     note = result.scalar_one_or_none()
     
@@ -197,7 +199,7 @@ async def create_note(
     
     # Reload with section to satisfy ResponseModel
     result = await db.execute(
-        select(Note).options(selectinload(Note.section)).where(Note.id == note.id)
+        select(Note).options(selectinload(Note.section), selectinload(Note.entities)).where(Note.id == note.id)
     )
     return result.scalar_one()
 
@@ -227,7 +229,7 @@ async def update_note(
     
     # Reload with section to satisfy ResponseModel
     result = await db.execute(
-        select(Note).options(selectinload(Note.section)).where(Note.id == note.id)
+        select(Note).options(selectinload(Note.section), selectinload(Note.entities)).where(Note.id == note.id)
     )
     return result.scalar_one()
 
@@ -265,7 +267,7 @@ async def get_deleted_notes(
     """Get all deleted notes (recycle bin)"""
     result = await db.execute(
         select(Note)
-        .options(selectinload(Note.section))
+        .options(selectinload(Note.section), selectinload(Note.entities))
         .where(Note.deleted_at.isnot(None))
         .order_by(desc(Note.deleted_at))
     )

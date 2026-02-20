@@ -7,17 +7,16 @@ export default {
     theme: {
         extend: {
             colors: {
-                // Dark mode palette
                 background: {
-                    DEFAULT: '#0F1117',
-                    card: '#151922',
-                    hover: '#1C2230',
-                    elevated: '#1A1F2B',
+                    DEFAULT: '#0C0E14',
+                    card: '#12151C',
+                    hover: '#1A1E28',
+                    elevated: '#181C26',
                 },
                 text: {
-                    primary: '#E6E8EB',
-                    secondary: '#9CA3AF',
-                    muted: '#6B7280',
+                    primary: '#F0F2F5',
+                    secondary: '#8B93A5',
+                    muted: '#5C6478',
                 },
                 accent: {
                     blue: '#3B82F6',
@@ -25,15 +24,28 @@ export default {
                     amber: '#F59E0B',
                     green: '#22C55E',
                     red: '#EF4444',
+                    indigo: '#6366F1',
+                    'indigo-hover': '#4F46E5',
+                    violet: '#8B5CF6',
+                    rose: '#F43F5E',
                 },
                 border: {
-                    DEFAULT: '#2D3748',
-                    subtle: '#1F2937',
-                }
+                    DEFAULT: '#1E2330',
+                    subtle: '#171B24',
+                    active: '#2D3548',
+                },
+                // Entry type colors (can be themed later if needed)
+                entry: {
+                    work: '#6366F1',
+                    meeting: '#8B5CF6',
+                    issue: '#F43F5E',
+                    note: '#64748B',
+                    idea: '#F59E0B',
+                },
             },
             fontFamily: {
-                sans: ['Inter', 'system-ui', 'sans-serif'],
-                mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+                sans: ['IBM Plex Sans', 'Inter', 'system-ui', 'sans-serif'],
+                mono: ['IBM Plex Mono', 'JetBrains Mono', 'Fira Code', 'monospace'],
             },
             fontSize: {
                 'xs': ['12px', '16px'],
@@ -53,13 +65,20 @@ export default {
                 'card': '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2)',
                 'card-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3)',
                 'elevated': '0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3)',
+                'elevated-heavy': '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
                 'glow-blue': '0 0 20px rgba(59, 130, 246, 0.3)',
+                'glow-indigo': '0 0 20px rgba(99, 102, 241, 0.25)',
             },
             animation: {
-                'fade-in': 'fadeIn 0.2s ease-out',
-                'slide-up': 'slideUp 0.3s ease-out',
-                'slide-in-right': 'slideInRight 0.3s ease-out',
+                'fade-in': 'fadeIn 0.15s ease-out',
+                'fade-in-slow': 'fadeIn 0.3s ease-out',
+                'slide-up': 'slideUp 0.15s ease-out',
+                'slide-up-slow': 'slideUp 0.25s ease-out',
+                'slide-in-right': 'slideInRight 0.15s ease-out',
+                'slide-down': 'slideDown 0.15s ease-out',
+                'scale-in': 'scaleIn 0.15s ease-out',
                 'pulse-subtle': 'pulseSubtle 2s infinite',
+                'expand': 'expand 0.2s ease-out',
             },
             keyframes: {
                 fadeIn: {
@@ -67,20 +86,35 @@ export default {
                     '100%': { opacity: '1' },
                 },
                 slideUp: {
-                    '0%': { opacity: '0', transform: 'translateY(10px)' },
+                    '0%': { opacity: '0', transform: 'translateY(8px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' },
+                },
+                slideDown: {
+                    '0%': { opacity: '0', transform: 'translateY(-8px)' },
                     '100%': { opacity: '1', transform: 'translateY(0)' },
                 },
                 slideInRight: {
-                    '0%': { opacity: '0', transform: 'translateX(20px)' },
+                    '0%': { opacity: '0', transform: 'translateX(16px)' },
                     '100%': { opacity: '1', transform: 'translateX(0)' },
+                },
+                scaleIn: {
+                    '0%': { opacity: '0', transform: 'scale(0.95)' },
+                    '100%': { opacity: '1', transform: 'scale(1)' },
                 },
                 pulseSubtle: {
                     '0%, 100%': { opacity: '1' },
                     '50%': { opacity: '0.7' },
                 },
+                expand: {
+                    '0%': { opacity: '0', maxHeight: '0' },
+                    '100%': { opacity: '1', maxHeight: '500px' },
+                },
             },
             backdropBlur: {
                 'xs': '2px',
+            },
+            transitionDuration: {
+                '150': '150ms',
             },
         },
     },

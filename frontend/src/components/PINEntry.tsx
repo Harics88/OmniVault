@@ -6,7 +6,7 @@ const API_BASE = '/api';
 
 interface PINEntryProps {
     mode: 'setup' | 'verify';
-    onSuccess: () => void;
+    onSuccess: (pin: string) => void;
     onCancel?: () => void;
 }
 
@@ -143,7 +143,7 @@ const PINEntry: React.FC<PINEntryProps> = ({ mode, onSuccess, onCancel }) => {
                     }
 
                     setLoading(false);
-                    onSuccess();
+                    onSuccess(pin);
                 }
             } else {
                 // Verify PIN
@@ -164,7 +164,7 @@ const PINEntry: React.FC<PINEntryProps> = ({ mode, onSuccess, onCancel }) => {
                 }
 
                 setLoading(false);
-                onSuccess();
+                onSuccess(pin);
             }
         } catch (err: any) {
             setError(err.message || 'An error occurred');

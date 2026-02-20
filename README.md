@@ -64,9 +64,10 @@ Omni Vault is now available in **two flavors** - choose the one that fits your w
 - **Priority levels:** Low, Medium, High (with visual color-coding).
 - **Progress Tracking**: Real-time progress bars for tasks and subtasks.
 - **Skeleton Loading**: Progressive content display for better perceived performance.
-- **Subtasks** with drag-and-drop reordering.
+- **Subtasks** with transactional edit mode: buffer additions, deletes, and reorders until Save is clicked.
 - Full-screen task detail popout with editable fields and date tracking.
 - Date tracking: Due Date, Started At, Completed At.
+
 
 ### 📄 **Notes**
 - Hierarchical folder structure with drag-and-drop.
@@ -102,13 +103,17 @@ Omni Vault is now available in **two flavors** - choose the one that fits your w
 ### 🔐 **Secure Vault**
 - Encrypted storage for sensitive credentials.
 - Dedicated templates for **Websites, Databases, and SFTP**.
+- **PBKDF2 PIN Hashing**: Strong 100k iteration hashing with unique salts.
+- **Fernet Secret Encryption**: High-security symmetric encryption for all passwords.
 - **Password Visibility Toggle**: Safe viewing in read-only mode without entering edit mode.
 - **4-digit PIN protection** with configurable auto-lock.
 - **Improved Feedback**: Snappy toast notifications for copy actions (password/connection strings).
 - **Fast Lock**: Instant clearing of sensitive data on manual lock.
 
-### 🎨 **UI/UX & Experience**
+### 🎨 UI/UX & Experience
+- **Performance Engine**: Database indexing for fast querying and consolidated dashboard metrics API.
 - **Skeleton Screens**: Smooth, non-jarring loading states for Tasks and Notes.
+- **App-wide Feedback**: Transactional subtask editing and toast notifications for all operations.
 - **Responsive Guard**: Automatic warning if the window is too narrow for an optimal experience.
 - **Offline Banner**: Instant real-time feedback when the backend connection is lost.
 - **Snappy Tech**: Standardized 200ms transitions for all modal and state changes.

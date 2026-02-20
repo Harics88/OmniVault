@@ -2,40 +2,77 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbar for dark mode */
+:root {
+  --background: #0C0E14;
+  --background-card: #12151C;
+  --background-hover: #1A1E28;
+  --background-elevated: #181C26;
+  --text-primary: #F0F2F5;
+  --text-secondary: #8B93A5;
+  --text-muted: #5C6478;
+  --border: #1E2330;
+  --border-subtle: #171B24;
+  --accent-blue: #3B82F6;
+  --accent-blue-hover: #2563EB;
+}
+
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0F1117;
+  background: var(--background);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2D3748;
+  background: var(--border);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3B82F6;
+  background: var(--accent-blue);
+}
+
+/* Selection and focus */
+::selection {
+  background: var(--accent-blue);
+  color: white;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text-primary);
+  @apply antialiased selection:bg-accent-blue/30;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-blue);
 }
 
 /* Selection */
 ::selection {
   background: rgba(59, 130, 246, 0.3);
-  color: #E6E8EB;
+  color: var(--text-primary);
 }
 
 /* Focus styles */
 *:focus-visible {
-  outline: 2px solid #3B82F6;
+  outline: 2px solid var(--accent-blue);
   outline-offset: 2px;
 }
 
 /* Base styles */
 body {
-  @apply bg-background text-text-primary font-sans antialiased;
+  background-color: var(--background);
+  color: var(--text-primary);
+  @apply font-sans antialiased;
   min-height: 100vh;
 }
 
@@ -51,6 +88,71 @@ body {
 
   .card-elevated {
     @apply bg-background-elevated shadow-elevated;
+  }
+
+  /* Modal animations */
+  .animate-scale-in {
+    animation: scale-in 0.2s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.15s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out both;
+  }
+
+  .animate-streak-glow {
+    animation: streak-glow 1.5s ease-out forwards;
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes streak-glow {
+    0% {
+      filter: brightness(1);
+    }
+
+    50% {
+      filter: brightness(1.6);
+    }
+
+    100% {
+      filter: brightness(1);
+    }
   }
 
   /* Button styles */
@@ -89,11 +191,11 @@ body {
   }
 
   .badge-amber {
-    @apply bg-accent-amber/20 text-accent-amber;
+    @apply bg-accent-amber bg-opacity-20 text-accent-amber;
   }
 
   .badge-green {
-    @apply bg-accent-green/20 text-accent-green;
+    @apply bg-accent-green bg-opacity-20 text-accent-green;
   }
 
   .badge-gray {
@@ -101,7 +203,7 @@ body {
   }
 
   .badge-blue {
-    @apply bg-accent-blue/20 text-accent-blue;
+    @apply bg-accent-blue bg-opacity-20 text-accent-blue;
   }
 
   /* Sidebar styles */
@@ -139,6 +241,94 @@ body {
   /* Tooltip */
   .tooltip {
     @apply absolute z-50 px-2 py-1 text-xs bg-background-elevated text-text-primary rounded shadow-card;
+  }
+
+  /* ============ Activity Log Styles ============ */
+
+  /* Entry type badges */
+  .entry-badge {
+    @apply inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider;
+  }
+
+  .entry-badge-work {
+    @apply bg-entry-work/15 text-entry-work;
+  }
+
+  .entry-badge-meeting {
+    @apply bg-entry-meeting/15 text-entry-meeting;
+  }
+
+  .entry-badge-issue {
+    @apply bg-entry-issue/15 text-entry-issue;
+  }
+
+  .entry-badge-note {
+    @apply bg-entry-note/15 text-entry-note;
+  }
+
+  .entry-badge-idea {
+    @apply bg-entry-idea/15 text-entry-idea;
+  }
+
+  /* Entity tag */
+  .entity-tag {
+    @apply inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent-indigo/10 text-accent-indigo border border-accent-indigo/20 hover:bg-accent-indigo/20 cursor-pointer transition-colors duration-150;
+  }
+
+  /* Timeline entry card */
+  .entry-card {
+    @apply relative flex gap-3 p-3 rounded-lg border border-transparent hover:bg-background-elevated hover:border-border transition-all duration-150;
+  }
+
+  .entry-card-expanded {
+    @apply bg-background-elevated border-border;
+  }
+
+  /* Timeline connector line */
+  .timeline-connector {
+    @apply absolute left-5 top-10 bottom-0 w-px bg-border;
+  }
+
+  .timeline-connector-last {
+    @apply bg-transparent;
+  }
+
+  /* Day header in timeline */
+  .day-header {
+    @apply flex items-center justify-between px-3 py-2 rounded-lg bg-background-card border border-border cursor-pointer hover:bg-background-hover transition-colors duration-150;
+  }
+
+  .day-header-today {
+    @apply border-accent-indigo/30 bg-accent-indigo/5;
+  }
+
+  /* Duration badge */
+  .duration-badge {
+    @apply inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-background-hover text-text-muted;
+  }
+
+  /* Quick action buttons on hover */
+  .entry-actions {
+    @apply absolute right-2 top-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150;
+  }
+
+  /* Sidebar filter button */
+  .filter-btn {
+    @apply flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-background-hover transition-colors duration-150;
+  }
+
+  .filter-btn-active {
+    @apply bg-background-hover text-text-primary;
+  }
+
+  /* Modal overlay */
+  .modal-overlay {
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in;
+  }
+
+  /* Modal content */
+  .modal-content {
+    @apply w-full max-w-lg bg-background-card border border-border rounded-xl shadow-elevated-heavy animate-scale-in;
   }
 }
 
@@ -237,6 +427,30 @@ body {
   overflow-x: auto !important;
   border: 1px solid #374151 !important;
   color: #E5E7EB !important;
+}
+
+.ProseMirror strong,
+.entry-content strong,
+.entry-content-modal strong {
+  font-weight: 700 !important;
+}
+
+.ProseMirror em,
+.entry-content em,
+.entry-content-modal em {
+  font-style: italic !important;
+}
+
+.ProseMirror u,
+.entry-content u,
+.entry-content-modal u {
+  text-decoration: underline !important;
+}
+
+.ProseMirror s,
+.entry-content s,
+.entry-content-modal s {
+  text-decoration: line-through !important;
 }
 
 .ProseMirror code {

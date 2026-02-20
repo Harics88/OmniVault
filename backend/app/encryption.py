@@ -9,7 +9,7 @@ import os
 import base64
 import json
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.fernet import Fernet
 from typing import Dict
 
@@ -25,7 +25,7 @@ def derive_key(master_password: str, salt: bytes) -> bytes:
     Returns:
         32-byte encryption key suitable for Fernet
     """
-    kdf = PBKDF2(
+    kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,

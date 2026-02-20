@@ -1,7 +1,7 @@
 from datetime import datetime, date
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, Field
-from app.models import TaskStatus, TaskPriority
+from app.models import TaskStatus, TaskPriority, EntityType, LogEntryType
 import enum
 
 
@@ -24,6 +24,67 @@ class DailyLogResponse(DailyLogBase):
     
     id: int
     date: date
+    created_at: datetime
+    updated_at: datetime
+    log_entries: List["LogEntryResponse"] = []
+
+
+# ============ Entity Schemas ============
+
+class EntityBase(BaseModel):
+    type: EntityType
+    name: str
+    aliases: Optional[str] = ""
+    status: str = "Active"
+    meta_json: str = "{}"
+
+
+class EntityCreate(EntityBase):
+    pass
+
+
+class EntityUpdate(BaseModel):
+    type: Optional[EntityType] = None
+    name: Optional[str] = None
+    aliases: Optional[str] = None
+    status: Optional[str] = None
+    meta_json: Optional[str] = None
+
+
+class EntityResponse(EntityBase):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+
+# ============ Log Entry Schemas ============
+
+class LogEntryBase(BaseModel):
+    type: LogEntryType
+    content: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+class LogEntryCreate(LogEntryBase):
+    log_date: date
+    entity_ids: Optional[List[int]] = []
+
+
+class LogEntryUpdate(BaseModel):
+    type: Optional[LogEntryType] = None
+    content: Optional[str] = None
+    timestamp: Optional[datetime] = None
+    entity_ids: Optional[List[int]] = None
+
+
+class LogEntryResponse(LogEntryBase):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
+    log_date: date
+    entities: List[EntityResponse] = []
     created_at: datetime
     updated_at: datetime
 
@@ -97,6 +158,7 @@ class TaskResponse(TaskBase):
     id: int
     order: int
     subtasks: List[SubtaskResponse] = []
+    entities: List[EntityResponse] = []
     created_at: datetime
     updated_at: datetime
 
@@ -161,6 +223,7 @@ class NoteResponse(NoteBase):
     created_at: datetime
     updated_at: datetime
     section: Optional[NoteSectionResponse] = None
+    entities: List[EntityResponse] = []
 
 
 # Forward reference for recursive children
@@ -218,6 +281,7 @@ class SnippetResponse(SnippetBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    entities: List[EntityResponse] = []
 
 
 # ============ Bookmark Category Schemas ============
@@ -277,6 +341,7 @@ class BookmarkResponse(BookmarkBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    entities: List[EntityResponse] = []
 
 
 
@@ -362,3 +427,5 @@ class PINVerify(BaseModel):
 class PINResponse(BaseModel):
     valid: bool
     message: Optional[str] = None
+# Resolve forward references
+DailyLogResponse.model_rebuild()

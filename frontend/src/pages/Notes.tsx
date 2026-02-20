@@ -1,4 +1,4 @@
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useEffect, ChangeEvent, lazy, Suspense } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -6,12 +6,14 @@ import {
     Plus, Search, Loader2, Trash2, ArrowLeft, Check, Pin, Edit3, ChevronDown,
     Folder, FolderOpen, FolderPlus, MoreHorizontal, ChevronRight, ChevronLeft, FileText
 } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { notesApi, sectionsApi } from '../lib/api';
-import type { Note, NoteSection, NoteTreeItem, NoteBreadcrumb, CreateNote, UpdateNote } from '../types';
+import type { Note, NoteSection, NoteTreeItem, NoteBreadcrumb, CreateNote, UpdateNote, UpdateNoteSection } from '../types';
 import ConfirmModal from '../components/ConfirmModal';
-import RichTextEditor from '../components/RichTextEditor';
+const RichTextEditor = lazy(() => import('../components/RichTextEditor'));
 import Breadcrumb from '../components/Breadcrumb';
 import Skeleton from '../components/Skeleton';
+import { useToast } from '../components/Toast';
 
 // Folder colors - 10 options
 const FOLDER_COLORS = [
@@ -57,6 +59,7 @@ export default function Notes() {
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedFolders, setExpandedFolders] = useState<Set<number>>(new Set());
     const [expandedNotes, setExpandedNotes] = useState<Set<number>>(new Set());
+    const { showToast } = useToast();
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -103,18 +106,66 @@ export default function Notes() {
     // Create note mutation
     const createMutation = useMutation({
         mutationFn: (note: CreateNote) => notesApi.create(note),
+        onMutate: async (newNote) => {
+            // Cancel outgoing refetches
+            await queryClient.cancelQueries({ queryKey: ['notes-tree'] });
+
+            // Snapshot previous tree
+            const previousTree = queryClient.getQueryData(['notes-tree']);
+
+            // Optimistically update the tree with a temporary entry
+            queryClient.setQueryData(['notes-tree'], (old: any) => {
+                const tempNote: NoteTreeItem = {
+                    id: -1, // Temporary ID
+                    title: newNote.title || 'Untitled',
+                    icon: newNote.icon || '📄',
+                    section_id: newNote.section_id || null,
+                    parent_id: newNote.parent_id || null,
+                    updated_at: new Date().toISOString(),
+                    created_at: new Date().toISOString(),
+                    position: 0,
+                    is_pinned: false,
+                    children: [],
+                };
+
+                if (newNote.parent_id) {
+                    const addToParent = (nodes: any[]): any[] => {
+                        return nodes.map(node => {
+                            if (node.id === newNote.parent_id) {
+                                return { ...node, children: [...(node.children || []), tempNote] };
+                            }
+                            if (node.children?.length) {
+                                return { ...node, children: addToParent(node.children) };
+                            }
+                            return node;
+                        });
+                    };
+                    return addToParent(old ? [...old] : []);
+                }
+
+                return [...(old || []), tempNote];
+            });
+
+            return { previousTree };
+        },
         onSuccess: (newNote: Note) => {
-            // Optimistically populate the note cache so it opens instantly
+            // Optimistically populate the note cache so it opens instantly - normalize to string ID
             queryClient.setQueryData(['note', newNote.id.toString()], newNote);
 
             // Navigate immediately for fast UX
             navigate(`/notes/${newNote.id}`);
 
-            // Background refreshes - don't await to avoid delaying navigation
+            // Replace the temporary ID in the tree or just refetch
             refetchTree();
             queryClient.invalidateQueries({ queryKey: ['folders'] });
             queryClient.invalidateQueries({ queryKey: ['notes'] });
             queryClient.invalidateQueries({ queryKey: ['system'] });
+        },
+        onError: (_err, _newNote, context) => {
+            if (context?.previousTree) {
+                queryClient.setQueryData(['notes-tree'], context.previousTree);
+            }
+            showToast('Failed to create note');
         },
     });
 
@@ -122,17 +173,67 @@ export default function Notes() {
     const updateMutation = useMutation({
         mutationFn: ({ id, data }: { id: number; data: UpdateNote }) =>
             notesApi.update(id, data),
-        onSuccess: async () => {
-            // Force immediate tree refetch for sidebar updates
-            await refetchTree();
-            // Invalidate note and folders
-            await Promise.all([
-                queryClient.invalidateQueries({ queryKey: ['note'] }),
-                queryClient.invalidateQueries({ queryKey: ['notes'] }),
-                queryClient.invalidateQueries({ queryKey: ['system'] }),
-                queryClient.invalidateQueries({ queryKey: ['note-breadcrumb'] }),
-                queryClient.invalidateQueries({ queryKey: ['folders'] }),
-            ]);
+        onMutate: async ({ id, data }) => {
+            // Cancel outgoing refetches
+            await queryClient.cancelQueries({ queryKey: ['note', id.toString()] });
+            await queryClient.cancelQueries({ queryKey: ['notes-tree'] });
+
+            // Snapshot current states
+            const previousNote = queryClient.getQueryData(['note', id.toString()]);
+            const previousTree = queryClient.getQueryData(['notes-tree']);
+
+            // 1. Optimistically update the specific note cache
+            if (previousNote) {
+                queryClient.setQueryData(['note', id.toString()], (old: any) => ({
+                    ...old,
+                    ...data,
+                    updated_at: new Date().toISOString(),
+                }));
+            }
+
+            // 2. Optimistically update the tree for sidebar reflection
+            if (previousTree) {
+                queryClient.setQueryData(['notes-tree'], (oldTree: any) => {
+                    if (!oldTree) return [];
+
+                    const updateNode = (nodes: any[]): any[] => {
+                        return nodes.map(node => {
+                            if (node.id === id) {
+                                return { ...node, ...data };
+                            }
+                            if (node.children && node.children.length > 0) {
+                                return { ...node, children: updateNode(node.children) };
+                            }
+                            return node;
+                        });
+                    };
+
+                    return updateNode(oldTree);
+                });
+            }
+
+            return { previousNote, previousTree };
+        },
+        onError: (_err, { id }, context) => {
+            // Rollback on error
+            if (context?.previousNote) {
+                queryClient.setQueryData(['note', id.toString()], context.previousNote);
+            }
+            if (context?.previousTree) {
+                queryClient.setQueryData(['notes-tree'], context.previousTree);
+            }
+            showToast('Failed to save changes');
+        },
+        onSuccess: (updatedNote: Note, { id }) => {
+            showToast('Changes saved');
+            // Immediately update cache with server response (source of truth)
+            queryClient.setQueryData(['note', id.toString()], updatedNote);
+            // Background refreshes for sidebar/tree consistency
+            refetchTree();
+            queryClient.invalidateQueries({ queryKey: ['notes'] });
+            queryClient.invalidateQueries({ queryKey: ['system'] });
+            queryClient.invalidateQueries({ queryKey: ['note-breadcrumb'] });
+            queryClient.invalidateQueries({ queryKey: ['folders'] });
         },
     });
 
@@ -174,13 +275,25 @@ export default function Notes() {
                 queryClient.setQueryData(['notes-tree'], context.previousTree);
             }
         },
-        onSettled: () => {
-            // Background sync - refetch to ensure consistency
+        onSuccess: (_data, deletedId) => {
+            showToast('Note moved to Recycle Bin', {
+                label: 'Undo',
+                onClick: () => {
+                    notesApi.restore(deletedId).then(() => {
+                        refetchTree();
+                        showToast('Note restored');
+                    });
+                }
+            });
+            // Background sync
             refetchTree();
             queryClient.invalidateQueries({ queryKey: ['folders'] });
             queryClient.invalidateQueries({ queryKey: ['notes'] });
             queryClient.invalidateQueries({ queryKey: ['system'] });
-            queryClient.invalidateQueries({ queryKey: ['deleted-notes'] }); // Update recycle bin
+            queryClient.invalidateQueries({ queryKey: ['deleted-notes'] });
+        },
+        onSettled: () => {
+            // Already handled in onSuccess
         },
     });
 
@@ -194,7 +307,7 @@ export default function Notes() {
     });
 
     const updateFolderMutation = useMutation({
-        mutationFn: ({ id, data }: { id: number; data: { name?: string; color?: string } }) =>
+        mutationFn: ({ id, data }: { id: number; data: UpdateNoteSection }) =>
             sectionsApi.update(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['folders'] });
@@ -352,83 +465,181 @@ export default function Notes() {
         }, []);
     };
 
+    // DND Handler
+    const handleDragEnd = (result: any) => {
+        const { destination, source, draggableId, type } = result;
+
+        if (!destination) return;
+        if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+
+        // 1. Handle Folder Reordering
+        if (type === 'folder') {
+            const reorderedFolders = Array.from(folders);
+            const [removed] = reorderedFolders.splice(source.index, 1);
+            reorderedFolders.splice(destination.index, 0, removed);
+
+            // Optimistic update
+            queryClient.setQueryData(['folders'], reorderedFolders);
+
+            // Backend sync (pessimistic)
+            // We'll update only the dragged folder's position for simplicity, 
+            // or we could send a bulk reorder if the API supported it.
+            // Since we don't have bulk reorder for sections, let's update individual positions.
+            reorderedFolders.forEach((f, idx) => {
+                if (f.position !== idx) {
+                    updateFolderMutation.mutate({ id: f.id, data: { position: idx } });
+                }
+            });
+            return;
+        }
+
+        // 2. Handle Note Reordering/Moving
+        if (type === 'note') {
+            const noteId = parseInt(draggableId.replace('note-', ''));
+            const destFolderId = destination.droppableId === 'unfiled' ? null : parseInt(destination.droppableId.replace('folder-', ''));
+
+            // Optimistic update of the tree
+            queryClient.setQueryData(['notes-tree'], (oldTree: NoteTreeItem[] | undefined) => {
+                if (!oldTree) return [];
+                const newTree = [...oldTree];
+
+                // Find and remove from source
+                let draggedNote: NoteTreeItem | null = null;
+                const removeFromSource = (nodes: NoteTreeItem[]): NoteTreeItem[] => {
+                    return nodes.filter(node => {
+                        if (node.id === noteId) {
+                            draggedNote = node;
+                            return false;
+                        }
+                        if (node.children?.length) {
+                            node.children = removeFromSource(node.children);
+                        }
+                        return true;
+                    });
+                };
+
+                const treeWithoutNote = removeFromSource(newTree);
+
+                if (!draggedNote) return oldTree;
+
+                // Update note metadata
+                const updatedNote = {
+                    ...(draggedNote as NoteTreeItem),
+                    section_id: destFolderId,
+                    position: destination.index
+                };
+
+                // Add to destination
+                if (destFolderId === null) {
+                    treeWithoutNote.splice(destination.index, 0, updatedNote);
+                    return treeWithoutNote;
+                } else {
+                    return treeWithoutNote.map(node => {
+                        // This assumes root-level notes only for folder DND 
+                        // If we want nested DND, it's more complex.
+                        // For now, let's just handle root-level moves.
+                        return node;
+                    });
+                }
+            });
+
+            // Backend sync
+            updateMutation.mutate({
+                id: noteId,
+                data: {
+                    section_id: destFolderId,
+                    position: destination.index
+                }
+            });
+        }
+    };
+
     // Render note tree item (recursive)
-    const renderNoteItem = (note: NoteTreeItem, level: number = 0) => {
+    const renderNoteItem = (note: NoteTreeItem, index: number, level: number = 0) => {
         const hasChildren = note.children && note.children.length > 0;
         const isExpanded = expandedNotes.has(note.id);
         const isSelected = id === note.id.toString();
 
         return (
-            <div key={note.id}>
-                <div
-                    className={`group flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer transition-colors ${isSelected
-                        ? 'bg-accent-blue/20 text-accent-blue'
-                        : 'hover:bg-background-hover text-text-secondary'
-                        }`}
-                    style={{ paddingLeft: `${level * 16 + 8}px` }}
-                    onClick={() => handleSelectNote(note.id)}
-                >
-                    {/* Expand/Collapse */}
-                    <button
-                        className={`p-0.5 rounded hover:bg-background-card transition-colors ${hasChildren ? 'visible' : 'invisible'}`}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleNoteExpand(note.id);
-                        }}
+            <Draggable key={note.id} draggableId={`note-${note.id}`} index={index}>
+                {(provided, snapshot) => (
+                    <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                        className={snapshot.isDragging ? 'z-50' : ''}
                     >
-                        {isExpanded ? (
-                            <ChevronDown size={14} className="text-text-muted" />
-                        ) : (
-                            <ChevronRight size={14} className="text-text-muted" />
+                        <div
+                            className={`group flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer transition-colors ${isSelected
+                                ? 'bg-accent-blue/20 text-accent-blue'
+                                : 'hover:bg-background-hover text-text-secondary'
+                                } ${snapshot.isDragging ? 'bg-background-elevated shadow-lg border border-accent-blue/30' : ''}`}
+                            style={{ paddingLeft: `${level * 16 + 8}px` }}
+                            onClick={() => handleSelectNote(note.id)}
+                        >
+                            {/* Expand/Collapse */}
+                            <button
+                                className={`p-0.5 rounded hover:bg-background-card transition-colors ${hasChildren ? 'visible' : 'invisible'}`}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleNoteExpand(note.id);
+                                }}
+                            >
+                                {isExpanded ? (
+                                    <ChevronDown size={14} className="text-text-muted" />
+                                ) : (
+                                    <ChevronRight size={14} className="text-text-muted" />
+                                )}
+                            </button>
+
+                            {/* Icon */}
+                            <span className="text-base flex-shrink-0">{note.icon || '📄'}</span>
+
+                            {/* Title */}
+                            <span className="flex-1 truncate text-sm font-medium">{note.title || 'Untitled'}</span>
+
+                            {/* Pin indicator */}
+                            {note.is_pinned && <Pin size={12} className="text-amber-500 flex-shrink-0" />}
+
+                            {/* Quick actions on hover */}
+                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    className="p-1 hover:bg-background-card rounded text-text-muted hover:text-accent-blue"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCreateNote(note.id);
+                                    }}
+                                    title="Add sub-page"
+                                >
+                                    <Plus size={14} />
+                                </button>
+                                <button
+                                    className="p-1 hover:bg-red-500/10 rounded group/del text-text-muted hover:text-red-500"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteNote(note.id);
+                                    }}
+                                    title="Delete note"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Children */}
+                        {hasChildren && isExpanded && (
+                            <div className="mt-0.5 mb-1">
+                                {note.children.map((child, idx) => renderNoteItem(child, idx, level + 1))}
+                            </div>
                         )}
-                    </button>
-
-                    {/* Icon */}
-                    <span className="text-base flex-shrink-0">{note.icon || '📄'}</span>
-
-                    {/* Title */}
-                    <span className="flex-1 truncate text-sm">{note.title || 'Untitled'}</span>
-
-                    {/* Pin indicator */}
-                    {note.is_pinned && <Pin size={12} className="text-amber-500 flex-shrink-0" />}
-
-                    {/* Quick actions on hover */}
-                    <div className="flex items-center gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity">
-                        <button
-                            className="p-1 hover:bg-background-card rounded text-text-muted hover:text-accent-blue"
-                            onClick={(e: any) => {
-                                e.stopPropagation();
-                                handleCreateNote(note.id);
-                            }}
-                            title="Add sub-page"
-                        >
-                            <Plus size={14} />
-                        </button>
-                        <button
-                            className="p-1 hover:bg-red-500/10 rounded group/del text-text-muted hover:text-red-500"
-                            onClick={(e: any) => {
-                                e.stopPropagation();
-                                handleDeleteNote(note.id);
-                            }}
-                            title="Delete note"
-                        >
-                            <Trash2 size={14} />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Children */}
-                {hasChildren && isExpanded && (
-                    <div>
-                        {note.children.map((child) => renderNoteItem(child, level + 1))}
                     </div>
                 )}
-            </div>
+            </Draggable>
         );
     };
 
     // Render folder
-    const renderFolder = (folder: NoteSection) => {
+    const renderFolder = (folder: NoteSection, folderIndex: number) => {
         const isExpanded = expandedFolders.has(folder.id);
         const folderNotes = notesByFolder[folder.id] || [];
         const filteredFolderNotes = searchQuery
@@ -438,81 +649,86 @@ export default function Notes() {
         if (searchQuery && filteredFolderNotes.length === 0) return null;
 
         return (
-            <div key={folder.id} className="mb-1">
-                {/* Folder Header */}
-                <div
-                    className="group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer hover:bg-background-hover transition-colors"
-                    onClick={() => handleToggleFolderExpand(folder.id)}
-                >
-                    {/* Folder Icon - changes when open */}
-                    {isExpanded ? (
-                        <FolderOpen size={18} style={{ color: folder.color }} className="flex-shrink-0" />
-                    ) : (
-                        <Folder size={18} style={{ color: folder.color }} className="flex-shrink-0" />
-                    )}
-
-                    {/* Folder Name */}
-                    <span className="flex-1 text-sm font-medium text-text-primary truncate">
-                        {folder.name}
-                    </span>
-
-                    {/* Note count */}
-                    <span className="text-xs text-text-muted">
-                        {folderNotes.length}
-                    </span>
-
-                    {/* Actions on hover */}
-                    <div className="flex items-center gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity">
-                        <button
-                            className="p-1 hover:bg-background-card rounded text-text-muted hover:text-accent-blue"
-                            onClick={(e: any) => {
-                                e.stopPropagation();
-                                handleCreateNote(undefined, folder.id);
-                            }}
-                            title="Add note to folder"
+            <Draggable key={folder.id} draggableId={`folder-${folder.id}`} index={folderIndex}>
+                {(provided, snapshot) => (
+                    <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        className={`mb-1 ${snapshot.isDragging ? 'z-50' : ''}`}
+                    >
+                        {/* Folder Header */}
+                        <div
+                            {...provided.dragHandleProps}
+                            className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${snapshot.isDragging ? 'bg-background-elevated shadow-xl border border-border' : 'hover:bg-background-hover'}`}
+                            onClick={() => handleToggleFolderExpand(folder.id)}
                         >
-                            <Plus size={14} />
-                        </button>
-                        <button
-                            className="p-1 hover:bg-red-500/10 rounded text-text-muted hover:text-red-500"
-                            onClick={(e: any) => {
-                                e.stopPropagation();
-                                setFolderToDelete(folder);
-                                setShowFolderDeleteConfirm(true);
-                            }}
-                            title="Delete folder"
-                        >
-                            <Trash2 size={14} />
-                        </button>
-                        <button
-                            className="p-1 hover:bg-background-card rounded text-text-muted hover:text-text-primary"
-                            onClick={(e: any) => {
-                                e.stopPropagation();
-                                setEditingFolder(folder);
-                                setShowFolderModal(true);
-                            }}
-                            title="Edit folder"
-                        >
-                            <MoreHorizontal size={14} />
-                        </button>
-                    </div>
-                </div>
+                            {/* Folder Icon - changes when open */}
+                            {isExpanded ? (
+                                <FolderOpen size={18} style={{ color: folder.color }} className="flex-shrink-0" />
+                            ) : (
+                                <Folder size={18} style={{ color: folder.color }} className="flex-shrink-0" />
+                            )}
 
-                {/* Folder Contents */}
-                {isExpanded && (
-                    <div className="ml-2 pl-2 border-l border-border/50">
-                        {filteredFolderNotes.length > 0 ? (
-                            filteredFolderNotes.map((note) => renderNoteItem(note, 0))
-                        ) : (
-                            <div className="px-3 py-6 text-center">
-                                <FileText size={24} className="mx-auto mb-2 text-text-muted opacity-20" />
-                                <p className="text-[10px] text-text-muted font-medium uppercase tracking-wider">Empty folder</p>
-                                <p className="text-[9px] text-text-muted/60 mt-1">Add a note or subfolder to get started</p>
+                            {/* Folder Name */}
+                            <span className="flex-1 text-sm font-bold text-text-primary truncate">
+                                {folder.name}
+                            </span>
+
+                            {/* Note count */}
+                            <span className="text-[10px] font-bold text-text-muted bg-background/50 px-1.5 py-0.5 rounded-full border border-border/50">
+                                {folderNotes.length}
+                            </span>
+
+                            {/* Actions on hover */}
+                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    className="p-1 hover:bg-background-card rounded text-text-muted hover:text-accent-blue"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCreateNote(undefined, folder.id);
+                                    }}
+                                    title="Add note to folder"
+                                >
+                                    <Plus size={14} />
+                                </button>
+                                <button
+                                    className="p-1 hover:bg-background-card rounded text-text-muted hover:text-text-primary"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingFolder(folder);
+                                        setShowFolderModal(true);
+                                    }}
+                                    title="Edit folder"
+                                >
+                                    <MoreHorizontal size={14} />
+                                </button>
                             </div>
+                        </div>
+
+                        {/* Folder Contents - Droppable for Notes */}
+                        {isExpanded && (
+                            <Droppable droppableId={`folder-${folder.id}`} type="note">
+                                {(noteProvided, noteSnapshot) => (
+                                    <div
+                                        ref={noteProvided.innerRef}
+                                        {...noteProvided.droppableProps}
+                                        className={`ml-2 pl-2 border-l border-border/50 min-h-[4px] transition-colors ${noteSnapshot.isDraggingOver ? 'border-accent-blue/30 bg-accent-blue/5' : ''}`}
+                                    >
+                                        {filteredFolderNotes.length > 0 ? (
+                                            filteredFolderNotes.map((note, idx) => renderNoteItem(note, idx, 0))
+                                        ) : !searchQuery && (
+                                            <div className="px-3 py-4 text-center">
+                                                <p className="text-[10px] text-text-muted font-medium uppercase tracking-wider opacity-40 italic">Drop notes here</p>
+                                            </div>
+                                        )}
+                                        {noteProvided.placeholder}
+                                    </div>
+                                )}
+                            </Droppable>
                         )}
                     </div>
                 )}
-            </div>
+            </Draggable>
         );
     };
 
@@ -573,11 +789,18 @@ export default function Notes() {
                             ))}
                         </div>
                     ) : (
-                        <>
-                            {/* Folders */}
-                            {folders.map(renderFolder)}
+                        <DragDropContext onDragEnd={handleDragEnd}>
+                            <Droppable droppableId="sidebar-root" type="folder">
+                                {(provided) => (
+                                    <div {...provided.droppableProps} ref={provided.innerRef}>
+                                        {/* Folders */}
+                                        {folders.map((folder, index) => renderFolder(folder, index))}
+                                        {provided.placeholder}
+                                    </div>
+                                )}
+                            </Droppable>
 
-                            {/* Unfiled Notes */}
+                            {/* Unfiled Notes - Droppable for Notes */}
                             {(notesByFolder['unfiled']?.length > 0 || folders.length === 0) && (
                                 <div className="mt-2">
                                     {folders.length > 0 && (
@@ -585,42 +808,53 @@ export default function Notes() {
                                             Unfiled
                                         </div>
                                     )}
-                                    {(searchQuery ? filterTree(notesByFolder['unfiled'] || [], searchQuery) : notesByFolder['unfiled'] || []).length > 0 ? (
-                                        (searchQuery ? filterTree(notesByFolder['unfiled'] || [], searchQuery) : notesByFolder['unfiled'] || []).map(
-                                            (note) => renderNoteItem(note, 0)
-                                        )
-                                    ) : (
-                                        folders.length === 0 && !searchQuery && (
-                                            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                                                <div className="w-12 h-12 bg-background-hover rounded-full flex items-center justify-center mb-3">
-                                                    <FileText size={24} className="text-text-muted opacity-40" />
-                                                </div>
-                                                <h3 className="text-sm font-bold text-text-primary mb-1">Start writing your first note</h3>
-                                                <p className="text-xs text-text-muted">Stay organized by capturing your thoughts and ideas.</p>
-                                                <button
-                                                    onClick={() => handleCreateNote()}
-                                                    className="btn btn-primary btn-sm mt-4 px-4"
-                                                >
-                                                    <Plus size={14} />
-                                                    Create Note
-                                                </button>
+                                    <Droppable droppableId="unfiled" type="note">
+                                        {(provided, snapshot) => (
+                                            <div
+                                                {...provided.droppableProps}
+                                                ref={provided.innerRef}
+                                                className={`min-h-[10px] transition-colors rounded-lg ${snapshot.isDraggingOver ? 'bg-accent-blue/5 border border-dashed border-accent-blue/20' : ''}`}
+                                            >
+                                                {(searchQuery ? filterTree(notesByFolder['unfiled'] || [], searchQuery) : notesByFolder['unfiled'] || []).length > 0 ? (
+                                                    (searchQuery ? filterTree(notesByFolder['unfiled'] || [], searchQuery) : notesByFolder['unfiled'] || []).map(
+                                                        (note, index) => renderNoteItem(note, index, 0)
+                                                    )
+                                                ) : (
+                                                    folders.length === 0 && !searchQuery && (
+                                                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                                                            <div className="w-12 h-12 bg-background-hover rounded-full flex items-center justify-center mb-3">
+                                                                <FileText size={24} className="text-text-muted opacity-40" />
+                                                            </div>
+                                                            <h3 className="text-sm font-bold text-text-primary mb-1">Start writing your first note</h3>
+                                                            <p className="text-xs text-text-muted">Stay organized by capturing your thoughts and ideas.</p>
+                                                            <button
+                                                                onClick={() => handleCreateNote()}
+                                                                className="btn btn-primary btn-sm mt-4 px-4"
+                                                            >
+                                                                <Plus size={14} />
+                                                                Create Note
+                                                            </button>
+                                                        </div>
+                                                    )
+                                                )}
+                                                {provided.placeholder}
                                             </div>
-                                        )
-                                    )}
+                                        )}
+                                    </Droppable>
                                 </div>
                             )}
+                        </DragDropContext>
+                    )}
 
-                            {/* Search-specific Empty state */}
-                            {searchQuery && folders.every(f => !filterTree(notesByFolder[f.id] || [], searchQuery).length) && (!notesByFolder['unfiled'] || !filterTree(notesByFolder['unfiled'], searchQuery).length) && (
-                                <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                                    <div className="w-12 h-12 bg-background-hover rounded-full flex items-center justify-center mb-3">
-                                        <Search size={24} className="text-text-muted opacity-40" />
-                                    </div>
-                                    <h3 className="text-sm font-bold text-text-primary mb-1">No notes found</h3>
-                                    <p className="text-xs text-text-muted">Try different keywords or check your spelling.</p>
-                                </div>
-                            )}
-                        </>
+                    {/* Search-specific Empty state */}
+                    {searchQuery && !isLoading && folders.every(f => !filterTree(notesByFolder[f.id] || [], searchQuery).length) && (!notesByFolder['unfiled'] || !filterTree(notesByFolder['unfiled'], searchQuery).length) && (
+                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                            <div className="w-12 h-12 bg-background-hover rounded-full flex items-center justify-center mb-3">
+                                <Search size={24} className="text-text-muted opacity-40" />
+                            </div>
+                            <h3 className="text-sm font-bold text-text-primary mb-1">No notes found</h3>
+                            <p className="text-xs text-text-muted">Try different keywords or check your spelling.</p>
+                        </div>
                     )}
                 </div>
             </aside>
@@ -644,7 +878,7 @@ export default function Notes() {
                         note={selectedNote}
                         folders={folders}
                         breadcrumb={breadcrumb}
-                        onUpdate={async (updates) => {
+                        onUpdate={(updates) => {
                             // Optimistic Updates to ensure Real-Time UI
                             queryClient.setQueryData(['notes-tree'], (oldTree: any) => {
                                 if (!oldTree) return [];
@@ -658,7 +892,8 @@ export default function Notes() {
                                 return updateNode(oldTree);
                             });
 
-                            queryClient.setQueryData(['note', selectedNote.id], (oldNote: any) => {
+                            // NORMALIZE KEY TO STRING to match useParams and useQuery
+                            queryClient.setQueryData(['note', selectedNote.id.toString()], (oldNote: any) => {
                                 if (!oldNote) return oldNote;
                                 let newSection = oldNote.section;
                                 if ('section_id' in updates) {
@@ -667,14 +902,8 @@ export default function Notes() {
                                 return { ...oldNote, ...updates, section: newSection };
                             });
 
-                            await updateMutation.mutateAsync({ id: selectedNote.id, data: updates });
-
-                            // Re-verify with server
-                            await Promise.all([
-                                refetchTree(),
-                                queryClient.invalidateQueries({ queryKey: ['note'] }),
-                                queryClient.invalidateQueries({ queryKey: ['note-breadcrumb'] })
-                            ]);
+                            // Non-blocking mutation - UI updates instantly, server sync happens in background
+                            updateMutation.mutate({ id: selectedNote.id, data: updates });
                         }}
                         onDelete={() => handleDeleteNote(selectedNote.id)}
                         onBreadcrumbNavigate={handleBreadcrumbNavigate}
@@ -917,7 +1146,7 @@ function NoteEditor({
         setContent(note.content);
         setIcon(note.icon || '📄');
         setSelectedFolderId(note.section_id || null);
-    }, [note.id, note.section_id, isEditing]);
+    }, [note.id, note.title, note.content, note.icon, note.section_id, isEditing]);
 
     // Handlers
     const handleSave = async () => {
@@ -956,7 +1185,8 @@ function NoteEditor({
     // Ctrl+S to save when editing
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 's' && isEditing) {
+            if (!isEditing) return;
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
                 handleSave();
             }
@@ -978,8 +1208,10 @@ function NoteEditor({
                         <ArrowLeft size={20} className="text-text-muted" />
                     </button>
 
-                    {/* Breadcrumb */}
-                    <Breadcrumb items={breadcrumb} onNavigate={onBreadcrumbNavigate} />
+                    {/* Breadcrumb - More prominent and clickable */}
+                    <div className="bg-background-elevated/50 px-3 py-1.5 rounded-xl border border-border/50 shadow-sm backdrop-blur-sm">
+                        <Breadcrumb items={breadcrumb} onNavigate={onBreadcrumbNavigate} />
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -1157,12 +1389,19 @@ function NoteEditor({
                     </div>
 
                     <div className="min-h-[500px]">
-                        <RichTextEditor
-                            content={content}
-                            onChange={handleContentChange}
-                            isEditable={isEditing}
-                            placeholder="Start writing... Use markdown shortcuts like # for headings, - [ ] for checklists, ``` for code blocks"
-                        />
+                        <Suspense fallback={
+                            <div className="flex flex-col gap-4 animate-pulse">
+                                <div className="h-10 bg-background-elevated rounded-lg w-full" />
+                                <div className="h-[400px] bg-background-elevated rounded-lg w-full" />
+                            </div>
+                        }>
+                            <RichTextEditor
+                                content={content}
+                                onChange={handleContentChange}
+                                isEditable={isEditing}
+                                placeholder="Start writing... Use markdown shortcuts like # for headings, - [ ] for checklists, ``` for code blocks"
+                            />
+                        </Suspense>
                     </div>
                 </div>
             </div>

@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Settings as SettingsIcon, HardDrive, ShieldCheck, Download, Upload } from 'lucide-react';
+import { Settings as SettingsIcon, HardDrive, ShieldCheck, Upload, FileJson } from 'lucide-react';
 import axios from 'axios';
 import { loadWidgetConfig, saveWidgetConfig, WidgetConfig } from '../utils/widgetConfig';
 import { Eye, EyeOff, Layout as LayoutIcon } from 'lucide-react';
 import PINEntry from '../components/PINEntry';
 import ConfirmModal from '../components/ConfirmModal';
 import { useToast } from '../components/Toast';
+import { systemApi } from '../lib/api';
 
 export default function Settings() {
     const [enablePersonal, setEnablePersonal] = useState(() => {
@@ -50,19 +51,19 @@ export default function Settings() {
     const handleExport = async () => {
         setIsExporting(true);
         try {
-            const response = await axios.get('/api/data/export', {
-                responseType: 'blob'
-            });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const data = await systemApi.exportData();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `omnivault_backup_${new Date().toISOString().slice(0, 10)}.zip`);
+            link.setAttribute('download', `mytasker_export_${new Date().toISOString().slice(0, 10)}.json`);
             document.body.appendChild(link);
             link.click();
             link.remove();
+            showToast('✅ Data exported successfully');
         } catch (error) {
             console.error('Export failed:', error);
-            alert('Export failed. Please check console for details.');
+            showToast('❌ Export failed');
         } finally {
             setIsExporting(false);
         }
@@ -182,11 +183,11 @@ export default function Settings() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="p-4 bg-background border border-border rounded-lg">
                             <div className="flex items-center gap-2 mb-2">
-                                <Download size={20} className="text-accent-green" />
-                                <span className="font-semibold text-text-primary">Backup Data</span>
+                                <FileJson size={20} className="text-accent-blue" />
+                                <span className="font-semibold text-text-primary">Export JSON</span>
                             </div>
                             <p className="text-xs text-text-muted mb-4">
-                                Download a full copy of your database (tasks, notes, settings) as a ZIP file.
+                                Download all your tasks, notes, snippets, and history as a readable JSON file.
                             </p>
                             <button
                                 onClick={handleExport}
@@ -266,6 +267,30 @@ export default function Settings() {
                             <p className="text-xs text-text-muted mt-1 leading-relaxed">
                                 Your data never leaves this machine. All notes, tasks, and settings are stored in a secure local database (SQLite) within your private environment.
                             </p>
+                        </div>
+                    </div>
+                </section>
+
+                <section className="bg-background-card border border-border rounded-xl p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                        <SettingsIcon size={20} className="text-accent-blue" />
+                        <h2 className="text-xl font-semibold text-text-primary">Keyboard Shortcuts</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 p-4 bg-background border border-border rounded-lg">
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Navigation (Chords)</h3>
+                            <div className="flex justify-between items-center text-sm"><span className="text-text-secondary">Go Home</span> <kbd className="kbd text-[10px]">G H</kbd></div>
+                            <div className="flex justify-between items-center text-sm"><span className="text-text-secondary">Daily Log</span> <kbd className="kbd text-[10px]">G D</kbd></div>
+                            <div className="flex justify-between items-center text-sm"><span className="text-text-secondary">Notes</span> <kbd className="kbd text-[10px]">G N</kbd></div>
+                            <div className="flex justify-between items-center text-sm"><span className="text-text-secondary">Tasks</span> <kbd className="kbd text-[10px]">G T</kbd></div>
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Global Actions</h3>
+                            <div className="flex justify-between items-center text-sm"><span className="text-text-secondary">Command Palette</span> <kbd className="kbd text-[10px]">Ctrl K</kbd></div>
+                            <div className="flex justify-between items-center text-sm"><span className="text-text-secondary">Quick Search</span> <kbd className="kbd text-[10px]">/</kbd></div>
+                            <div className="flex justify-between items-center text-sm"><span className="text-text-secondary">Jump to Today</span> <kbd className="kbd text-[10px]">Alt D</kbd></div>
+                            <div className="flex justify-between items-center text-sm"><span className="text-text-secondary">Help</span> <kbd className="kbd text-[10px]">?</kbd></div>
                         </div>
                     </div>
                 </section>

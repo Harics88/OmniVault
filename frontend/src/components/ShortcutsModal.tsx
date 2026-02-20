@@ -8,27 +8,31 @@ interface ShortcutsModalProps {
 
 const shortcuts = [
     {
-        section: 'Navigation', items: [
+        section: 'Navigation (Chords)', items: [
             { action: 'Go Home', keys: ['G', 'H'] },
-            { action: 'Go to Tasks', keys: ['G', 'T'] },
             { action: 'Go to Daily Log', keys: ['G', 'D'] },
+            { action: 'Go to Tasks', keys: ['G', 'T'] },
             { action: 'Go to Notes', keys: ['G', 'N'] },
             { action: 'Go to Snippets', keys: ['G', 'S'] },
             { action: 'Go to Bookmarks', keys: ['G', 'B'] },
+            { action: 'Go to Settings', keys: ['G', ','] },
         ]
     },
     {
-        section: 'Global', items: [
+        section: 'Global Actions', items: [
             { action: 'Command Palette', keys: ['Ctrl', 'K'] },
+            { action: 'Quick Search', keys: ['/'] },
             { action: 'Toggle Sidebar', keys: ['Ctrl', 'B'] },
+            { action: 'Jump to Today', keys: ['Alt', 'D'] },
+            { action: 'Create New Note', keys: ['Alt', 'N'] },
             { action: 'Show Shortcuts', keys: ['?'] },
         ]
     },
     {
-        section: 'Tasks', items: [
-            { action: 'Edit Task', keys: ['Enter'] },
-            { action: 'Quick Complete', keys: ['C'] },
-            { action: 'Delete Task', keys: ['Del'] },
+        section: 'Editors', items: [
+            { action: 'Create Task from Line', keys: ['Ctrl', 'Enter'] },
+            { action: 'Save / Close Modal', keys: ['Esc'] },
+            { action: 'Markdown Checklist', keys: ['[', ']', 'Space'] },
         ]
     }
 ];

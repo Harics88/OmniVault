@@ -1,6 +1,8 @@
 import { Outlet } from 'react-router-dom';
+import ErrorBoundary from './ErrorBoundary';
 import Sidebar from './Sidebar';
 import CommandPalette from './CommandPalette';
+import NoteSwitcher from './NoteSwitcher';
 import PomodoroTimer from './PomodoroTimer';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useState, useEffect } from 'react';
@@ -70,19 +72,24 @@ export default function Layout() {
             </a>
 
             {/* Sidebar */}
-            <Sidebar onSearchClick={handleSearchClick} />
+            <ErrorBoundary>
+                <Sidebar onSearchClick={handleSearchClick} />
+            </ErrorBoundary>
 
             <OfflineBanner />
 
             {/* Main Content Area */}
             <main id="main-content" className="flex-1 overflow-auto focus:outline-none" tabIndex={-1}>
                 <div className="min-h-full">
-                    <Outlet />
+                    <ErrorBoundary>
+                        <Outlet />
+                    </ErrorBoundary>
                 </div>
             </main>
 
             {/* Command Palette (replaces Search Modal) */}
             <CommandPalette />
+            <NoteSwitcher />
 
             {/* Floating Widgets */}
             <PomodoroTimer />

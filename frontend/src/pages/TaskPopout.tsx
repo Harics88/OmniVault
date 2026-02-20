@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, Check, Circle, Clock, Trash2, Calendar, Plus, Save, Edit2, Triangle, ListTodo, GripVertical } from 'lucide-react';
@@ -9,6 +10,8 @@ import { tasksApi } from '../lib/api';
 import RichTextEditor from '../components/RichTextEditor';
 import ConfirmModal from '../components/ConfirmModal';
 import { useTaskEditor } from '../hooks/useTaskEditor';
+import { useToast } from '../components/Toast';
+
 
 const statusOptions: { value: TaskStatus; label: string; icon: typeof Circle; color: string }[] = [
     { value: 'not_started', label: 'Not Started', icon: Circle, color: 'text-text-muted' },
@@ -27,6 +30,8 @@ export default function TaskPopout() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const taskId = id ? parseInt(id) : null;
+    const { showToast } = useToast();
+
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -37,14 +42,19 @@ export default function TaskPopout() {
     }, [navigate]);
 
     const [newSubtask, setNewSubtask] = useState('');
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
+    const [pendingSubtasks, setPendingSubtasks] = useState<string[]>([]);
     // Fetch task data
     const { data: task, isLoading, error } = useQuery({
         queryKey: ['task', taskId],
-        queryFn: () => tasksApi.getById(taskId!),
+        queryFn: () => tasksApi.getById(Number(taskId)),
         enabled: !!taskId,
     });
+
+
+    // Snapshot of subtasks at the moment editing started — used for cancel reset
+    const subtasksSnapshot = useRef<Subtask[] | undefined>(task?.subtasks);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
 
     // Mutations
     const updateMutation = useMutation({
@@ -53,16 +63,22 @@ export default function TaskPopout() {
         onSuccess: (updatedTask) => {
             queryClient.setQueryData(['task', taskId], updatedTask);
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            showToast('Task saved ✓');
         },
+        onError: () => showToast('Failed to save task'),
     });
+
 
     const deleteMutation = useMutation({
         mutationFn: (id: number) => tasksApi.delete(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            showToast('Task deleted');
             navigate(-1);
         },
+        onError: () => showToast('Failed to delete task'),
     });
+
 
     const addSubtaskMutation = useMutation({
         mutationFn: ({ taskId, title }: { taskId: number; title: string }) =>
@@ -71,8 +87,11 @@ export default function TaskPopout() {
             queryClient.invalidateQueries({ queryKey: ['task', taskId] });
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
             setNewSubtask('');
+            showToast('Subtask added ✓');
         },
+        onError: () => showToast('Failed to add subtask'),
     });
+
 
     const updateSubtaskMutation = useMutation({
         mutationFn: ({ taskId, subtaskId, updates }: { taskId: number; subtaskId: number; updates: { completed?: boolean; title?: string } }) =>
@@ -89,8 +108,10 @@ export default function TaskPopout() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['task', taskId] });
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            showToast('Subtask removed');
         },
     });
+
 
     const reorderSubtasksMutation = useMutation({
         mutationFn: ({ taskId, subtaskIds }: { taskId: number; subtaskIds: number[] }) =>
@@ -116,18 +137,20 @@ export default function TaskPopout() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         subtasks: [],
+        entities: [],
     };
 
     // Use the shared task editor hook
     const {
         editedTask,
         isEditing,
+        isSaving,
         dueDateRef,
         startedAtRef,
         completedAtRef,
-        startEditing,
+        startEditing: startEditingHook,
         cancelEditing,
-        save,
+        save: saveHook,
         finishSaving,
         handleStatusChange,
         handlePriorityChange,
@@ -139,35 +162,126 @@ export default function TaskPopout() {
         handleCompletedAtChange,
         syncSubtasks,
         resetToTask,
+        setEditedTask,
     } = useTaskEditor({
         task: task || placeholderTask,
-        onSave: (taskId, updates) => updateMutation.mutate({ id: taskId, updates }),
+        onSave: async (taskId, updates) => { await updateMutation.mutateAsync({ id: taskId, updates }); },
         initialEditMode: false,
     });
+
+
+
+    // Wrap startEditing to snapshot subtasks first
+    const startEditing = useCallback(() => {
+        if (task) {
+            subtasksSnapshot.current = task.subtasks;
+            setPendingSubtasks([]);
+            startEditingHook();
+        }
+    }, [task, startEditingHook]);
+
 
     // Sync editedTask with fetched task data
     useEffect(() => {
         if (!task) return;
-
-        if (updateMutation.isSuccess) {
+        if (isSaving) {
             finishSaving();
-            updateMutation.reset();
             return;
         }
 
-        if (task.id !== editedTask.id) {
+        // Always sync the edited state when NOT in edit mode
+        // This handles both the initial load (from placeholder) and background updates
+        if (!isEditing || task.id !== editedTask.id) {
             resetToTask(task);
-        } else if (isEditing) {
-            // Update subtasks from task while editing to keep them live
-            syncSubtasks(task.subtasks);
+            if (task.id !== editedTask.id) {
+                setPendingSubtasks([]);
+            }
         }
-    }, [task, updateMutation.isSuccess, isEditing, editedTask.id, finishSaving, resetToTask, syncSubtasks, updateMutation]);
+    }, [task, isSaving, isEditing, editedTask.id, finishSaving, resetToTask]);
+
+    // Keep snapshot in sync with server data when NOT editing
+    useEffect(() => {
+        if (task && !isEditing) {
+            subtasksSnapshot.current = task.subtasks;
+        }
+    }, [task?.subtasks, isEditing]);
 
     const handleAddSubtask = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && newSubtask.trim() && taskId) {
-            addSubtaskMutation.mutate({ taskId, title: newSubtask.trim() });
+            const title = newSubtask.trim();
+            // Buffer in local state
+            const newPending = [...pendingSubtasks, title];
+            setPendingSubtasks(newPending);
+            // Append temp subtask for UI
+            const tempSubtask = {
+                id: -(newPending.length),
+                task_id: taskId,
+                title,
+                completed: false,
+                order: (editedTask.subtasks?.length ?? 0),
+                created_at: '',
+            };
+            syncSubtasks([...(editedTask.subtasks ?? []), tempSubtask]);
+            setNewSubtask('');
         }
     };
+
+    const handleSave = async () => {
+        if (!taskId) return;
+        const originalSubtasks = subtasksSnapshot.current || [];
+        const currentSubtasks = editedTask.subtasks || [];
+        const mutations: Promise<any>[] = [];
+
+        // 1. Deletions
+        originalSubtasks.forEach((original: Subtask) => {
+            if (!currentSubtasks.find((s: Subtask) => s.id === original.id)) {
+                mutations.push(deleteSubtaskMutation.mutateAsync({ taskId, subtaskId: original.id }));
+            }
+        });
+
+        // 2. Updates
+        currentSubtasks.forEach((current: Subtask) => {
+            if (current.id > 0) {
+                const original = originalSubtasks.find((os: Subtask) => os.id === current.id);
+                if (original && (original.title !== current.title || original.completed !== current.completed)) {
+                    mutations.push(updateSubtaskMutation.mutateAsync({
+                        taskId,
+                        subtaskId: current.id,
+                        updates: { title: current.title, completed: current.completed }
+                    }));
+                }
+            }
+        });
+
+        // 3. Additions
+        pendingSubtasks.forEach((title: string) => mutations.push(addSubtaskMutation.mutateAsync({ taskId, title })));
+        setPendingSubtasks([]);
+
+        // 4. Reorder
+        const originalIds = originalSubtasks.map((s: Subtask) => s.id);
+        const currentIds = currentSubtasks.filter((s: Subtask) => s.id > 0).map((s: Subtask) => s.id);
+
+        if (currentIds.length > 0 &&
+            currentIds.length === originalIds.length &&
+            JSON.stringify(currentIds) !== JSON.stringify(originalIds)) {
+            mutations.push(reorderSubtasksMutation.mutateAsync({ taskId, subtaskIds: currentIds }));
+        }
+
+        try {
+            await Promise.all(mutations);
+            await saveHook();
+        } catch (err) {
+            console.error('Failed to sync subtasks:', err);
+            await saveHook();
+        }
+    };
+
+
+    const handleCancel = () => {
+        setPendingSubtasks([]);
+        cancelEditing(subtasksSnapshot.current);
+    };
+
 
     const onDragEnd = (result: any) => {
         if (!result.destination || !taskId) return;
@@ -183,9 +297,12 @@ export default function TaskPopout() {
         // Update local state immediately for responsiveness
         syncSubtasks(items);
 
-        const subtaskIds = items.map((item: Subtask) => item.id);
-        reorderSubtasksMutation.mutate({ taskId, subtaskIds });
+        if (!isEditing) {
+            const subtaskIds = items.map((item: Subtask) => item.id);
+            reorderSubtasksMutation.mutate({ taskId, subtaskIds });
+        }
     };
+
 
     if (isLoading) {
         return (
@@ -241,13 +358,13 @@ export default function TaskPopout() {
                                 />
                             </div>
                             <button
-                                onClick={cancelEditing}
+                                onClick={handleCancel}
                                 className="px-3 py-1.5 text-sm text-text-muted hover:bg-background-hover rounded-lg transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
-                                onClick={save}
+                                onClick={handleSave}
                                 disabled={updateMutation.isPending}
                                 className="px-3 py-1.5 text-sm bg-accent-blue hover:bg-accent-blue-hover text-white rounded-lg transition-colors flex items-center gap-1"
                             >
@@ -448,7 +565,7 @@ export default function TaskPopout() {
                                 Subtasks
                             </h3>
                             <span className="text-xs font-mono bg-background-elevated px-2 py-0.5 rounded-full text-text-muted">
-                                {displayTask.subtasks?.filter(s => s.completed).length || 0}/{displayTask.subtasks?.length || 0}
+                                {editedTask.subtasks?.filter(s => s.completed).length || 0}/{editedTask.subtasks?.length || 0}
                             </span>
                         </div>
 
@@ -460,7 +577,7 @@ export default function TaskPopout() {
                                         ref={provided.innerRef}
                                         className="space-y-1 mb-4"
                                     >
-                                        {displayTask.subtasks?.map((subtask: Subtask, index: number) => (
+                                        {editedTask.subtasks?.map((subtask: Subtask, index: number) => (
                                             <Draggable key={subtask.id} draggableId={subtask.id.toString()} index={index}>
                                                 {(provided: any, snapshot: any) => (
                                                     <div
@@ -473,17 +590,21 @@ export default function TaskPopout() {
                                                         </div>
                                                         <button
                                                             onClick={() => {
-                                                                if (!taskId || !isEditing) return; // Disable toggling while viewing
+                                                                if (!taskId) return;
                                                                 const newCompleted = !subtask.completed;
-                                                                updateSubtaskMutation.mutate({
-                                                                    taskId,
-                                                                    subtaskId: subtask.id,
-                                                                    updates: { completed: newCompleted }
-                                                                });
+                                                                if (!isEditing) {
+                                                                    updateSubtaskMutation.mutate({
+                                                                        taskId,
+                                                                        subtaskId: subtask.id,
+                                                                        updates: { completed: newCompleted }
+                                                                    });
+                                                                }
                                                                 // Optimistic update
-                                                                syncSubtasks(displayTask.subtasks?.map(s => s.id === subtask.id ? { ...s, completed: newCompleted } : s));
+                                                                syncSubtasks(editedTask.subtasks?.map((s: Subtask) => s.id === subtask.id ? { ...s, completed: newCompleted } : s));
                                                             }}
-                                                            disabled={!isEditing}
+
+
+                                                            disabled={!isEditing && subtask.completed} // Prevent toggling in view mode if done? Actually follow original logic.
                                                             className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-all ${subtask.completed ? 'bg-accent-green border-accent-green' : 'border-border'} ${isEditing ? 'hover:border-text-muted cursor-pointer' : 'cursor-default opacity-80'}`}
                                                         >
                                                             {subtask.completed && (
@@ -495,12 +616,19 @@ export default function TaskPopout() {
                                                                 defaultValue={subtask.title}
                                                                 onBlur={(e) => {
                                                                     if (e.target.value !== subtask.title && taskId) {
-                                                                        updateSubtaskMutation.mutate({
-                                                                            taskId,
-                                                                            subtaskId: subtask.id,
-                                                                            updates: { title: e.target.value }
-                                                                        });
+                                                                        if (!isEditing) {
+                                                                            updateSubtaskMutation.mutate({
+                                                                                taskId,
+                                                                                subtaskId: subtask.id,
+                                                                                updates: { title: e.target.value }
+                                                                            });
+                                                                        } else {
+                                                                            // Local update
+                                                                            syncSubtasks(editedTask.subtasks?.map((s: Subtask) => s.id === subtask.id ? { ...s, title: e.target.value } : s) || []);
+                                                                        }
                                                                     }
+
+
                                                                 }}
                                                                 onKeyDown={(e) => {
                                                                     if (e.key === 'Enter' && !e.shiftKey && taskId) {
@@ -528,13 +656,23 @@ export default function TaskPopout() {
                                                         )}
                                                         {isEditing && (
                                                             <button
-                                                                onClick={() => taskId && deleteSubtaskMutation.mutate({ taskId, subtaskId: subtask.id })}
+                                                                onClick={() => {
+                                                                    if (!taskId) return;
+                                                                    if (!isEditing) {
+                                                                        deleteSubtaskMutation.mutate({ taskId, subtaskId: subtask.id });
+                                                                    } else {
+                                                                        // Local delete
+                                                                        syncSubtasks(editedTask.subtasks?.filter((s: Subtask) => s.id !== subtask.id) || []);
+                                                                    }
+                                                                }}
+
                                                                 className="opacity-0 group-hover:opacity-100 p-1 hover:bg-accent-red/10 text-text-muted hover:text-accent-red rounded transition-all shrink-0"
                                                                 title="Delete Subtask"
                                                             >
                                                                 <X size={14} />
                                                             </button>
                                                         )}
+
                                                     </div>
                                                 )}
                                             </Draggable>

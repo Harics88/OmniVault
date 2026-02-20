@@ -3,7 +3,7 @@ Vault API router for managing secrets (credentials)
 Supports database, SFTP, and website credentials with PIN protection
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
@@ -11,16 +11,34 @@ import json
 import hashlib
 from datetime import datetime
 
+from app.encryption import encrypt_password, decrypt_password, derive_key
 from app.database import get_db
 from app.models import Secret, SecretType, AppConfig
-from app.schemas import SecretCreate, SecretUpdate, SecretResponse, PINSetup, PINVerify, PINResponse
+from app.schemas import SecretResponse, SecretCreate, SecretUpdate, PINSetup, PINResponse, PINVerify
 
 router = APIRouter()
 
+async def get_pin_config(db: AsyncSession):
+    """Get PIN hash and salt from config"""
+    hash_result = await db.execute(select(AppConfig).where(AppConfig.key == "vault_pin_hash"))
+    salt_result = await db.execute(select(AppConfig).where(AppConfig.key == "vault_pin_salt"))
+    return hash_result.scalar_one_or_none(), salt_result.scalar_one_or_none()
 
-def hash_pin(pin: str) -> str:
-    """Hash a PIN using SHA-256"""
-    return hashlib.sha256(pin.encode()).hexdigest()
+def hash_pin(pin: str, salt: bytes) -> str:
+    """Hash a PIN using PBKDF2 with a salt for security"""
+    # Use PBKDF2 for much stronger hashing than single SHA-256
+    import base64
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+    
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+    )
+    hashed_bytes = kdf.derive(pin.encode())
+    return base64.b64encode(hashed_bytes).decode('utf-8')
 
 
 # ============ PIN Management Endpoints ============
@@ -44,7 +62,13 @@ async def setup_pin(pin_data: PINSetup, db: AsyncSession = Depends(get_db)):
             detail="PIN tip is mandatory"
         )
     
-    hashed = hash_pin(pin_data.pin)
+    import os
+    import base64
+    
+    # Generate a new random salt for the PIN
+    salt_bytes = os.urandom(16)
+    salt_str = base64.b64encode(salt_bytes).decode('utf-8')
+    hashed = hash_pin(pin_data.pin, salt_bytes)
     
     # Update or create config entry
     result = await db.execute(select(AppConfig).where(AppConfig.key == "vault_pin_hash"))
@@ -55,6 +79,16 @@ async def setup_pin(pin_data: PINSetup, db: AsyncSession = Depends(get_db)):
     else:
         config = AppConfig(key="vault_pin_hash", value=hashed)
         db.add(config)
+        
+    # Update or create salt entry
+    salt_result = await db.execute(select(AppConfig).where(AppConfig.key == "vault_pin_salt"))
+    salt_config = salt_result.scalar_one_or_none()
+    
+    if salt_config:
+        salt_config.value = salt_str
+    else:
+        salt_config = AppConfig(key="vault_pin_salt", value=salt_str)
+        db.add(salt_config)
     
     # Update or create tip entry
     tip_result = await db.execute(select(AppConfig).where(AppConfig.key == "vault_pin_tip"))
@@ -78,18 +112,20 @@ async def verify_pin(pin_data: PINVerify, db: AsyncSession = Depends(get_db)):
     Verify the provided PIN against the stored hash.
     Returns success/failure status.
     """
-    # Check if PIN is set up
-    result = await db.execute(select(AppConfig).where(AppConfig.key == "vault_pin_hash"))
-    config = result.scalar_one_or_none()
+    import base64
     
-    if not config:
+    # Get hash and salt
+    config, salt_config = await get_pin_config(db)
+    
+    if not config or not salt_config:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="PIN not set up. Please set up PIN first."
         )
     
     # Verify PIN
-    if hash_pin(pin_data.pin) == config.value:
+    salt_bytes = base64.b64decode(salt_config.value)
+    if hash_pin(pin_data.pin, salt_bytes) == config.value:
         return PINResponse(valid=True, message="PIN verified successfully")
     else:
         return PINResponse(valid=False, message="Invalid PIN")
@@ -154,8 +190,28 @@ async def toggle_pin_protection(enabled: bool, db: AsyncSession = Depends(get_db
 
 # ============ Secret Management Endpoints ============
 
+def get_vault_pin(x_vault_pin: Optional[str] = Header(None)) -> Optional[str]:
+    """Extract vault PIN from header"""
+    return x_vault_pin
+
+def decrypt_if_possible(encrypted_value: str, pin: Optional[str]) -> str:
+    """Attempt to decrypt a value if PIN provided and format is valid JSON"""
+    if not pin:
+        return encrypted_value
+    
+    # Check if it looks like encrypted JSON
+    if not (encrypted_value.startswith('{"encrypted":') or encrypted_value.startswith('{"salt":')):
+        # Likely plaintext (migration case)
+        return encrypted_value
+        
+    try:
+        return decrypt_password(encrypted_value, pin)
+    except Exception:
+        # Decryption failed (wrong PIN or corrupted)
+        return "[ENCRYPTED]"
+
 @router.post("/secrets", response_model=SecretResponse, status_code=status.HTTP_201_CREATED)
-async def create_secret(secret: SecretCreate, db: AsyncSession = Depends(get_db)):
+async def create_secret(request: Request, secret: SecretCreate, db: AsyncSession = Depends(get_db)):
     """
     Create a new vault secret.
     Supports database, SFTP, and website credential types.
@@ -179,6 +235,12 @@ async def create_secret(secret: SecretCreate, db: AsyncSession = Depends(get_db)
                 detail="Metadata must be valid JSON"
             )
     
+    # Encrypt password if PIN provided
+    final_password = secret.password
+    pin = get_vault_pin(request.headers.get("X-Vault-PIN"))
+    if pin:
+        final_password = encrypt_password(secret.password, pin)
+    
     # Create secret
     db_secret = Secret(
         type=secret_type,
@@ -186,7 +248,7 @@ async def create_secret(secret: SecretCreate, db: AsyncSession = Depends(get_db)
         meta_json=secret.metadata,
         tags=secret.tags,
         username=secret.username,
-        password=secret.password,
+        password=final_password,
         notes=secret.notes
     )
     
@@ -211,6 +273,7 @@ async def create_secret(secret: SecretCreate, db: AsyncSession = Depends(get_db)
 
 @router.get("/secrets", response_model=List[SecretResponse])
 async def list_secrets(
+    request: Request,
     type: Optional[str] = None,
     db: AsyncSession = Depends(get_db)
 ):
@@ -232,6 +295,9 @@ async def list_secrets(
     
     result = await db.execute(query)
     secrets = result.scalars().all()
+    
+    pin = request.headers.get("X-Vault-PIN")
+    
     return [
         SecretResponse(
             id=s.id,
@@ -240,7 +306,7 @@ async def list_secrets(
             metadata=s.meta_json,
             tags=s.tags,
             username=s.username,
-            password=s.password,
+            password=decrypt_if_possible(s.password, pin),
             notes=s.notes,
             created_at=s.created_at,
             updated_at=s.updated_at
@@ -249,7 +315,7 @@ async def list_secrets(
 
 
 @router.get("/secrets/{secret_id}", response_model=SecretResponse)
-async def get_secret(secret_id: int, db: AsyncSession = Depends(get_db)):
+async def get_secret(request: Request, secret_id: int, db: AsyncSession = Depends(get_db)):
     """
     Get a specific secret by ID.
     """
@@ -262,13 +328,15 @@ async def get_secret(secret_id: int, db: AsyncSession = Depends(get_db)):
             detail=f"Secret with id {secret_id} not found"
         )
     
+    pin = request.headers.get("X-Vault-PIN")
+    
     return SecretResponse(
         id=secret.id,
         type=secret.type.value,
         label=secret.label,
         metadata=secret.meta_json,
         username=secret.username,
-        password=secret.password,
+        password=decrypt_if_possible(secret.password, pin),
         notes=secret.notes,
         created_at=secret.created_at,
         updated_at=secret.updated_at
@@ -277,6 +345,7 @@ async def get_secret(secret_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.put("/secrets/{secret_id}", response_model=SecretResponse)
 async def update_secret(
+    request: Request,
     secret_id: int,
     secret_update: SecretUpdate,
     db: AsyncSession = Depends(get_db)
@@ -324,7 +393,11 @@ async def update_secret(
         secret.tags = secret_update.tags
     
     if secret_update.password is not None:
-        secret.password = secret_update.password
+        pin = request.headers.get("X-Vault-PIN")
+        if pin:
+            secret.password = encrypt_password(secret_update.password, pin)
+        else:
+            secret.password = secret_update.password
     
     if secret_update.notes is not None:
         secret.notes = secret_update.notes
@@ -335,6 +408,8 @@ async def update_secret(
     await db.commit()
     await db.refresh(secret)
     
+    pin = request.headers.get("X-Vault-PIN")
+
     return SecretResponse(
         id=secret.id,
         type=secret.type.value,
@@ -342,7 +417,7 @@ async def update_secret(
         metadata=secret.meta_json,
         tags=secret.tags,
         username=secret.username,
-        password=secret.password,
+        password=decrypt_if_possible(secret.password, pin),
         notes=secret.notes,
         created_at=secret.created_at,
         updated_at=secret.updated_at
@@ -370,7 +445,7 @@ async def delete_secret(secret_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/secrets/{secret_id}/connection-string")
-async def get_connection_string(secret_id: int, db: AsyncSession = Depends(get_db)):
+async def get_connection_string(request: Request, secret_id: int, db: AsyncSession = Depends(get_db)):
     """
     Generate a connection string for database secrets.
     Returns formatted connection string based on database type.
@@ -406,7 +481,8 @@ async def get_connection_string(secret_id: int, db: AsyncSession = Depends(get_d
     database = metadata.get("database", metadata.get("sid", ""))
     
     username = secret.username or "user"
-    password = secret.password
+    pin = request.headers.get("X-Vault-PIN")
+    password = decrypt_if_possible(secret.password, pin)
     
     # Generate connection string based on database type
     if db_type in ["postgresql", "postgres"]:

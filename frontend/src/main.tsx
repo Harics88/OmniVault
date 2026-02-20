@@ -14,7 +14,7 @@ const queryClient = new QueryClient({
             refetchOnReconnect: true, // Refetch when reconnecting
         },
         mutations: {
-            retry: 1, // Retry failed mutations once
+            retry: false, // Never retry mutations - they are not idempotent (POST creates duplicates)
         },
     },
 })

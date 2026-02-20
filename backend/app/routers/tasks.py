@@ -29,7 +29,7 @@ async def get_tasks(
     db: AsyncSession = Depends(get_db)
 ):
     """Get all tasks, optionally filtered by status, personal flag and search query"""
-    query = select(Task).options(selectinload(Task.subtasks)).order_by(asc(Task.order), desc(Task.created_at))
+    query = select(Task).options(selectinload(Task.subtasks), selectinload(Task.entities)).order_by(asc(Task.order), desc(Task.created_at))
     
     if status:
         query = query.where(Task.status == status)
@@ -73,7 +73,7 @@ async def get_task(
 ):
     """Get a specific task by ID"""
     result = await db.execute(
-        select(Task).options(selectinload(Task.subtasks)).where(Task.id == task_id)
+        select(Task).options(selectinload(Task.subtasks), selectinload(Task.entities)).where(Task.id == task_id)
     )
     task = result.scalar_one_or_none()
     
@@ -120,7 +120,7 @@ async def create_task(
     
     # Reload with subtasks
     result = await db.execute(
-        select(Task).options(selectinload(Task.subtasks)).where(Task.id == task.id)
+        select(Task).options(selectinload(Task.subtasks), selectinload(Task.entities)).where(Task.id == task.id)
     )
     return result.scalar_one()
 
@@ -133,7 +133,7 @@ async def update_task(
 ):
     """Update a task"""
     result = await db.execute(
-        select(Task).options(selectinload(Task.subtasks)).where(Task.id == task_id)
+        select(Task).options(selectinload(Task.subtasks), selectinload(Task.entities)).where(Task.id == task_id)
     )
     task = result.scalar_one_or_none()
     

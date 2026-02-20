@@ -10,6 +10,8 @@ interface TaskCardProps {
     isDragging?: boolean;
     isCompact?: boolean;
     disableStatusClick?: boolean;
+    isSelected?: boolean;
+    onSelect?: (taskId: number) => void;
 }
 
 const statusConfig: Record<string, any> = {
@@ -24,7 +26,7 @@ const priorityConfig: Record<string, { color: string, icon: any, className?: str
     HIGH: { color: 'text-orange-400', icon: Triangle },
 };
 
-export default function TaskCard({ task, onClick, onStatusChange, isDragging, isCompact, disableStatusClick }: TaskCardProps) {
+export default function TaskCard({ task, onClick, onStatusChange, isDragging, isCompact, disableStatusClick, isSelected, onSelect }: TaskCardProps) {
     const statusKey = (task.status || 'not_started').toUpperCase();
     const config = statusConfig[statusKey] || statusConfig.NOT_STARTED;
     const StatusIcon = config.icon;
@@ -58,9 +60,20 @@ export default function TaskCard({ task, onClick, onStatusChange, isDragging, is
         <div
             onClick={() => onClick(task)}
             className={`rounded-lg cursor-pointer transition-all duration-200 group hover:bg-background-hover ${isCompact ? 'p-1.5' : 'p-3'
-                } ${isDragging ? 'shadow-elevated scale-[1.02] rotate-1 bg-background-card' : ''}`}
+                } ${isDragging ? 'shadow-elevated scale-[1.02] rotate-1 bg-background-card' : ''} ${isSelected ? 'bg-accent-blue/10 border-accent-blue/30 ring-1 ring-accent-blue/30' : ''}`}
         >
             <div className="flex items-center gap-3">
+                {/* Selection Checkbox */}
+                <div
+                    className={`w-4 h-4 rounded border transition-all flex items-center justify-center shrink-0 ${isSelected ? 'bg-accent-blue border-accent-blue' : 'border-border group-hover:border-text-muted opacity-0 group-hover:opacity-100'}`}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (onSelect) onSelect(task.id);
+                    }}
+                >
+                    {isSelected && <Check size={12} className="text-white" strokeWidth={4} />}
+                </div>
+
                 {/* Drag Handle */}
                 {!isCompact && (
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing">

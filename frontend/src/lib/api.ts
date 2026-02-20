@@ -23,6 +23,12 @@ import type {
     BookmarkCategory,
     CreateBookmarkCategory,
     UpdateBookmarkCategory,
+    Entity,
+    CreateEntity,
+    UpdateEntity,
+    LogEntry,
+    CreateLogEntry,
+    UpdateLogEntry,
 } from '../types';
 
 const API_BASE = '/api';
@@ -355,6 +361,68 @@ export const bookmarksApi = {
     },
 };
 
+// ============ Entities API ============
+
+export const entitiesApi = {
+    getAll: async (type?: string, search?: string): Promise<Entity[]> => {
+        const params = new URLSearchParams();
+        if (type) params.append('type', type);
+        if (search) params.append('search', search);
+        const { data } = await api.get(`/entities/?${params.toString()}`);
+        return data;
+    },
+
+    getById: async (id: number): Promise<Entity> => {
+        const { data } = await api.get(`/entities/${id}`);
+        return data;
+    },
+
+    getTimeline: async (id: number): Promise<any> => {
+        const { data } = await api.get(`/entities/${id}/timeline`);
+        return data;
+    },
+
+    create: async (entity: CreateEntity): Promise<Entity> => {
+        const { data } = await api.post('/entities/', entity);
+        return data;
+    },
+
+    update: async (id: number, entity: UpdateEntity): Promise<Entity> => {
+        const { data } = await api.put(`/entities/${id}`, entity);
+        return data;
+    },
+
+    delete: async (id: number): Promise<void> => {
+        await api.delete(`/entities/${id}`);
+    },
+
+    link: async (id: number, itemType: string, itemId: number): Promise<void> => {
+        await api.post(`/entities/${id}/link/${itemType}/${itemId}`);
+    },
+
+    unlink: async (id: number, itemType: string, itemId: number): Promise<void> => {
+        await api.delete(`/entities/${id}/link/${itemType}/${itemId}`);
+    },
+};
+
+// ============ Log Entries API ============
+
+export const logEntriesApi = {
+    create: async (entry: CreateLogEntry): Promise<LogEntry> => {
+        const { data } = await api.post('/log-entries/', entry);
+        return data;
+    },
+
+    update: async (id: number, entry: UpdateLogEntry): Promise<LogEntry> => {
+        const { data } = await api.put(`/log-entries/${id}`, entry);
+        return data;
+    },
+
+    delete: async (id: number): Promise<void> => {
+        await api.delete(`/log-entries/${id}`);
+    },
+};
+
 // ============ Search API ============
 
 export const searchApi = {
@@ -383,6 +451,16 @@ export const systemApi = {
         };
     }> => {
         const { data } = await api.get('/system/stats');
+        return data;
+    },
+
+    getGlobalTimeline: async (limit = 50): Promise<any[]> => {
+        const { data } = await api.get(`/system/timeline?limit=${limit}`);
+        return data;
+    },
+
+    exportData: async (): Promise<any> => {
+        const { data } = await api.get('/system/export');
         return data;
     },
 };
