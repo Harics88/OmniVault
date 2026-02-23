@@ -60,7 +60,6 @@ pythonnet_runtime = Path(site_packages) / 'pythonnet' / 'runtime'
 if pythonnet_runtime.exists():
     datas += [
         (str(pythonnet_runtime / 'Python.Runtime.dll'), '.'),
-        (str(pythonnet_runtime / 'Python.Runtime.deps.json'), '.'),
     ]
 
 a = Analysis(

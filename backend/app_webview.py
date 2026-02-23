@@ -23,38 +23,15 @@ if getattr(sys, 'frozen', False):
     if sys.stderr is None:
         sys.stderr = NullWriter()
     
-    # ============================================================
-    # DLL Search Path & Runtime Configuration for pythonnet 3.x
-    # ============================================================
     import glob
-    
-    # 1. Search for Python.Runtime.dll in root and _internal
-    search_paths = [
-        sys._MEIPASS,  # Root of the bundle
-        os.path.join(sys._MEIPASS, 'pythonnet', 'runtime'), # Secondary location
-        os.path.dirname(sys.executable), # Next to EXE
-    ]
-    
-    python_runtime_dll = None
-    for path in search_paths:
-        target = os.path.join(path, 'Python.Runtime.dll')
-        if os.path.exists(target):
-            python_runtime_dll = target
-            # Add this directory to PATH and DLL search
-            os.environ['PATH'] = path + os.pathsep + os.environ.get('PATH', '')
-            if hasattr(os, 'add_dll_directory'):
-                try: os.add_dll_directory(path)
-                except: pass
-            break
-
-    # 2. Force pythonnet to find the core python DLL
+    # 1. Force pythonnet to find the core python DLL
     python_dlls = glob.glob(os.path.join(sys._MEIPASS, 'python3*.dll'))
     if python_dlls:
         os.environ['PYTHONNET_PYDLL'] = python_dlls[0]
-        
-    # 3. Choose the correct runtime key (netfx for Framework, coreclr for Core)
-    # FORCED FIX: We prefer 'netfx' ( .NET Framework) in frozen environment because 
-    # System.Windows.Forms is reliably available there without extra Core Desktop SDKs.
+
+    # 2. Choose the correct runtime key (netfx for Framework, coreclr for Core)
+    # FORCED FIX: We prefer 'netfx' ( .NET Framework) because System.Windows.Forms 
+    # is natively available on Windows 10/11 without extra Core Desktop SDKs.
     os.environ['PYTHONNET_RUNTIME'] = 'netfx'
 
 
@@ -199,12 +176,14 @@ def main():
         webview.start(gui='edgechromium', debug=False)
                 
     except Exception as e:
-        logger.error(f"Error starting webview: {e}", exc_info=True)
+        import traceback
+        full_error = traceback.format_exc()
+        logger.error(f"Error starting webview:\n{full_error}")
         
         # Show a user-friendly message with log path using Windows API
         try:
             import ctypes
-            error_msg = f"Omni Vault failed to start.\n\nPlease check the logs for details:\n{LOG_FILE}\n\nError: {str(e)}"
+            error_msg = f"Omni Vault failed to start.\n\nCheck logs for details: {LOG_FILE}\n\nEnv: {os.environ.get('PYTHONNET_RUNTIME', 'default')}\nError: {str(e)}"
             ctypes.hwnd = 0
             ctypes.windll.user32.MessageBoxW(0, error_msg, "Startup Error", 0x10)
         except:
