@@ -53,13 +53,9 @@ if getattr(sys, 'frozen', False):
         os.environ['PYTHONNET_PYDLL'] = python_dlls[0]
         
     # 3. Choose the correct runtime key (netfx for Framework, coreclr for Core)
-    # If deps.json exists near the DLL, it's likely a CoreCLR runtime
-    if python_runtime_dll:
-        deps_json = python_runtime_dll.replace('.dll', '.deps.json')
-        if os.path.exists(deps_json):
-            os.environ['PYTHONNET_RUNTIME'] = 'coreclr'
-        else:
-            os.environ['PYTHONNET_RUNTIME'] = 'netfx'
+    # FORCED FIX: We prefer 'netfx' ( .NET Framework) in frozen environment because 
+    # System.Windows.Forms is reliably available there without extra Core Desktop SDKs.
+    os.environ['PYTHONNET_RUNTIME'] = 'netfx'
 
 
 
