@@ -30,9 +30,15 @@ if getattr(sys, 'frozen', False):
         os.environ['PYTHONNET_PYDLL'] = python_dlls[0]
 
     # 2. Choose the correct runtime key (netfx for Framework, coreclr for Core)
-    # FORCED FIX: We prefer 'netfx' ( .NET Framework) because System.Windows.Forms 
-    # is natively available on Windows 10/11 without extra Core Desktop SDKs.
     os.environ['PYTHONNET_RUNTIME'] = 'netfx'
+    
+    # 3. EXPLICIT LOAD (v2.6.7+): Ensure netfx is locked in before ANY module imports clr
+    try:
+        import pythonnet
+        pythonnet.load("netfx")
+    except Exception as e:
+        # Fallback to env var if load() fails
+        pass
 
 
 

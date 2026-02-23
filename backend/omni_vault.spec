@@ -52,6 +52,11 @@ webview_datas, webview_binaries, webview_hiddenimports = collect_all('webview')
 pythonnet_datas, pythonnet_binaries, pythonnet_hiddenimports = collect_all('pythonnet')
 clr_loader_datas, clr_loader_binaries, clr_loader_hiddenimports = collect_all('clr_loader')
 
+# v2.6.7 SANITIZATION: Filter out ALL .json files (deps.json, runtime.json, etc.) 
+# to prevent incorrect CoreCLR runtime detection.
+pythonnet_datas = [d for d in pythonnet_datas if not d[0].endswith('.json')]
+clr_loader_datas = [d for d in clr_loader_datas if not d[0].endswith('.json')]
+
 # Manually add Python.Runtime.dll to the root of the bundle
 # This is a critical workaround for PyInstaller 6+ which moves everything to _internal/
 import site
