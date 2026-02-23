@@ -18,66 +18,45 @@ datas = [
 
 # Hidden imports for FastAPI and its dependencies
 hiddenimports = [
-    'uvicorn.logging',
-    'uvicorn.loops',
-    'uvicorn.loops.auto',
-    'uvicorn.protocols',
-    'uvicorn.protocols.http',
-    'uvicorn.protocols.http.auto',
-    'uvicorn.protocols.websockets',
-    'uvicorn.protocols.websockets.auto',
-    'uvicorn.lifespan',
-    'uvicorn.lifespan.on',
-    'sqlalchemy.ext.baked',
-    'aiosqlite',
-    'webview',
-    'jinja2',
-    'python-multipart',
-    'jaraco.text',
-    'jaraco.functools',
-    'jaraco.context',
-    'more_itertools',
-    'autocommand',
+    'uvicorn.logging', 'uvicorn.loops', 'uvicorn.loops.auto',
+    'uvicorn.protocols', 'uvicorn.protocols.http', 'uvicorn.protocols.http.auto',
+    'uvicorn.protocols.websockets', 'uvicorn.protocols.websockets.auto',
+    'uvicorn.lifespan', 'uvicorn.lifespan.on',
+    'sqlalchemy.ext.baked', 'aiosqlite', 'webview', 'jinja2',
+    'python-multipart', 'jaraco.text', 'jaraco.functools',
+    'jaraco.context', 'more_itertools', 'autocommand', 'clr', 'pythonnet'
 ]
 
 from PyInstaller.utils.hooks import collect_all
 
-# Collect all jaraco submodules and data
+# Standard collections
 jaraco_datas, jaraco_binaries, jaraco_hiddenimports = collect_all('jaraco')
-
-# Collect webview data (for EdgeChromium backend)
 webview_datas, webview_binaries, webview_hiddenimports = collect_all('webview')
 
-# Collect pythonnet and clr_loader (required for EdgeChromium via pythonnet)
-pythonnet_datas, pythonnet_binaries, pythonnet_hiddenimports = collect_all('pythonnet')
-clr_loader_datas, clr_loader_binaries, clr_loader_hiddenimports = collect_all('clr_loader')
-
-# v2.6.7 SANITIZATION: Filter out ALL .json files (deps.json, runtime.json, etc.) 
-# to prevent incorrect CoreCLR runtime detection.
-pythonnet_datas = [d for d in pythonnet_datas if not d[0].endswith('.json')]
-clr_loader_datas = [d for d in clr_loader_datas if not d[0].endswith('.json')]
-
-# Manually add Python.Runtime.dll to the root of the bundle
-# This is a critical workaround for PyInstaller 6+ which moves everything to _internal/
+# 🛠️ INDUSTRIAL BUILD FIX (v2.6.8+)
+# We AVOID collect_all for pythonnet/clr_loader to prevent capturing CoreCLR metadata/hints.
+# Instead, we surgically include ONLY the required binaries.
 import site
 site_packages = site.getsitepackages()[0]
-pythonnet_runtime = Path(site_packages) / 'pythonnet' / 'runtime'
-if pythonnet_runtime.exists():
-    datas += [
-        (str(pythonnet_runtime / 'Python.Runtime.dll'), '.'),
+pythonnet_pkg = Path(site_packages) / 'pythonnet'
+
+# Manual binaries selection
+binaries = jaraco_binaries + webview_binaries
+if (pythonnet_pkg / 'runtime' / 'Python.Runtime.dll').exists():
+    # Bundle Python.Runtime.dll to BOTH root and subfolder to ensure resolution
+    binaries += [
+        (str(pythonnet_pkg / 'runtime' / 'Python.Runtime.dll'), '.'),
+        (str(pythonnet_pkg / 'runtime' / 'Python.Runtime.dll'), 'pythonnet/runtime'),
     ]
 
 a = Analysis(
     ['app_webview.py'],
     pathex=[str(backend_dir)],
-    binaries=jaraco_binaries + webview_binaries + pythonnet_binaries + clr_loader_binaries,
-    datas=datas + jaraco_datas + webview_datas + pythonnet_datas + clr_loader_datas,
-    hiddenimports=hiddenimports + jaraco_hiddenimports + webview_hiddenimports + pythonnet_hiddenimports + clr_loader_hiddenimports + ['pkg_resources', 'clr', 'pythonnet', 'clr_loader', 'clr_loader.runtimes'],
+    binaries=binaries,
+    datas=datas + jaraco_datas + webview_datas,
+    hiddenimports=hiddenimports + jaraco_hiddenimports + webview_hiddenimports + ['pkg_resources'],
     hookspath=[],
-
-
-    hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=['runtime_hook.py'], # 🚀 Industry Way: Early initialization
     excludes=[],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -97,7 +76,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=False, # Final production build - console disabled
+    console=False, 
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

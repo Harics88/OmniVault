@@ -22,23 +22,6 @@ if getattr(sys, 'frozen', False):
         sys.stdout = NullWriter()
     if sys.stderr is None:
         sys.stderr = NullWriter()
-    
-    import glob
-    # 1. Force pythonnet to find the core python DLL
-    python_dlls = glob.glob(os.path.join(sys._MEIPASS, 'python3*.dll'))
-    if python_dlls:
-        os.environ['PYTHONNET_PYDLL'] = python_dlls[0]
-
-    # 2. Choose the correct runtime key (netfx for Framework, coreclr for Core)
-    os.environ['PYTHONNET_RUNTIME'] = 'netfx'
-    
-    # 3. EXPLICIT LOAD (v2.6.7+): Ensure netfx is locked in before ANY module imports clr
-    try:
-        import pythonnet
-        pythonnet.load("netfx")
-    except Exception as e:
-        # Fallback to env var if load() fails
-        pass
 
 
 
