@@ -97,7 +97,8 @@ async def get_bookmarks(
     db: AsyncSession = Depends(get_db)
 ):
     """Get all bookmarks with optional search and category filter"""
-    query = select(Bookmark).options(selectinload(Bookmark.entities)).order_by(Bookmark.order, desc(Bookmark.updated_at))
+    query = select(Bookmark).where(Bookmark.deleted_at.is_(None)).options(selectinload(Bookmark.entities)).order_by(Bookmark.order, desc(Bookmark.updated_at))
+
     
     if category_id:
         query = query.where(Bookmark.category_id == category_id)
@@ -125,10 +126,12 @@ async def get_recent_bookmarks(
     result = await db.execute(
         select(Bookmark)
         .options(selectinload(Bookmark.entities))
+        .where(Bookmark.deleted_at.is_(None))
         .order_by(desc(Bookmark.updated_at))
         .limit(limit)
     )
     return result.scalars().all()
+
 
 
 @router.get("/{bookmark_id}", response_model=BookmarkResponse)
@@ -198,7 +201,7 @@ async def delete_bookmark(
     bookmark_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-    """Delete a bookmark"""
+    """Soft delete a bookmark"""
     result = await db.execute(
         select(Bookmark).where(Bookmark.id == bookmark_id)
     )
@@ -207,9 +210,10 @@ async def delete_bookmark(
     if not bookmark:
         raise HTTPException(status_code=404, detail="Bookmark not found")
     
-    await db.delete(bookmark)
+    bookmark.deleted_at = datetime.utcnow()
     await db.commit()
-    return {"message": "Bookmark deleted successfully"}
+    return {"message": "Bookmark moved to recycle bin"}
+
 
 
 @router.post("/{bookmark_id}/open")

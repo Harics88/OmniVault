@@ -38,7 +38,8 @@ async def get_snippets(
     db: AsyncSession = Depends(get_db)
 ):
     """Get all snippets with optional filtering"""
-    query = select(Snippet).options(selectinload(Snippet.entities)).order_by(desc(Snippet.is_pinned), desc(Snippet.updated_at))
+    query = select(Snippet).where(Snippet.deleted_at.is_(None)).options(selectinload(Snippet.entities)).order_by(desc(Snippet.is_pinned), desc(Snippet.updated_at))
+
     
     if language:
         query = query.where(Snippet.language == language.lower())
@@ -66,10 +67,12 @@ async def get_recent_snippets(
     result = await db.execute(
         select(Snippet)
         .options(selectinload(Snippet.entities))
+        .where(Snippet.deleted_at.is_(None))
         .order_by(desc(Snippet.updated_at))
         .limit(limit)
     )
     return result.scalars().all()
+
 
 
 @router.get("/{snippet_id}", response_model=SnippetResponse)
@@ -145,7 +148,7 @@ async def delete_snippet(
     snippet_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-    """Delete a snippet"""
+    """Soft delete a snippet"""
     result = await db.execute(
         select(Snippet).where(Snippet.id == snippet_id)
     )
@@ -154,6 +157,7 @@ async def delete_snippet(
     if not snippet:
         raise HTTPException(status_code=404, detail="Snippet not found")
     
-    await db.delete(snippet)
+    snippet.deleted_at = datetime.utcnow()
     await db.commit()
-    return {"message": "Snippet deleted successfully"}
+    return {"message": "Snippet moved to recycle bin"}
+

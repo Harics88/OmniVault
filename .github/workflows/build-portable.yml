@@ -49,6 +49,13 @@ jobs:
           pip install -r requirements.txt
           pip install jaraco.text jaraco.functools jaraco.context platformdirs
 
+      - name: Inject Version
+        run: |
+          $ver = "${{ github.ref_name }}".Replace("v", "")
+          if ($ver -eq "") { $ver = "2.6.3" }
+          "VERSION = '$ver'" | Out-File -Encoding utf8 backend/app/version.py
+
+
       - name: Install frontend dependencies
         working-directory: frontend
         run: |

@@ -100,6 +100,10 @@ class SubtaskCreate(SubtaskBase):
     pass
 
 
+class SubtaskSync(SubtaskBase):
+    id: Optional[int] = None
+
+
 class SubtaskUpdate(BaseModel):
     title: Optional[str] = None
     completed: Optional[bool] = None
@@ -132,6 +136,8 @@ class TaskCreate(TaskBase):
     subtasks: Optional[List[SubtaskCreate]] = None
 
 
+
+
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
@@ -142,6 +148,9 @@ class TaskUpdate(BaseModel):
     completed_at: Optional[datetime] = None
     is_personal: Optional[bool] = None
     order: Optional[int] = None
+    subtasks: Optional[List[SubtaskSync]] = None
+
+
 
 
 class TaskReorder(BaseModel):
@@ -159,6 +168,8 @@ class TaskResponse(TaskBase):
     order: int
     subtasks: List[SubtaskResponse] = []
     entities: List[EntityResponse] = []
+
+
     created_at: datetime
     updated_at: datetime
 

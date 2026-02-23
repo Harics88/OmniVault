@@ -490,28 +490,20 @@ export default function TaskPanel({
                                                         <SubtaskItem
                                                             subtask={subtask}
                                                             onToggle={() => {
+                                                                if (!isEditing) return;
                                                                 const newCompleted = !subtask.completed;
-                                                                if (!isEditing) {
-                                                                    onUpdateSubtask(task.id, subtask.id, { completed: newCompleted });
-                                                                }
-                                                                // Optimistic update for toggling
+                                                                // Local update for toggling
                                                                 syncSubtasks(editedTask.subtasks?.map(s => s.id === subtask.id ? { ...s, completed: newCompleted } : s));
                                                             }}
                                                             onDelete={() => {
-                                                                if (!isEditing) {
-                                                                    onDeleteSubtask(task.id, subtask.id);
-                                                                } else {
-                                                                    // Locally remove from editedTask
-                                                                    syncSubtasks(editedTask.subtasks?.filter(s => s.id !== subtask.id) || []);
-                                                                }
+                                                                if (!isEditing) return;
+                                                                // Locally remove from editedTask
+                                                                syncSubtasks(editedTask.subtasks?.filter(s => s.id !== subtask.id) || []);
                                                             }}
                                                             onUpdateTitle={(title) => {
-                                                                if (!isEditing) {
-                                                                    onUpdateSubtask(task.id, subtask.id, { title });
-                                                                } else {
-                                                                    // Locally update in editedTask
-                                                                    syncSubtasks(editedTask.subtasks?.map(s => s.id === subtask.id ? { ...s, title } : s) || []);
-                                                                }
+                                                                if (!isEditing) return;
+                                                                // Locally update in editedTask
+                                                                syncSubtasks(editedTask.subtasks?.map(s => s.id === subtask.id ? { ...s, title } : s) || []);
                                                             }}
                                                             isEditing={isEditing}
                                                             dragHandleProps={provided.dragHandleProps}

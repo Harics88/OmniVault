@@ -26,7 +26,8 @@ const priorityConfig: Record<string, { color: string, icon: any, className?: str
     HIGH: { color: 'text-orange-400', icon: Triangle },
 };
 
-export default function TaskCard({ task, onClick, onStatusChange, isDragging, isCompact, disableStatusClick, isSelected, onSelect }: TaskCardProps) {
+const TaskCard = React.memo(({ task, onClick, onStatusChange, isDragging, isCompact, disableStatusClick, isSelected, onSelect }: TaskCardProps) => {
+
     const statusKey = (task.status || 'not_started').toUpperCase();
     const config = statusConfig[statusKey] || statusConfig.NOT_STARTED;
     const StatusIcon = config.icon;
@@ -129,4 +130,6 @@ export default function TaskCard({ task, onClick, onStatusChange, isDragging, is
             </div>
         </div>
     );
-}
+});
+
+export default TaskCard;

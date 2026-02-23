@@ -136,9 +136,6 @@ export function useTaskEditor({
         setIsEditing(false);
     }, []);
 
-    /**
-     * Save changes to the task
-     */
     const save = useCallback(() => {
         const updates: Partial<Task> = {};
 
@@ -150,6 +147,12 @@ export function useTaskEditor({
         if (!datesEqual(editedTask.due_date, task.due_date)) updates.due_date = editedTask.due_date;
         if (!datesEqual(editedTask.started_at, task.started_at)) updates.started_at = editedTask.started_at;
         if (!datesEqual(editedTask.completed_at, task.completed_at)) updates.completed_at = editedTask.completed_at;
+
+        // Deep compare subtasks for changes
+        const subtasksChanged = JSON.stringify(editedTask.subtasks) !== JSON.stringify(task.subtasks);
+        if (subtasksChanged) {
+            updates.subtasks = editedTask.subtasks;
+        }
 
         if (Object.keys(updates).length > 0) {
             setIsSaving(true);

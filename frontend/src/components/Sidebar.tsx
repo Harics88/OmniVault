@@ -39,7 +39,9 @@ const navItems = [
 export default function Sidebar({ onSearchClick }: SidebarProps) {
     const location = useLocation();
     const [dbSize, setDbSize] = useState<string>('Loading...');
+    const [appVersion, setAppVersion] = useState<string>('v2.6.3');
     const [isCollapsed, setIsCollapsed] = useState(() => {
+
         return localStorage.getItem('sidebarCollapsed') === 'true';
     });
     const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -60,7 +62,11 @@ export default function Sidebar({ onSearchClick }: SidebarProps) {
             try {
                 const response = await axios.get('/api/system/stats');
                 setDbSize(response.data.database_size_human);
+                if (response.data.version) {
+                    setAppVersion(`v${response.data.version}`);
+                }
             } catch (error) {
+
                 console.error('Failed to fetch system stats:', error);
                 setDbSize('Unknown');
             }
@@ -234,8 +240,9 @@ export default function Sidebar({ onSearchClick }: SidebarProps) {
             {!isCollapsed && (
                 /* Version */
                 <div className="p-4 pt-0 text-center">
-                    <span className="text-xs text-text-muted">v2.5.0</span>
+                    <span className="text-xs text-text-muted">{appVersion}</span>
                 </div>
+
             )}
 
             {/* Collapsed State Storage Indicator */}

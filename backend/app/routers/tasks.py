@@ -29,7 +29,18 @@ async def get_tasks(
     db: AsyncSession = Depends(get_db)
 ):
     """Get all tasks, optionally filtered by status, personal flag and search query"""
-    query = select(Task).options(selectinload(Task.subtasks), selectinload(Task.entities)).order_by(asc(Task.order), desc(Task.created_at))
+    query = (
+        select(Task)
+        .where(Task.deleted_at.is_(None))
+        .options(
+            selectinload(Task.subtasks),
+            selectinload(Task.entities)
+        )
+        .order_by(asc(Task.order), desc(Task.created_at))
+    )
+
+
+
     
     if status:
         query = query.where(Task.status == status)
@@ -53,9 +64,11 @@ async def get_task_stats(db: AsyncSession = Depends(get_db)):
     """Get task statistics"""
     result = await db.execute(
         select(Task.status, func.count(Task.id))
+        .where(Task.deleted_at.is_(None))
         .group_by(Task.status)
     )
     stats = {status.value: 0 for status in TaskStatus}
+
     for status, count in result.all():
         stats[status.value] = count
     
@@ -73,9 +86,14 @@ async def get_task(
 ):
     """Get a specific task by ID"""
     result = await db.execute(
-        select(Task).options(selectinload(Task.subtasks), selectinload(Task.entities)).where(Task.id == task_id)
+        select(Task).options(
+            selectinload(Task.subtasks),
+            selectinload(Task.entities)
+        ).where(Task.id == task_id)
     )
     task = result.scalar_one_or_none()
+
+
     
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -98,6 +116,8 @@ async def create_task(
     # Extract subtasks from task_data
     subtasks_data = task_data.subtasks or []
     task_dict = task_data.model_dump(exclude={'subtasks'})
+
+
     
     task = Task(
         **task_dict,
@@ -120,9 +140,16 @@ async def create_task(
     
     # Reload with subtasks
     result = await db.execute(
-        select(Task).options(selectinload(Task.subtasks), selectinload(Task.entities)).where(Task.id == task.id)
+        select(Task)
+        .options(
+            selectinload(Task.subtasks),
+            selectinload(Task.entities)
+        )
+        .where(Task.id == task.id)
     )
     return result.scalar_one()
+
+
 
 
 @router.put("/{task_id}", response_model=TaskResponse)
@@ -133,14 +160,21 @@ async def update_task(
 ):
     """Update a task"""
     result = await db.execute(
-        select(Task).options(selectinload(Task.subtasks), selectinload(Task.entities)).where(Task.id == task_id)
+        select(Task).options(
+            selectinload(Task.subtasks),
+            selectinload(Task.entities)
+        ).where(Task.id == task_id)
     )
     task = result.scalar_one_or_none()
+
+
     
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
     update_data = task_data.model_dump(exclude_unset=True)
+
+
     
     # Handle auto-setting started_at and completed_at
     if 'status' in update_data:
@@ -158,6 +192,38 @@ async def update_task(
         elif new_status == TaskStatus.NOT_STARTED:
             task.started_at = None
             task.completed_at = None
+
+    # Handle subtasks reconciliation
+    subtasks_data = update_data.pop('subtasks', None)
+    if subtasks_data is not None:
+        # Existing subtasks map
+        existing_map = {s.id: s for s in task.subtasks}
+        
+        # Track IDs of subtasks that should remain
+        kept_ids = set()
+        
+        for idx, sub_sync in enumerate(subtasks_data):
+            if sub_sync.id in existing_map:
+                # Update existing
+                subtask = existing_map[sub_sync.id]
+                subtask.title = sub_sync.title
+                subtask.completed = sub_sync.completed
+                subtask.order = idx
+                kept_ids.add(sub_sync.id)
+            else:
+                # Create new
+                new_sub = Subtask(
+                    task_id=task.id,
+                    title=sub_sync.title,
+                    completed=sub_sync.completed,
+                    order=idx
+                )
+                db.add(new_sub)
+        
+        # Delete subtasks that were not in the subtasks_data list
+        for sub_id, subtask in existing_map.items():
+            if sub_id not in kept_ids:
+                await db.delete(subtask)
 
     for field, value in update_data.items():
         setattr(task, field, value)

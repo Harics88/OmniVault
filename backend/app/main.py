@@ -21,6 +21,8 @@ from sqlalchemy import text
 
 from app.database import engine, Base, get_db
 from app.routers import daily_logs, tasks, notes, snippets, bookmarks, search, sections, system, data, vault, entities, log_entries
+from app.version import VERSION
+
 
 # Determine frontend static files location
 if getattr(sys, 'frozen', False):
@@ -100,9 +102,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="MyTasker API",
     description="Local-first productivity API for data engineers",
-    version="2.5.0",
+    version=VERSION,
     lifespan=lifespan
 )
+
 
 # CORS middleware for frontend communication
 app.add_middleware(
@@ -211,9 +214,10 @@ async def health_check():
     health_status = {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
-        "version": "2.5.0",
+        "version": VERSION,
         "checks": {}
     }
+
     
     # Check database connectivity
     try:

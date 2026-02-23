@@ -92,7 +92,9 @@ task_note_association = Table(
     Column('note_id', Integer, ForeignKey('notes.id', ondelete='CASCADE'), primary_key=True)
 )
 
+
 # Entity Association Tables
+
 entity_log_entry_association = Table(
     'entity_log_entry_links',
     Base.metadata,
@@ -177,18 +179,20 @@ class Task(Base):
         default=TaskStatus.NOT_STARTED,
         index=True
     )
-    due_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    due_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
+
     priority: Mapped[TaskPriority] = mapped_column(
         SQLEnum(TaskPriority),
         default=TaskPriority.MEDIUM,
         index=True
     )
-    is_personal: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_personal: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     order: Mapped[int] = mapped_column(Integer, default=0)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
@@ -209,6 +213,9 @@ class Task(Base):
         secondary=entity_task_association,
         back_populates="tasks"
     )
+
+
+
 
 
 class Subtask(Base):
@@ -259,10 +266,11 @@ class Note(Base):
     section_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey('note_sections.id', ondelete='SET NULL'), nullable=True, index=True
     )
-    is_pinned: Mapped[bool] = mapped_column(Boolean, default=False)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)  # Soft delete
+    is_pinned: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None, index=True)  # Soft delete
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)
+
 
     # Relationships
     section: Mapped[Optional["NoteSection"]] = relationship(back_populates="notes")
@@ -296,11 +304,12 @@ class Snippet(Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     code: Mapped[str] = mapped_column(Text, nullable=False)
     language: Mapped[str] = mapped_column(String(50), default="text", index=True)
-    is_pinned: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_pinned: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     description: Mapped[Optional[str]] = mapped_column(Text, default="")
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)
+
 
     # Relationships
     daily_logs: Mapped[List["DailyLog"]] = relationship(
@@ -343,9 +352,10 @@ class Bookmark(Base):
     icon: Mapped[Optional[str]] = mapped_column(String(500), nullable=True) # Icon URL or path
     is_file: Mapped[bool] = mapped_column(Boolean, default=False)
     order: Mapped[int] = mapped_column(Integer, default=0)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)
+
 
     # Relationships
     category: Mapped[Optional["BookmarkCategory"]] = relationship(back_populates="bookmarks")
@@ -369,9 +379,10 @@ class Entity(Base):
     aliases: Mapped[Optional[str]] = mapped_column(String(500), default="")
     status: Mapped[str] = mapped_column(String(100), default="Active")
     meta_json: Mapped[str] = mapped_column(Text, default="{}")
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)
+
 
     # Relationships
     log_entries: Mapped[List["LogEntry"]] = relationship(

@@ -20,7 +20,9 @@ export default function Settings() {
     const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
     const [pendingFile, setPendingFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [appVersion, setAppVersion] = useState<string>('v2.6.3');
     const { showToast } = useToast();
+
 
     const toggleWidget = (id: string) => {
         const updated = widgets.map(w =>
@@ -41,8 +43,21 @@ export default function Settings() {
                 console.error('Failed to fetch vault status:', error);
             }
         };
+        const fetchSystemVersion = async () => {
+            try {
+                const response = await axios.get('/api/system/stats');
+                if (response.data.version) {
+                    setAppVersion(`v${response.data.version}`);
+                }
+            } catch (error) {
+                console.error('Failed to fetch system version:', error);
+            }
+        };
         fetchVaultStatus();
+        fetchSystemVersion();
     }, []);
+
+
 
     // Initial stats fetch removed as 'stats' and 'loading' were unused in UI logic
     // (though 'loading' was used for initial state, but stats data wasn't displayed in this component yet)
@@ -348,8 +363,9 @@ export default function Settings() {
             {/* Version Info */}
             <div className="mt-8 pt-6 border-t border-gray-700/50 text-center">
                 <p className="text-gray-500 text-sm">
-                    Omni Vault <span className="text-gray-400 font-medium">v2.5.0</span>
+                    Omni Vault <span className="text-gray-400 font-medium">{appVersion}</span>
                 </p>
+
                 <p className="text-gray-600 text-xs mt-1">
                     Manage. Code. Secure. Create.
                 </p>

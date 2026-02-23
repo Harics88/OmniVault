@@ -61,6 +61,8 @@ export interface Task {
     entities: Entity[];
     created_at: string;
     updated_at: string;
+
+
 }
 
 export interface NoteSection {
@@ -186,6 +188,8 @@ export interface CreateTask {
     due_date?: string | null;
     is_personal?: boolean;
     subtasks?: CreateSubtask[];
+
+
 }
 
 export interface UpdateTask {
@@ -198,6 +202,8 @@ export interface UpdateTask {
     completed_at?: string | null;
     is_personal?: boolean;
     order?: number;
+
+
 }
 
 export interface CreateNote {

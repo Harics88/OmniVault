@@ -1,4 +1,5 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+
 import { ChevronDown, ChevronRight, Circle, Clock, Check, Triangle, Trash2, CheckSquare, Calendar, Search } from 'lucide-react';
 import { formatDisplayDate, parseServerDate } from '../utils/date';
 import { subDays } from 'date-fns';
@@ -14,6 +15,113 @@ interface TaskTableViewProps {
     selectedTaskIds?: Set<number>;
     onSelectTask?: (taskId: number) => void;
 }
+
+interface TaskRowProps {
+    task: Task;
+    colWidths: any;
+    priorityConfig: any;
+    onTaskClick: (task: Task) => void;
+    onStatusChange: (taskId: number, status: TaskStatus) => void;
+    onDelete: (taskId: number) => void;
+    isSelected: boolean;
+    onSelect: (taskId: number) => void;
+}
+
+const TaskRow = React.memo(({
+    task,
+    colWidths,
+    priorityConfig,
+    onTaskClick,
+    onStatusChange,
+    onDelete,
+    isSelected,
+    onSelect
+}: TaskRowProps) => {
+    const pKey = (task.priority || 'MEDIUM').toUpperCase();
+    const pStyle = priorityConfig[pKey] || priorityConfig.MEDIUM;
+
+    return (
+        <div
+            onClick={() => onTaskClick(task)}
+            className={`flex items-center gap-4 px-6 py-3 transition-all group cursor-pointer hover:bg-background-elevated/40 relative active:scale-[0.998] ${isSelected ? 'bg-accent-blue/5' : ''}`}
+        >
+            <div style={{ width: colWidths.title }} className="shrink-0 overflow-hidden sticky left-0 bg-background-card z-10 group-hover:bg-background-elevated/40 transition-colors pr-4">
+                <div className="flex items-center gap-3 pl-2">
+                    <div
+                        className={`w-4 h-4 rounded border transition-all flex items-center justify-center shrink-0 ${isSelected ? 'bg-accent-blue border-accent-blue' : 'border-border opacity-30 group-hover:opacity-100'}`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (onSelect) onSelect(task.id);
+                        }}
+                    >
+                        {isSelected && <Check size={12} className="text-white" strokeWidth={4} />}
+                    </div>
+                    <span
+                        className={`text-sm font-medium transition-all truncate ${task.status === 'done' ? 'text-text-muted/60 line-through' : 'text-text-primary group-hover:text-accent-blue'}`}
+                    >
+                        {task.title}
+                    </span>
+                    {task.subtasks?.length > 0 && (
+                        <div className="flex items-center gap-1 bg-background-elevated/50 px-2 py-0.5 rounded-md border border-border/30 shadow-sm shrink-0">
+                            <CheckSquare size={10} className="text-accent-green" />
+                            <span className="text-[10px] font-bold text-text-muted font-mono tracking-tighter">
+                                {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div style={{ width: colWidths.priority }} className="shrink-0 flex justify-center px-2">
+                <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${pStyle.bg} ${pStyle.color} transition-all truncate`}>
+                    <pStyle.icon size={10} className={pStyle.className} fill="none" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">{pStyle.label}</span>
+                </div>
+            </div>
+
+            <div style={{ width: colWidths.dueDate }} className="flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors px-2 truncate">
+                <Calendar size={12} className="opacity-40 shrink-0" />
+                {task.due_date ? formatDisplayDate(task.due_date, 'MMM d, yyyy h:mm a') : <span className="opacity-20 italic">No due date</span>}
+            </div>
+
+            <div style={{ width: colWidths.commenced }} className="flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors px-2 truncate">
+                <Clock size={12} className="opacity-40 shrink-0" />
+                {task.started_at ? formatDisplayDate(task.started_at, 'MMM d, yyyy h:mm a') : <span className="opacity-20 italic">Not started</span>}
+            </div>
+
+            <div style={{ width: colWidths.concluded }} className="flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors px-2 truncate">
+                <Check size={12} className="opacity-40 shrink-0" />
+                {task.completed_at ? formatDisplayDate(task.completed_at, 'MMM d, yyyy h:mm a') : <span className="opacity-20 italic">Unfinished</span>}
+            </div>
+
+            <div style={{ width: colWidths.stage }} className="shrink-0 px-2">
+                <div className="relative group/pill">
+                    <select
+                        value={task.status}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => { e.stopPropagation(); onStatusChange(task.id, e.target.value as TaskStatus); }}
+                        className={`appearance-none bg-background-elevated/40 hover:bg-background-elevated/60 text-[10px] font-bold uppercase tracking-wider ${task.status === 'done' ? 'text-accent-green' : task.status === 'in_progress' ? 'text-accent-amber' : 'text-text-muted'} border border-border/30 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-accent-blue/30 cursor-pointer w-full transition-all text-center pr-2`}
+                    >
+                        <option value="not_started">Not Started</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="done">Done</option>
+                    </select>
+                </div>
+            </div>
+
+            <div className="w-12 flex justify-end gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-all translate-x-1 group-hover:translate-x-0">
+                <button
+                    onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
+                    className="p-2 rounded-lg hover:bg-accent-red/10 text-text-muted hover:text-accent-red transition-all shadow-sm active:scale-90"
+                    title="Delete Task"
+                >
+                    <Trash2 size={13} />
+                </button>
+            </div>
+        </div>
+    );
+});
+
 
 const statusConfig = {
     not_started: { label: 'Not Started', icon: Circle, color: 'text-text-muted', bg: 'bg-background-elevated', badge: 'bg-background-elevated/50 text-text-muted border-border/50' },
@@ -189,96 +297,20 @@ export default function TaskTableView({
 
                 {!isCollapsed && (
                     <div className="bg-background/20 divide-y divide-border/5 rounded-b-xl border-x border-b border-border/10 overflow-hidden shadow-sm">
-                        {sectionTasks.map((task) => {
-                            const pKey = (task.priority || 'MEDIUM').toUpperCase();
-                            const pStyle = priorityConfig[pKey] || priorityConfig.MEDIUM;
+                        {sectionTasks.map((task) => (
+                            <TaskRow
+                                key={task.id}
+                                task={task}
+                                colWidths={colWidths}
+                                priorityConfig={priorityConfig}
+                                onTaskClick={onTaskClick}
+                                onStatusChange={onStatusChange}
+                                onDelete={onDelete}
+                                isSelected={selectedTaskIds.has(task.id)}
+                                onSelect={onSelectTask || (() => { })}
+                            />
+                        ))}
 
-                            return (
-                                <div
-                                    key={task.id}
-                                    onClick={() => onTaskClick(task)}
-                                    className={`flex items-center gap-4 px-6 py-3 transition-all group cursor-pointer hover:bg-background-elevated/40 relative active:scale-[0.998] ${selectedTaskIds.has(task.id) ? 'bg-accent-blue/5' : ''}`}
-                                >
-                                    <div style={{ width: colWidths.title }} className="shrink-0 overflow-hidden sticky left-0 bg-background-card z-10 group-hover:bg-background-elevated/40 transition-colors pr-4">
-                                        <div className="flex items-center gap-3 pl-2">
-                                            <div
-                                                className={`w-4 h-4 rounded border transition-all flex items-center justify-center shrink-0 ${selectedTaskIds.has(task.id) ? 'bg-accent-blue border-accent-blue' : 'border-border opacity-30 group-hover:opacity-100'}`}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (onSelectTask) onSelectTask(task.id);
-                                                }}
-                                            >
-                                                {selectedTaskIds.has(task.id) && <Check size={12} className="text-white" strokeWidth={4} />}
-                                            </div>
-                                            <span
-                                                className={`text-sm font-medium transition-all truncate ${task.status === 'done' ? 'text-text-muted/60 line-through' : 'text-text-primary group-hover:text-accent-blue'}`}
-                                            >
-                                                {task.title}
-                                            </span>
-                                            {task.subtasks?.length > 0 && (
-                                                <div className="flex items-center gap-1 bg-background-elevated/50 px-2 py-0.5 rounded-md border border-border/30 shadow-sm shrink-0">
-                                                    <CheckSquare size={10} className="text-accent-green" />
-                                                    <span className="text-[10px] font-bold text-text-muted font-mono tracking-tighter">
-                                                        {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Priority Badge */}
-                                    <div style={{ width: colWidths.priority }} className="shrink-0 flex justify-center px-2">
-                                        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${pStyle.bg} ${pStyle.color} transition-all truncate`}>
-                                            <pStyle.icon size={10} className={pStyle.className} fill="none" />
-                                            <span className="text-[10px] font-bold uppercase tracking-wider">{pStyle.label}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Dates */}
-                                    <div style={{ width: colWidths.dueDate }} className="flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors px-2 truncate">
-                                        <Calendar size={12} className="opacity-40 shrink-0" />
-                                        {task.due_date ? formatDisplayDate(task.due_date, 'MMM d, yyyy h:mm a') : <span className="opacity-20 italic">No due date</span>}
-                                    </div>
-
-                                    <div style={{ width: colWidths.commenced }} className="flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors px-2 truncate">
-                                        <Clock size={12} className="opacity-40 shrink-0" />
-                                        {task.started_at ? formatDisplayDate(task.started_at, 'MMM d, yyyy h:mm a') : <span className="opacity-20 italic">Not started</span>}
-                                    </div>
-
-                                    <div style={{ width: colWidths.concluded }} className="flex items-center gap-2 text-[11px] text-text-muted font-medium shrink-0 group-hover:text-text-primary transition-colors px-2 truncate">
-                                        <Check size={12} className="opacity-40 shrink-0" />
-                                        {task.completed_at ? formatDisplayDate(task.completed_at, 'MMM d, yyyy h:mm a') : <span className="opacity-20 italic">Unfinished</span>}
-                                    </div>
-
-                                    {/* Status Pill */}
-                                    <div style={{ width: colWidths.stage }} className="shrink-0 px-2">
-                                        <div className="relative group/pill">
-                                            <select
-                                                value={task.status}
-                                                onClick={(e) => e.stopPropagation()}
-                                                onChange={(e) => { e.stopPropagation(); onStatusChange(task.id, e.target.value as TaskStatus); }}
-                                                className={`appearance-none bg-background-elevated/40 hover:bg-background-elevated/60 text-[10px] font-bold uppercase tracking-wider ${config.color} border border-border/30 rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-accent-blue/30 cursor-pointer w-full transition-all text-center pr-2`}
-                                            >
-                                                <option value="not_started">Not Started</option>
-                                                <option value="in_progress">In Progress</option>
-                                                <option value="done">Done</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    {/* Actions */}
-                                    <div className="w-12 flex justify-end gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-all translate-x-1 group-hover:translate-x-0">
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
-                                            className="p-2 rounded-lg hover:bg-accent-red/10 text-text-muted hover:text-accent-red transition-all shadow-sm active:scale-90"
-                                            title="Delete Task"
-                                        >
-                                            <Trash2 size={13} />
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
                     </div>
                 )}
             </div>

@@ -3,9 +3,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import os
 from app.database import DATABASE_URL, get_db
 
+from app.version import VERSION
+
 router = APIRouter()
 
+@router.get("/version")
+async def get_system_version():
+    """Get the current application version"""
+    return {"version": VERSION}
+
 from sqlalchemy import select, func, desc
+
 from app.models import Task, Subtask, Note, NoteSection, Snippet, Bookmark, BookmarkCategory, DailyLog, LogEntry, Entity, Secret
 import json
 from datetime import datetime, date, timedelta
@@ -67,6 +75,7 @@ async def get_system_stats(db: AsyncSession = Depends(get_db)):
     return {
         "database_size_bytes": size_bytes,
         "database_size_human": format_size(size_bytes),
+        "version": VERSION,
         "counts": {
             "tasks": task_count,
             "notes": note_count,
@@ -74,6 +83,7 @@ async def get_system_stats(db: AsyncSession = Depends(get_db)):
             "bookmarks": bookmark_count
         }
     }
+
 
 @router.get("/dashboard-overview")
 async def get_dashboard_overview(db: AsyncSession = Depends(get_db)):

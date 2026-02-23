@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import axios from 'axios';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+
 
 import { Plus, CheckSquare, Loader2, Circle, Clock, Check, Search, LayoutGrid, List, Table2, Trash2 } from 'lucide-react';
 import { tasksApi } from '../lib/api';
@@ -71,15 +73,29 @@ export default function Tasks() {
     const [personalFilter, setPersonalFilter] = useState<'all' | 'work' | 'personal'>('work');
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
+    const [appVersion, setAppVersion] = useState<string>('v2.6.3');
+
 
     // Re-check settings on storage change (e.g. from Settings tab)
     useEffect(() => {
         const handleStorageChange = () => {
             setEnablePersonal(localStorage.getItem('enablePersonalTasks') === 'true');
         };
+        const fetchVersion = async () => {
+            try {
+                const response = await axios.get('/api/system/stats');
+                if (response.data.version) {
+                    setAppVersion(`v${response.data.version}`);
+                }
+            } catch (error) {
+                console.error('Failed to fetch version:', error);
+            }
+        };
         window.addEventListener('storage', handleStorageChange);
+        fetchVersion();
         return () => window.removeEventListener('storage', handleStorageChange);
     }, []);
+
 
     useEffect(() => {
         localStorage.setItem('taskViewMode', viewMode);
@@ -419,8 +435,9 @@ export default function Tasks() {
                         <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
                             <CheckSquare size={24} className="text-accent-blue" />
                             Tasks
-                            <span className="text-[10px] text-text-muted opacity-0" id="version-tag">v2.5.0</span>
+                            <span className="text-[10px] text-text-muted opacity-0" id="version-tag">{appVersion}</span>
                         </h1>
+
 
                         <div className="flex items-center gap-1 bg-background-card p-1 rounded-lg border border-border ml-6">
                             <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-accent-blue text-white shadow-sm' : 'text-text-muted hover:text-text-primary hover:bg-background-hover'}`} title="List View"><List size={18} /></button>
