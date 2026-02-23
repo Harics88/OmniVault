@@ -23,22 +23,45 @@ if getattr(sys, 'frozen', False):
     if sys.stderr is None:
         sys.stderr = NullWriter()
     
-    # DLL Search Path Fix for pythonnet / PyInstaller - MUST be before any .NET imports
-    runtime_dir = os.path.join(sys._MEIPASS, 'pythonnet', 'runtime')
-    if os.path.exists(runtime_dir):
-        os.environ['PATH'] = runtime_dir + os.pathsep + os.environ.get('PATH', '')
-        if hasattr(os, 'add_dll_directory'):
-            try:
-                os.add_dll_directory(runtime_dir)
-            except:
-                pass
-    
-    # Force pythonnet to find the core python DLL in the bundle
-    # Required for pythonnet 3.0+ in PyInstaller bundled environments
+    # ============================================================
+    # DLL Search Path & Runtime Configuration for pythonnet 3.x
+    # ============================================================
     import glob
+    
+    # 1. Search for Python.Runtime.dll in root and _internal
+    search_paths = [
+        sys._MEIPASS,  # Root of the bundle
+        os.path.join(sys._MEIPASS, 'pythonnet', 'runtime'), # Secondary location
+        os.path.dirname(sys.executable), # Next to EXE
+    ]
+    
+    python_runtime_dll = None
+    for path in search_paths:
+        target = os.path.join(path, 'Python.Runtime.dll')
+        if os.path.exists(target):
+            python_runtime_dll = target
+            # Add this directory to PATH and DLL search
+            os.environ['PATH'] = path + os.pathsep + os.environ.get('PATH', '')
+            if hasattr(os, 'add_dll_directory'):
+                try: os.add_dll_directory(path)
+                except: pass
+            break
+
+    # 2. Force pythonnet to find the core python DLL
     python_dlls = glob.glob(os.path.join(sys._MEIPASS, 'python3*.dll'))
     if python_dlls:
         os.environ['PYTHONNET_PYDLL'] = python_dlls[0]
+        
+    # 3. Choose the correct runtime key (netfx for Framework, coreclr for Core)
+    # If deps.json exists near the DLL, it's likely a CoreCLR runtime
+    if python_runtime_dll:
+        deps_json = python_runtime_dll.replace('.dll', '.deps.json')
+        if os.path.exists(deps_json):
+            os.environ['PYTHONNET_RUNTIME'] = 'coreclr'
+        else:
+            os.environ['PYTHONNET_RUNTIME'] = 'netfx'
+
+
 
 # Now safe to import other modules
 import threading

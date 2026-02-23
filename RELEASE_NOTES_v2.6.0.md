@@ -1,4 +1,4 @@
-# 🚀 Omni Vault v1.1.0 - Security & Performance Update
+# 🚀 Omni Vault v2.6.0 - Security & Performance Update
 
 This release focuses on "under-the-hood" improvements to security and performance, along with significant UI polish to make the application feel snappier and more reliable.
 

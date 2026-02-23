@@ -52,13 +52,26 @@ webview_datas, webview_binaries, webview_hiddenimports = collect_all('webview')
 pythonnet_datas, pythonnet_binaries, pythonnet_hiddenimports = collect_all('pythonnet')
 clr_loader_datas, clr_loader_binaries, clr_loader_hiddenimports = collect_all('clr_loader')
 
+# Manually add Python.Runtime.dll to the root of the bundle
+# This is a critical workaround for PyInstaller 6+ which moves everything to _internal/
+import site
+site_packages = site.getsitepackages()[0]
+pythonnet_runtime = Path(site_packages) / 'pythonnet' / 'runtime'
+if pythonnet_runtime.exists():
+    datas += [
+        (str(pythonnet_runtime / 'Python.Runtime.dll'), '.'),
+        (str(pythonnet_runtime / 'Python.Runtime.deps.json'), '.'),
+    ]
+
 a = Analysis(
     ['app_webview.py'],
     pathex=[str(backend_dir)],
     binaries=jaraco_binaries + webview_binaries + pythonnet_binaries + clr_loader_binaries,
     datas=datas + jaraco_datas + webview_datas + pythonnet_datas + clr_loader_datas,
-    hiddenimports=hiddenimports + jaraco_hiddenimports + webview_hiddenimports + pythonnet_hiddenimports + clr_loader_hiddenimports + ['pkg_resources', 'clr'],
+    hiddenimports=hiddenimports + jaraco_hiddenimports + webview_hiddenimports + pythonnet_hiddenimports + clr_loader_hiddenimports + ['pkg_resources', 'clr', 'pythonnet', 'clr_loader', 'clr_loader.runtimes'],
     hookspath=[],
+
+
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],

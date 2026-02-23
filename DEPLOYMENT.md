@@ -7,7 +7,10 @@ Omni Vault comes in **two flavors** to suit different needs:
 ### 1. 💻 Desktop App (Recommended for Most Users)
 **Best for**: Single-user desktop use, simplicity
 
-**Download**: `OmniVault_Desktop_v1.1.0_Portable.zip`
+**Download**: `OmniVault_Desktop_v2.6.3_Portable.zip`
+
+
+
 
 
 **How to Use**:
@@ -27,7 +30,10 @@ Omni Vault comes in **two flavors** to suit different needs:
 ### 2. 🌐 Server App (For Browser Access)
 **Best for**: Remote access, multiple devices, existing web workflow
 
-**Download**: `OmniVault_Server_v1.1.0_Portable.zip`
+**Download**: `OmniVault_Server_v2.6.3_Portable.zip`
+
+
+
 
 
 **How to Use**:
@@ -147,7 +153,9 @@ You can:
 
 ## 📝 Release Notes
 
-See [RELEASE_NOTES_v1.1.0.md](RELEASE_NOTES_v1.1.0.md) for version history and changes.
+See [RELEASE_NOTES_v2.6.0.md](RELEASE_NOTES_v2.6.0.md) for version history and changes.
+
+
 
 
 ---
