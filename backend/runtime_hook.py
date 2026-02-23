@@ -10,31 +10,16 @@ def setup_pythonnet():
     meipass = sys._MEIPASS
     root_dir = os.path.dirname(sys.executable)
     
-    # 2. Force .NET Framework (netfx)
-    # Industry way: Lock the runtime before clr is ever imported
-    os.environ['PYTHONNET_RUNTIME'] = 'netfx'
-    
-    # 3. Locate Python.Runtime.dll
-    # We bundle it to the root in our new spec
-    runtime_dll_root = os.path.join(meipass, 'Python.Runtime.dll')
-    runtime_dll_internal = os.path.join(meipass, '_internal', 'Python.Runtime.dll')
-    
-    if os.path.exists(runtime_dll_root):
-        dll_dir = meipass
-    elif os.path.exists(runtime_dll_internal):
-        dll_dir = os.path.dirname(runtime_dll_internal)
-    else:
-        dll_dir = meipass # Fallback
-        
-    # Add to PATH and DLL search
-    os.environ['PATH'] = dll_dir + os.pathsep + os.environ.get('PATH', '')
-    if hasattr(os, 'add_dll_directory'):
-        try:
-            os.add_dll_directory(dll_dir)
-        except:
-            pass
+    # 4. EXPLICIT LOAD (v2.6.10+): 
+    # Force netfx at the first tick of the PyInstaller process.
+    try:
+        import pythonnet
+        pythonnet.load("netfx")
+        print("OmniVault: .NET Framework (netfx) locked successfully.")
+    except Exception as e:
+        print(f"OmniVault: Failed to lock netfx: {e}")
 
-    # 4. Locate Python DLL
+    # 5. Locate Python DLL for pythonnet
     import glob
     python_dlls = glob.glob(os.path.join(meipass, 'python3*.dll'))
     if python_dlls:

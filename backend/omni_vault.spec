@@ -56,13 +56,17 @@ a = Analysis(
     datas=datas + jaraco_datas + webview_datas,
     hiddenimports=hiddenimports + jaraco_hiddenimports + webview_hiddenimports + ['pkg_resources'],
     hookspath=[],
-    runtime_hooks=['runtime_hook.py'], # 🚀 Industry Way: Early initialization
+    runtime_hooks=['runtime_hook.py'], 
     excludes=[],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
     noarchive=False,
 )
+
+# 🛑 DEEP SANITIZATION (v2.6.10): Global strip of all .json and .deps files
+# This is the "Nuclear Option" to ensure nothing triggers a CoreCLR load.
+a.datas = [d for d in a.datas if not (d[0].endswith('.json') or d[0].endswith('.deps'))]
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
