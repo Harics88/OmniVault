@@ -82,6 +82,12 @@ jobs:
         working-directory: backend
         run: pyinstaller ${{ matrix.variant.spec }} --noconfirm
 
+      - name: Unblock DLLs (Mark of the Web fix)
+        shell: powershell
+        run: |
+          # Strip Windows "Mark of the Web" from all files so DLLs aren't blocked on target machines
+          Get-ChildItem -Path "backend/dist/${{ matrix.variant.folder }}" -Recurse | Unblock-File -ErrorAction SilentlyContinue
+
       - name: Create portable package
         shell: powershell
         run: |

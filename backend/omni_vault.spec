@@ -14,6 +14,8 @@ frontend_dist = project_root / 'frontend' / 'dist'
 datas = [
     # Frontend build - bundle the entire directory at once
     (str(frontend_dist), 'frontend_dist'),
+    # .NET config: allow loading DLLs flagged by Windows Mark of the Web
+    (str(backend_dir / 'OmniVault.exe.config'), '.'),
 ]
 
 # Hidden imports for FastAPI and its dependencies
